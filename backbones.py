@@ -68,7 +68,6 @@ class ResNet(nn.Module):
                 first = False
                 lastMult = multiplier
         self.blocks = nn.ModuleList(blocks)
-        self.statsBN = nn.BatchNorm2d(lastMult * featureMaps, affine = False)
 
     def forward(self, x):
         if x.shape[1] == 1:
@@ -77,14 +76,6 @@ class ResNet(nn.Module):
         for block in self.blocks:
             y = block(y)
         y = y.mean(dim = list(range(2, len(y.shape))))
-        _ = self.statsBN(y.unsqueeze(2).unsqueeze(3))
-        if args.feature_processing != "":
-            if "M" in args.feature_processing:
-                y = y - self.statsBN.running_mean.unsqueeze(0)
-            if "S" in args.feature_processing:
-                y = y / torch.pow(self.statsBN.running_var.unsqueeze(0), 0.5)
-            if "E" in args.feature_processing:
-                y = y / torch.norm(y, dim = 1, keepdim = True)
         return y
 
 class BasicBlockRN12(nn.Module):
@@ -109,7 +100,6 @@ class ResNet12(nn.Module):
         self.block2 = BasicBlockRN12(featureMaps, int(2.5 * featureMaps))
         self.block3 = BasicBlockRN12(int(2.5 * featureMaps), 5 * featureMaps)
         self.block4 = BasicBlockRN12(5 * featureMaps, 10 * featureMaps)
-        self.statsBN = nn.BatchNorm2d(10 * featureMaps, affine = False)
         self.mp = nn.MaxPool2d(2)
 
     def forward(self, x):
@@ -120,14 +110,6 @@ class ResNet12(nn.Module):
         y = self.mp(self.block3(y))
         y = self.block4(y)        
         y = y.mean(dim = list(range(2, len(y.shape))))
-        _ = self.statsBN(y.unsqueeze(2).unsqueeze(3))
-        if args.feature_processing != "":
-            if "M" in args.feature_processing:
-                y = y - self.statsBN.running_mean.unsqueeze(0)
-            if "S" in args.feature_processing:
-                y = y / torch.pow(self.statsBN.running_var.unsqueeze(0), 0.5)
-            if "E" in args.feature_processing:
-                y = y / torch.norm(y, dim = 1, keepdim = True)
         return y
 
 def prepareBackbone():

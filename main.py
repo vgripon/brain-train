@@ -105,6 +105,16 @@ def testFewShot(features, datasets = None):
             display(" {:s} {:.2f}% (±{:.2f}%)".format(datasets[i]["name"], results[i, 0], results[i, 1]), end = '', force = True)
     return results
 
+def process(features):
+    if "M" in args.process_features:
+        avg = torch.cat([features[i]["features"] for i in range(len(features))]).mean(dim = 0)
+        for feat in features:
+            feat["features"] = feat["features"] - avg.unsqueeze(0)
+    if "E" in args.process_features:
+        for feat in features:
+            feat["features"] = feat["features"] / torch.norm(feat["features"], dim = 1, keepdim = True)
+    return features
+
 def generateFeatures(backbone, datasets):
     backbone.eval()
     results = []
@@ -116,7 +126,7 @@ def generateFeatures(backbone, datasets):
                 features = backbone(data).to("cpu")
                 for i in range(features.shape[0]):
                     allFeatures[target[i]]["features"].append(features[i])
-        results.append([{"name_class": allFeatures[i]["name_class"], "features": torch.stack(allFeatures[i]["features"])} for i in range(len(allFeatures))])
+        results.append(process([{"name_class": allFeatures[i]["name_class"], "features": torch.stack(allFeatures[i]["features"])} for i in range(len(allFeatures))]))
     return results
 
 if args.test_features != "":
