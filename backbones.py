@@ -77,6 +77,39 @@ class ResNet(nn.Module):
             y = block(y)
         return y.mean(dim = list(range(2, len(y.shape))))
 
+class BasicBlockRN12(nn.Module):
+    def __init__(self, in_f, out_f):
+        super(BasicBlockRN12, self).__init__()
+        self.conv1 = ConvBN2d(in_f, out_f, outRelu = True)
+        self.conv2 = ConvBN2d(out_f, out_f, outRelu = True)
+        self.conv3 = ConvBN2d(out_f, out_f)
+        self.sc = ConvBN2d(in_f, out_f, kernel_size = 1, padding = 0)
+
+    def forward(self, x):
+        y = self.conv1(x)
+        y = self.conv2(y)
+        y = self.conv3(y)
+        y += self.sc(x)
+        return torch.relu(y)
+        
+class ResNet12(nn.Module):
+    def __init__(self, featureMaps):
+        super(ResNet12, self).__init__()
+        self.block1 = BasicBlockRN12(3, featureMaps)
+        self.block2 = BasicBlockRN12(featureMaps, int(2.5 * featureMaps))
+        self.block3 = BasicBlockRN12(int(2.5 * featureMaps), 5 * featureMaps)
+        self.block4 = BasicBlockRN12(5 * featureMaps, 10 * featureMaps)
+        self.mp = nn.MaxPool2d(2)
+
+    def forward(self, x):
+        if x.shape[1] == 1:
+            x = x.repeat(1,3,1,1)
+        y = self.mp(self.block1(x))
+        y = self.mp(self.block2(y))
+        y = self.mp(self.block3(y))
+        y = self.block4(y)
+        return y.mean(dim = list(range(2, len(y.shape))))
+
 def prepareBackbone():
     large = False
     if args.backbone.lower()[-6:] == "_large":
@@ -87,7 +120,8 @@ def prepareBackbone():
         "resnet20": lambda: (ResNet(BasicBlock, [(3, 1, 1), (3, 2, 2), (3, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
         "resnet56": lambda: (ResNet(BasicBlock, [(9, 1, 1), (9, 2, 2), (9, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
         "resnet110": lambda: (ResNet(BasicBlock, [(18, 1, 1), (18, 2, 2), (18, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
-        "resnet50": lambda: (ResNet(BottleneckBlock, [(3, 1, 1), (4, 2, 2), (6, 2, 4), (3, 2, 8)], args.feature_maps, large = large), 8 * 4 * args.feature_maps)
+        "resnet50": lambda: (ResNet(BottleneckBlock, [(3, 1, 1), (4, 2, 2), (6, 2, 4), (3, 2, 8)], args.feature_maps, large = large), 8 * 4 * args.feature_maps),
+        "resnet12": lambda: (ResNet12(args.feature_maps), 10 * args.feature_maps)
         }[args.backbone.lower()]()
 
 print(" backbones,", end='')
