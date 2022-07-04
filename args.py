@@ -15,6 +15,9 @@ parser.add_argument("--load-backbone", type=str, default="", help="load backbone
 parser.add_argument("--optimizer", type=str, default="SGD", help="can be SGD or Adam")
 parser.add_argument("--lr", type=float, default=-1., help="initial learning rate, defaut to 0.1 for SGD and 0.001 for Adam")
 parser.add_argument("--wd", type=float, default=-1., help="weight decay, default to 5e-4 for SGD and 0 for Adam")
+parser.add_argument("--steps", type=str, default="[[]]", help="describe what steps during training are made of, is a list of lists containing 'rotations', 'mixup' or 'manifold mixup', for example \"[['manifold mixup'],['rotations']]\" does two steps: first with manifold mixup then with rotations as additional self-supervision. Last list is used to compute losses and scores")
+parser.add_argument("--mixup", action="store_true", help="use mixup during training")
+parser.add_argument("--rotations", action="store_true", help="add rotations SSL during training")
 
 ### dataloaders args
 # list of datasets, which automatically define a train, a validation and a test set
@@ -49,10 +52,6 @@ parser.add_argument("--classifier", type=str, default="lr", help="define which c
 parser.add_argument("--epochs", type=int, default=350, help="total number of training epochs")
 parser.add_argument("--milestones", type=str, default="[100,200,300]", help="milestones for scheduler")
 parser.add_argument("--gamma", type=float, default=0.1, help="learning rate multiplier after each milestone")
-
-### regularizers
-parser.add_argument("--mixup", action="store_true", help="use mixup during training")
-parser.add_argument("--rotations", action="store_true", help="add rotations SSL during training")
 
 ### few shot evaluation
 parser.add_argument("--few-shot", action="store_true", help="evaluation using few shot tasks")
