@@ -11,7 +11,7 @@ from args import args
 class LR(nn.Module):
     def __init__(self, inputDim, numClasses):
         super(LR, self).__init__()
-        self.fc = nn.Linear(inputDim, numClasses)
+        self.fc = nn.Linear(inputDim, numClasses, bias = False)
         if args.rotations:
             self.fcRotations = nn.Linear(inputDim, 4)
         self.criterion = nn.CrossEntropyLoss()
@@ -33,6 +33,7 @@ class L2(nn.Module):
         self.centroids = torch.nn.Parameter(torch.zeros(numClasses, inputDim))
         if args.rotations:
             self.centroidsRotations = torch.nn.Parameter(torch.zeros(4, inputDim))
+            self.centroidsRotationsBiases = torch.nn.Parameter(torch.zeros(4))
         self.criterion = nn.CrossEntropyLoss()
         self.numClasses = numClasses
 
@@ -42,7 +43,7 @@ class L2(nn.Module):
         score = (decisions - y == 0).float().mean()
         loss = self.criterion(distances, y)
         if args.rotations and yRotations is not None:
-            distancesRotations = -1 * torch.pow(torch.norm(x.unsqueeze(1) - self.centroidsRotations.unsqueeze(0), dim = 2),2)
+            distancesRotations = -1 * torch.pow(torch.norm(x.unsqueeze(1) - self.centroidsRotations.unsqueeze(0), dim = 2),2) + self.centroidsRotationBiases.unsqueeze(0)
             loss = 0.5 * loss + 0.5 * self.criterion(distancesRotations, yRotations)
         return loss, score
 
