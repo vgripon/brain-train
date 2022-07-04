@@ -133,6 +133,6 @@ for dataset in ['train', 'test', 'validation']:
     all_results["metadataset_dtd_" + dataset] = results_dtd[dataset]
     print("Done for metadataset_dtd_" + dataset + " with " + str(results_dtd[dataset]['num_classes']) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
 
-f = open(args.dataset_path + "datasets_test.json", "w")
+f = open(args.dataset_path + "datasets.json", "w")
 f.write(json.dumps(all_results))
 f.close()
