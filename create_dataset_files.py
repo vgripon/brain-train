@@ -96,6 +96,43 @@ for dataset, folderName in [('train', 'TRAIN'), ('test', 'TEST'), ('validation',
     print("Done for metadataset_imagenet_" + dataset + " with " + str(i+1) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
 
 
-f = open(args.dataset_path + "datasets.json", "w")
+def split_fn(json_path):
+    with open(args.dataset_path+json_path) as jsonFile:
+        split = json.load(jsonFile)
+        jsonFile.close()
+    return split
+
+
+
+def get_data(jsonpath, image_dir):
+    split = split_fn(jsonpath)
+    data ,num_classes, num_elts = {},{},{}
+    split = {"validation" if k == 'valid' else k:v for k,v in split.items()}
+    for index_subset, subset in enumerate(split.keys()):
+        data[subset] = {'data': [], 'target' : [] , 'name_classes' : []}
+        num_elts[subset] = []
+        l_classes = split[subset]
+        num_classes[subset] = len(l_classes)
+        for index_class, cl in enumerate(l_classes):
+            cl_path = args.dataset_path + image_dir + cl
+            images = sorted(os.listdir(cl_path))                    #Careful here you might mix the order (not sure that sorted is good enough)
+            for index_image , im in enumerate(images):
+                data[subset]['data'].append(cl_path + im)
+                data[subset]['target'].append(index_class)
+                num_elts[subset].append([cl, index_image+1])
+            data[subset]['name_classes'].append(cl)
+        data[subset]['num_classes'] = index_class+1
+    return data, num_elts
+
+##### generate data for CUB and DTD
+result_cub, nb_elts_cub = get_data("metadatasets/CUB_200_2011/cu_birds_splits.json", "metadatasets/CUB_200_2011/images/")
+results_dtd , nb_elts_dtd = get_data('metadatasets/dtd/dtd_splits.json', 'metadatasets/dtd/images/')
+for dataset in ['train', 'test', 'validation']:
+    all_results["metadataset_cub_" + dataset] = result_cub[dataset]
+    print("Done for metadataset_cub_" + dataset + " with " + str(result_cub[dataset]['num_classes']) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
+    all_results["metadataset_dtd_" + dataset] = results_dtd[dataset]
+    print("Done for metadataset_dtd_" + dataset + " with " + str(results_dtd[dataset]['num_classes']) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
+
+f = open(args.dataset_path + "datasets_test.json", "w")
 f.write(json.dumps(all_results))
 f.close()
