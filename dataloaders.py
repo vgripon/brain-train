@@ -140,6 +140,30 @@ def fashionMnist(dataset):
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset == "train"), "name": "fashion-mnist_" + dataset, "num_classes": 10, "name_classes": pytorchDataset.classes}
 
 
+def metadataset_dtd(dataset_type):
+    f = open(args.dataset_path + "datasets.json")    
+    all_datasets = json.loads(f.read())
+    f.close()
+    dataset = all_datasets["metadataset_dtd_" + dataset]
+    data = dataset["data"]
+    targets = dataset["targets"]
+    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalization])
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'meta_dataset_dtd', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+
+
+def metadataset_cub(dataset_type):
+    f = open(args.dataset_path + "datasets.json")    
+    all_datasets = json.loads(f.read())
+    f.close()
+    dataset = all_datasets["metadataset_cub_" + dataset]
+    data = dataset["data"]
+    targets = dataset["targets"]
+    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalization])
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'meta_dataset_cub', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+
+
 def prepareDataLoader(name):
     if isinstance(name, str):
         name = [name]
@@ -170,6 +194,12 @@ def prepareDataLoader(name):
             "metadataset_imagenet_train": lambda: metadataset_imagenet("train"),
             "metadataset_imagenet_validation": lambda: metadataset_imagenet("validation"),
             "metadataset_imagenet_test": lambda: metadataset_imagenet("test"),
+            "metadataset_cub_train": lambda: metadataset_cub("train"),
+            "metadataset_cub_validation": lambda: metadataset_cub("validation"),
+            "metadataset_cub_test": lambda: metadataset_cub("test"),
+            "metadataset_dtd_train": lambda: metadataset_dtd("train"),
+            "metadataset_dtd_validation": lambda: metadataset_dtd("validation"),
+            "metadataset_dtd_test": lambda: metadataset_dtd("test"),
         }[elt.lower()]())
     return result
     
