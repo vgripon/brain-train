@@ -82,7 +82,7 @@ if args.lr < 0:
 if args.wd < 0:
     args.wd = 5e-4 if args.optimizer.lower() == "sgd" else 0
 
-if isinstance(eval(args.milestones), int):
+if isinstance(eval(args.milestones), int) and not args.cosine:
     args.milestones = str([eval(args.milestones) * i for i in range(1, args.epochs // eval(args.milestones))])
 
 print(" args,", end = '')
