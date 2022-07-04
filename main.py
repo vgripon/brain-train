@@ -106,11 +106,11 @@ def testFewShot(features, datasets = None):
     return results
 
 def process(features):
-    if "M" in args.process_features:
+    if "M" in args.feature_processing:
         avg = torch.cat([features[i]["features"] for i in range(len(features))]).mean(dim = 0)
         for feat in features:
             feat["features"] = feat["features"] - avg.unsqueeze(0)
-    if "E" in args.process_features:
+    if "E" in args.feature_processing:
         for feat in features:
             feat["features"] = feat["features"] / torch.norm(feat["features"], dim = 1, keepdim = True)
     return features
