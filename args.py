@@ -49,7 +49,8 @@ parser.add_argument("--milestones", type=str, default="[100,200,300]", help="mil
 parser.add_argument("--gamma", type=float, default=0.1, help="learning rate multiplier after each milestone")
 
 ### regularizers
-parser.add_argument("--mixup", action="store_true", help="used mixup during training")
+parser.add_argument("--mixup", action="store_true", help="use mixup during training")
+parser.add_argument("--rotations", action="store_true", help="add rotations SSL during training")
 
 ### few shot evaluation
 parser.add_argument("--few-shot", action="store_true", help="evaluation using few shot tasks")

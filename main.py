@@ -29,16 +29,27 @@ def train(epoch, backbone, criterion, optimizer):
                 batchIdx, (data, target) = next(iterators[trainingSetIdx])
                 data, target = data.to(args.device), target.to(args.device)
 
+                if args.rotations:
+                    bs = data.shape[0] // 4
+                    targetRot = torch.LongTensor(data.shape[0]).to(args.device)
+                    targetRot[:bs] = 0
+                    data[bs:] = data[bs:].transpose(3,2).flip(2)
+                    targetRot[bs:2*bs] = 1
+                    data[2*bs:] = data[2*bs:].transpose(3,2).flip(2)
+                    targetRot[2*bs:3*bs] = 2
+                    data[3*bs:] = data[3*bs:].transpose(3,2).flip(2)
+                    targetRot[3*bs:] = 3
+
                 if args.mixup:
                     perm = torch.randperm(data.shape[0])
                     lbda = random.random()
                     data = lbda * data + (1 - lbda) * data[perm]
 
                 if not args.mixup:
-                    loss, score = criterion[trainingSetIdx](backbone(data), target)
+                    loss, score = criterion[trainingSetIdx](backbone(data), target, yRotations = targetRot if args.rotations else None)
                 else:
-                    loss_1, score_1 = criterion[trainingSetIdx](backbone(data), target)
-                    loss_2, score_2 = criterion[trainingSetIdx](backbone(data), target[perm])
+                    loss_1, score_1 = criterion[trainingSetIdx](backbone(data), target, yRotations = targetRot if args.rotations else None)
+                    loss_2, score_2 = criterion[trainingSetIdx](backbone(data), target[perm], yRotations = targetRot if args.rotations else None)
                     loss = lbda * loss_1 + (1 - lbda) * loss_2
                     score = lbda * score_1 + (1 - lbda) * score_2
                 loss.backward()
