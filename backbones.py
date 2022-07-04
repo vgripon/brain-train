@@ -75,7 +75,8 @@ class ResNet(nn.Module):
         y = self.embed(x)
         for block in self.blocks:
             y = block(y)
-        return y.mean(dim = list(range(2, len(y.shape))))
+        y = y.mean(dim = list(range(2, len(y.shape))))
+        return y
 
 class BasicBlockRN12(nn.Module):
     def __init__(self, in_f, out_f):
@@ -107,8 +108,9 @@ class ResNet12(nn.Module):
         y = self.mp(self.block1(x))
         y = self.mp(self.block2(y))
         y = self.mp(self.block3(y))
-        y = self.block4(y)
-        return y.mean(dim = list(range(2, len(y.shape))))
+        y = self.block4(y)        
+        y = y.mean(dim = list(range(2, len(y.shape))))
+        return y
 
 def prepareBackbone():
     large = False
