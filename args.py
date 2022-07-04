@@ -27,6 +27,7 @@ datasets = {
     "miniimagenet": ("miniimagenet_train", "miniimagenet_validation", "miniimagenet_test"),
     "tieredimagenet": ("tieredimagenet_train", "tieredimagenet_validation", "tieredimagenet_test"),
     "cifarfs": ("cifarfs_train", "cifarfs_validation", "cifarfs_test"),
+    "metadataset_imagenet": ("metadataset_imagenet_train", "metadataset_imagenet_validation", "metadataset_imagenet_test"),
 }
 
 parser.add_argument("--dataset-path", type=str, default=os.environ.get("DATASETS"), help="path to dataset files")
