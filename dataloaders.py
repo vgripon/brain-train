@@ -97,6 +97,17 @@ def cifarfs(datasetName):
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
+def metadataset_imagenet(datasetName):
+    f = open(args.dataset_path + "datasets.json")    
+    all_datasets = json.loads(f.read())
+    f.close()
+    dataset = all_datasets["metadataset_imagenet_" + datasetName]
+    data = dataset["data"]
+    targets = dataset["targets"]
+    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalization])
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+
 def imagenet(dataset):
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
@@ -128,6 +139,7 @@ def fashionMnist(dataset):
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset == "train"), "name": "fashion-mnist_" + dataset, "num_classes": 10, "name_classes": pytorchDataset.classes}
 
+
 def prepareDataLoader(name):
     if isinstance(name, str):
         name = [name]
@@ -155,6 +167,9 @@ def prepareDataLoader(name):
             "cifarfs_train": lambda: cifarfs("train"),
             "cifarfs_validation": lambda: cifarfs("validation"),
             "cifarfs_test": lambda: cifarfs("test"),
+            "metadataset_imagenet_train": lambda: metadataset_imagenet("train"),
+            "metadataset_imagenet_validation": lambda: metadataset_imagenet("validation"),
+            "metadataset_imagenet_test": lambda: metadataset_imagenet("test"),
         }[elt.lower()]())
     return result
     
