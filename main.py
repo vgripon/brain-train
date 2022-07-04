@@ -65,7 +65,6 @@ def train(epoch, backbone, criterion, optimizer):
                 text += " {:s} {:3d}% {:.3f} {:3.2f}%".format(trainSet[trainingSetIdx]["name"], round(100*finished), losses[trainingSetIdx] / total_elt[trainingSetIdx], 100 * accuracies[trainingSetIdx] / total_elt[trainingSetIdx])
             optimizer.step()
             display("\r{:3d}".format(epoch) + text, end = '', force = finished == 1)
-
         except StopIteration:
             return torch.stack([losses / total_elt, 100 * accuracies / total_elt]).transpose(0,1)
 
@@ -166,7 +165,10 @@ for nRun in range(args.runs):
     print(" done.")
 
     print("Preparing scheduler... ", end='')
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer = optimizer, milestones = eval(args.milestones), gamma = args.gamma)
+    if not args.cosine:
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer = optimizer, milestones = eval(args.milestones), gamma = args.gamma)
+    else:
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer = optimizer, T_0 = eval(args.milestones))
     print(" done.")
 
     print()
