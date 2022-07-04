@@ -37,12 +37,12 @@ class L2(nn.Module):
         self.numClasses = numClasses
 
     def forward(self, x, y, yRotations = None):
-        distances = -1 * torch.norm(x.unsqueeze(1) - self.centroids.unsqueeze(0), dim = 2)
+        distances = -1 * torch.pow(torch.norm(x.unsqueeze(1) - self.centroids.unsqueeze(0), dim = 2), 2)
         decisions = distances.argmax(dim = 1)
         score = (decisions - y == 0).float().mean()
         loss = self.criterion(distances, y)
         if args.rotations and yRotations is not None:
-            distancesRotations = -1 * torch.norm(x.unsqueeze(1) - self.centroidsRotations.unsqueeze(0), dim = 2)
+            distancesRotations = -1 * torch.pow(torch.norm(x.unsqueeze(1) - self.centroidsRotations.unsqueeze(0), dim = 2),2)
             loss = 0.5 * loss + 0.5 * self.criterion(distancesRotations, yRotations)
         return loss, score
 
