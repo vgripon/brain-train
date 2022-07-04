@@ -75,7 +75,7 @@ class ResNet(nn.Module):
         if mixup == "mixup":
             mixup_layer = 0
         elif mixup == "manifold mixup":
-            mixup_layer = random.randint(0, len(self.blocks + 1))
+            mixup_layer = random.randint(0, len(self.blocks) + 1)
         if mixup_layer == 0:
             x = lbda * x + (1 - lbda) * x[perm]
         if x.shape[1] == 1:
