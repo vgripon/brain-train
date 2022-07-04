@@ -29,6 +29,11 @@ def train(epoch, backbone, criterion, optimizer):
                 batchIdx, (data, target) = next(iterators[trainingSetIdx])
                 data, target = data.to(args.device), target.to(args.device)
 
+                if args.mixup:
+                    perm = torch.randperm(data.shape[0])
+                    lbda = random.random()
+                    data = lbda * data + (1 - lbda) * data[perm]
+
                 if args.rotations:
                     bs = data.shape[0] // 4
                     targetRot = torch.LongTensor(data.shape[0]).to(args.device)
@@ -39,11 +44,6 @@ def train(epoch, backbone, criterion, optimizer):
                     targetRot[2*bs:3*bs] = 2
                     data[3*bs:] = data[3*bs:].transpose(3,2).flip(2)
                     targetRot[3*bs:] = 3
-
-                if args.mixup:
-                    perm = torch.randperm(data.shape[0])
-                    lbda = random.random()
-                    data = lbda * data + (1 - lbda) * data[perm]
 
                 if not args.mixup:
                     loss, score = criterion[trainingSetIdx](backbone(data), target, yRotations = targetRot if args.rotations else None)
