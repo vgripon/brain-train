@@ -17,7 +17,7 @@ class EpisodicGenerator():
         self.verbose = verbose
         self.datasetName = datasetName
 
-        if datasetName != None:
+        if datasetName != None and datasetName in all_datasets.keys():
             self.dataset = all_datasets[datasetName]
         if num_elements_per_class == None:
             self.num_elements_per_class = self.dataset["num_elements_per_class"]
