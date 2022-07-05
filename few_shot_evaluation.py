@@ -11,12 +11,12 @@ all_datasets = json.loads(f.read())
 f.close()
 
 class EpisodicGenerator():
-    def __init__(self, datasetName, max_classes=50, verbose=False, num_elements_per_class=None):
+    def __init__(self, datasetName, max_classes=50, num_elements_per_class=None, balanced_queries=True, verbose=False):
         assert datasetName != None or num_elements_per_class!=None, "datasetName and num_elements_per_class can't both be None"
         
         self.verbose = verbose
         self.datasetName = datasetName
-
+        self.balanced_queries = balanced_queries
         if datasetName != None and datasetName in all_datasets.keys():
             self.dataset = all_datasets[datasetName]
         if num_elements_per_class == None:
@@ -64,13 +64,21 @@ class EpisodicGenerator():
             n_shots_per_class = [n_shots]*len(choice_classes)
         return n_shots_per_class
 
-    def sample_indices(self, num_elements_per_chosen_classes, n_shots_per_class, query_size):
+    def get_number_of_queries(self, choice_classes, query_size):
+        if self.balanced_queries:
+            n_queries_per_class = [query_size]*len(choice_classes)
+        else:
+            n_queries_per_class = [random.randint(1, query_size) for _ in range(len(choice_classes))]
+
+        return n_queries_per_class
+
+    def sample_indices(self, num_elements_per_chosen_classes, n_shots_per_class, n_queries_per_class):
         shots_idx = []
         queries_idx = []
-        for k, elements_per_class in zip(n_shots_per_class, num_elements_per_chosen_classes):
+        for k, q, elements_per_class in zip(n_shots_per_class, n_queries_per_class, num_elements_per_chosen_classes):
             choices = torch.randperm(elements_per_class)
             shots_idx.append(choices[:k].tolist())
-            queries_idx.append(choices[k:k+query_size].tolist())
+            queries_idx.append(choices[k:k+q].tolist())
         return shots_idx, queries_idx
 
     def sample_episode(self, ways=0, n_shots=0, n_queries=0):
@@ -84,11 +92,13 @@ class EpisodicGenerator():
         support_size = self.get_support_size(choice_classes, query_size, n_shots)
 
         n_shots_per_class = self.get_number_of_shots(choice_classes, support_size, query_size, n_shots)
-        shots_idx, queries_idx = self.sample_indices([self.num_elements_per_class[c] for c in choice_classes], n_shots_per_class, query_size)
+        n_queries_per_class = self.get_number_of_queries(choice_classes, query_size)
+        shots_idx, queries_idx = self.sample_indices([self.num_elements_per_class[c] for c in choice_classes], n_shots_per_class, n_queries_per_class)
 
         if self.verbose:
             print(f'chosen class: {choice_classes}')
             print(f'n_ways={len(choice_classes)}, q={query_size}, S={support_size}, n_shots_per_class={n_shots_per_class}')
+            print(f'queries per class:{n_queries_per_class}')
             print(f'shots_idx: {shots_idx}')
             print(f'queries_idx: {queries_idx}')
 
@@ -165,8 +175,8 @@ if __name__=='__main__':
 
     for suffix in ['_validation', '_test']:
         if not (args.dataset == 'mnist' and suffix == '_validation'):
-            for _ in range(100):
+            for _ in range(1):
                 print(f'\n---------------Generating episodes for {args.dataset+suffix}--------------------')
-                generator = ImageNetGenerator(args.dataset+suffix, verbose=True)
+                generator = ImageNetGenerator(args.dataset+suffix, verbose=True, balanced_queries=False)
                 _= generator.sample_episode(n_queries=args.few_shot_queries, ways=args.few_shot_ways, n_shots=args.few_shot_shots)
   
