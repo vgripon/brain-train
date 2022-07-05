@@ -9,6 +9,7 @@ from utils import *
 from dataloaders import trainSet, validationSet, testSet
 import classifiers
 import backbones
+from few_shot_evaluation import EpisodicGenerator, ImageNetGenerator, OmniglotGenerator
 print(" done.")
 
 print()
@@ -92,15 +93,23 @@ def testFewShot(features, datasets = None):
     results = torch.zeros(len(features), 2)
     for i in range(len(features)):
         accs = []
+        feature = features[i]
+        if datasets is not None:
+            if 'metadatasets_omniglot' in datasets[i]["name"]:
+                Generator = OmniglotGenerator
+            elif 'metadatasets_imagenet' in datasets[i]["name"]:
+                Generator = ImageNetGenerator
+            else:
+                Generator = EpisodicGenerator
+        else:
+            Generator = EpisodicGenerator
+        generator = Generator(None if datasets is None else datasets[i]["name"], num_elements_per_class= [len(feat['features']) for feat in feature])
         for run in range(args.few_shot_runs):
-            feature = features[i]
             shots = []
             queries = []
             choice_classes = torch.randperm(len(feature))
-            for j in range(args.few_shot_ways):
-                choice_samples = torch.randperm(feature[choice_classes[j]]["features"].shape[0])
-                shots.append(feature[choice_classes[j]]["features"][choice_samples[:args.few_shot_shots]])
-                queries.append(feature[choice_classes[j]]["features"][choice_samples[args.few_shot_shots:args.few_shot_shots + args.few_shot_queries]])
+            episode = generator.sample_episode(ways=args.few_shot_ways, n_shots=args.few_shot_shots, n_queries=args.few_shot_queries)
+            shots, queries = generator.get_features_from_indices(feature, episode)
             accs.append(classifiers.evalFewShotRun(shots, queries))
         accs = 100 * torch.tensor(accs)
         low, up = confInterval(accs)
@@ -121,6 +130,14 @@ def process(features):
     return features
 
 def generateFeatures(backbone, datasets):
+    """
+    Generate features for all datasets
+    Inputs:
+        - backbone: torch model
+        - datasets: list of datasets to generate features from, each dataset is a dictionnary following the structure in dataloaders.py
+    Returns:
+        - results:  list of results for each dataset. Format for each dataset is a list of dictionnaries: [{"name_class":str, "features": torch.Tensor} for all classes]
+    """
     backbone.eval()
     results = []
     for testSetIdx, dataset in enumerate(datasets):
