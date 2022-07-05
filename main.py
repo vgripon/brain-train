@@ -54,7 +54,7 @@ def train(epoch, backbone, criterion, optimizer):
                     else:                        
                         features = backbone(dataStep, mixup = "mixup" if "mixup" in step else "manifold mixup", lbda = lbda, perm = perm)
                         loss_1, score_1 = criterion[trainingSetIdx](features, target, yRotations = targetRot if "rotations" else None)
-                        loss_2, score_2 = criterion[trainingSetIdx](features, target[perm], yRotations = targetRot if "rotations" else None)
+                        loss_2, score_2 = criterion[trainingSetIdx](features, target[perm], yRotations = targetRot[perm] if "rotations" else None)
                         loss = lbda * loss_1 + (1 - lbda) * loss_2
                         score = lbda * score_1 + (1 - lbda) * score_2
 
