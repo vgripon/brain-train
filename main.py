@@ -171,14 +171,14 @@ for nRun in range(args.runs):
     best_val = 1e10
     lr = args.lr
 
-    
+
     for epoch in range(args.epochs):
         if epoch in args.milestones:
             index = args.milestones.index(epoch)
             milestone = args.milestones[index + 1] - args.milestones[index]
             optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.weight_decay)
             if not args.cosine:
-                scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer = optimizer, milestones = milestone, gamma = args.gamma)
+                scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer = optimizer, milestones = 100000, gamma = args.gamma)
             else:
                 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimizer, T_max = milestone)
             lr = lr * args.gamma
