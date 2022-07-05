@@ -2,6 +2,7 @@ from args import args
 import torchvision
 import json
 import os
+import numpy as np
 
 # Read Graph for imagenet names and classes
 with open(os.path.join('datasets', 'ilsvrc_2012_dataset_spec.json'), 'r') as file:
