@@ -16,7 +16,7 @@ print()
 print(args)
 print()
 
-def train(epoch, backbone, criterion, optimizer):
+def train(epoch, backbone, criterion, optimizer, scheduler):
     backbone.train()
     for c in criterion:
         c.train()
@@ -33,7 +33,7 @@ def train(epoch, backbone, criterion, optimizer):
                 for step in eval(args.steps):
                     dataStep = data.clone()
                     
-                    if "mixup" or "manifold mixup" in step:
+                    if "mixup" in step or "manifold mixup" in step:
                         perm = torch.randperm(dataStep.shape[0])
                         lbda = random.random()                        
 
@@ -54,8 +54,8 @@ def train(epoch, backbone, criterion, optimizer):
                         loss, score = criterion[trainingSetIdx](backbone(dataStep), target, yRotations = targetRot if "rotations" in step else None)
                     else:                        
                         features = backbone(dataStep, mixup = "mixup" if "mixup" in step else "manifold mixup", lbda = lbda, perm = perm)
-                        loss_1, score_1 = criterion[trainingSetIdx](features, target, yRotations = targetRot if "rotations" else None)
-                        loss_2, score_2 = criterion[trainingSetIdx](features, target[perm], yRotations = targetRot if "rotations" else None)
+                        loss_1, score_1 = criterion[trainingSetIdx](features, target, yRotations = targetRot if "rotations" in step else None)
+                        loss_2, score_2 = criterion[trainingSetIdx](features, target[perm], yRotations = targetRot[perm] if "rotations" in step else None)
                         loss = lbda * loss_1 + (1 - lbda) * loss_2
                         score = lbda * score_1 + (1 - lbda) * score_2
 
@@ -67,7 +67,8 @@ def train(epoch, backbone, criterion, optimizer):
                 finished = (batchIdx + 1) / len(trainSet[trainingSetIdx]["dataloader"])
                 text += " {:s} {:3d}% {:.3f} {:3.2f}%".format(trainSet[trainingSetIdx]["name"], round(100*finished), losses[trainingSetIdx] / total_elt[trainingSetIdx], 100 * accuracies[trainingSetIdx] / total_elt[trainingSetIdx])
             optimizer.step()
-            display("\r{:3d}".format(epoch) + text, end = '', force = finished == 1)
+            scheduler.step()
+            display("\r{:3d} {:.5f}".format(epoch, float(scheduler.get_last_lr()[0])) + text, end = '', force = finished == 1)
         except StopIteration:
             return torch.stack([losses / total_elt, 100 * accuracies / total_elt]).transpose(0,1)
 
@@ -188,21 +189,25 @@ for nRun in range(args.runs):
     best_val = 1e10
     lr = args.lr
 
-    
+    nSteps = torch.max(torch.tensor([len(dataset["dataloader"]) for dataset in trainSet])).item()
+
     for epoch in range(args.epochs):
-        if epoch in args.milestones:
-            index = args.milestones.index(epoch)
-            milestone = args.milestones[index + 1] - args.milestones[index]
+        if epoch == 0:
             optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.weight_decay)
             if not args.cosine:
-                scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer = optimizer, milestones = milestone, gamma = args.gamma)
+                scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer = optimizer, milestones = [n * nSteps for n in args.milestones], gamma = args.gamma)
+        if args.cosine and (epoch in args.milestones or epoch == 0):
+            if epoch == 0:
+                interval = nSteps * args.milestones[0]
             else:
-                scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimizer, T_max = milestone)
+                index = args.milestones.index(epoch)
+                interval = nSteps * (args.milestones[index + 1] - args.milestones[index])
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimizer, T_max = interval)
             lr = lr * args.gamma
-
+        
         continueTest = False
         if trainSet != []:
-            trainStats = train(epoch + 1, backbone, criterion, optimizer)
+            trainStats = train(epoch + 1, backbone, criterion, optimizer, scheduler)
             updateCSV(trainStats, epoch = epoch)
         if validationSet != []:
             if args.few_shot:

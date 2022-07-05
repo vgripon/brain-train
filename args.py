@@ -16,8 +16,6 @@ parser.add_argument("--optimizer", type=str, default="SGD", help="can be SGD or 
 parser.add_argument("--lr", type=float, default=-1., help="initial learning rate, defaut to 0.1 for SGD and 0.001 for Adam")
 parser.add_argument("--wd", type=float, default=-1., help="weight decay, default to 5e-4 for SGD and 0 for Adam")
 parser.add_argument("--steps", type=str, default="[[]]", help="describe what steps during training are made of, is a list of lists containing 'rotations', 'mixup' or 'manifold mixup', for example \"[['manifold mixup'],['rotations']]\" does two steps: first with manifold mixup then with rotations as additional self-supervision. Last list is used to compute losses and scores")
-parser.add_argument("--mixup", action="store_true", help="use mixup during training")
-parser.add_argument("--rotations", action="store_true", help="add rotations SSL during training")
 
 ### dataloaders args
 # list of datasets, which automatically define a train, a validation and a test set
@@ -86,8 +84,6 @@ if isinstance(eval(args.milestones), int):
     args.milestones = [eval(args.milestones) * i for i in range(1, args.epochs // eval(args.milestones))]
 else:
     args.milestones = eval(args.milestones)
-if 0 not in args.milestones:
-    args.milestones = [0] + args.milestones
 if args.epochs not in args.milestones:
     args.milestones.append(args.epochs)
 
