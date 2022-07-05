@@ -138,6 +138,7 @@ if args.test_features != "":
     exit()
 
 allRunTrainStats = None
+allRunValidationStats = None
 allRunTestStats = None
 createCSV(trainSet, validationSet, testSet)
 for nRun in range(args.runs):
@@ -160,22 +161,24 @@ for nRun in range(args.runs):
     print("Preparing optimizer... ", end='')
     parameters = list(backbone.parameters())
     for c in criterion:
-        parameters += list(c.parameters())
-    optimizer = torch.optim.SGD(parameters, lr = args.lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = args.lr, weight_decay = args.weight_decay)
+        parameters += list(c.parameters())    
     print(" done.")
-
-    print("Preparing scheduler... ", end='')
-    if not args.cosine:
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer = optimizer, milestones = eval(args.milestones), gamma = args.gamma)
-    else:
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer = optimizer, T_0 = eval(args.milestones))
-    print(" done.")
-
     print()
 
     tick = time.time()
     best_val = 1e10
+    lr = args.lr
+
+    
     for epoch in range(args.epochs):
+        if epoch == 0 or epoch in args.milestones:
+            optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.weight_decay)
+            if not args.cosine:
+                scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer = optimizer, milestones = eval(args.milestones), gamma = args.gamma)
+            else:
+                scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimizer, T_max = eval(args.milestones))
+            lr = lr * args.gamma
+
         continueTest = False
         if trainSet != []:
             trainStats = train(epoch + 1, backbone, criterion, optimizer)

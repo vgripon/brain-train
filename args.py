@@ -52,7 +52,7 @@ parser.add_argument("--classifier", type=str, default="lr", help="define which c
 parser.add_argument("--epochs", type=int, default=350, help="total number of training epochs")
 parser.add_argument("--milestones", type=str, default="[100,200,300]", help="milestones for scheduler")
 parser.add_argument("--gamma", type=float, default=0.1, help="learning rate multiplier after each milestone")
-parser.add_argument("--cosine", action="store_true", help="use cosine annealing with warm restart instead of multisteplr, in that case milestones must be an int and gamma is disregarded")
+parser.add_argument("--cosine", action="store_true", help="use cosine annealing instead of multisteplr")
 
 ### few shot evaluation
 parser.add_argument("--few-shot", action="store_true", help="evaluation using few shot tasks")
@@ -82,7 +82,7 @@ if args.lr < 0:
 if args.wd < 0:
     args.wd = 5e-4 if args.optimizer.lower() == "sgd" else 0
 
-if isinstance(eval(args.milestones), int) and not args.cosine:
+if isinstance(eval(args.milestones), int):
     args.milestones = str([eval(args.milestones) * i for i in range(1, args.epochs // eval(args.milestones))])
 
 print(" args,", end = '')
