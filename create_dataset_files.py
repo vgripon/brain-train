@@ -3,6 +3,8 @@ import torchvision
 import json
 import os
 import numpy as np
+import collections
+
 
 # Read Graph for imagenet names and classes
 with open(os.path.join('datasets', 'ilsvrc_2012_dataset_spec.json'), 'r') as file:
@@ -120,7 +122,7 @@ def get_data(jsonpath, image_dir):
             for index_image , im in enumerate(images):
                 data[subset]['data'].append(cl_path + im)
                 data[subset]['targets'].append(index_class)
-                num_elts[subset].append([cl, index_image+1])
+            num_elts[subset].append([cl, index_image+1])
             data[subset]['name_classes'].append(cl)
         data[subset]['num_classes'] = index_class+1
     return data, num_elts
@@ -166,8 +168,46 @@ def get_data_fungi():
             for index_image , im in enumerate(np_fl[idx]):
                 data[subset]['data'].append(args.dataset_path+'/metadatasets/fungi/'+im)
                 data[subset]['targets'].append(index_class)
-                num_elts[subset].append([cl, index_image+1])
+            num_elts[subset].append([cl, index_image+1])
             data[subset]['name_classes'].append(cl)
+        data[subset]['num_classes'] = index_class+1
+    return data, num_elts
+
+
+def get_images_class_aircraft():
+    with open(args.dataset_path + '/metadatasets/fgvc-aircraft-2013b/data/images_variant.txt') as f:
+        lines = f.readlines()
+    print(len(lines))
+    couples = [x.split(' ', maxsplit=1) for x in lines]
+    images = [x[0] for x in couples]
+    classes = [x[1][:-1] for x in couples]
+    dico_class = {}
+    dico_class = collections.defaultdict(list)
+    for i ,x in enumerate(images):
+        cl = classes[i]
+        dico_class[cl].append(x)
+    return dico_class
+
+def get_data_aircraft():
+    split = split_fn('/metadatasets/fgvc-aircraft-2013b/aircraft_splits.json')
+    dico_class = get_images_class_aircraft()
+    data ,num_classes, num_elts = {},{},{}
+    split = {"validation" if k == 'valid' else k:v for k,v in split.items()}
+    for index_subset, subset in enumerate(split.keys()):
+        data[subset] = {'data': [], 'targets' : [] , 'name_classes' : []}
+        num_elts[subset] = []
+        l_classes = split[subset]
+        num_classes[subset] = len(l_classes)
+        for index_class, cl in enumerate(l_classes):
+            images = dico_class[cl]
+            if images != []:
+                for index_image , im in enumerate(images):
+                    data[subset]['data'].append(args.dataset_path+'/metadatasets/fungi/'+im)
+                    data[subset]['targets'].append(index_class)
+                num_elts[subset].append([cl, index_image+1])
+                data[subset]['name_classes'].append(cl)
+            else:
+                print(cl, 'not found')
         data[subset]['num_classes'] = index_class+1
     return data, num_elts
 
@@ -175,6 +215,7 @@ def get_data_fungi():
 results_cub, nb_elts_cub = get_data("metadatasets/CUB_200_2011/cu_birds_splits.json", "metadatasets/CUB_200_2011/images/")
 results_dtd , nb_elts_dtd = get_data('metadatasets/dtd/dtd_splits.json', 'metadatasets/dtd/images/')
 results_fungi , nb_elts_fungi = get_data_fungi()
+results_aircraft , nb_elts_aircraft = get_data_aircraft()
 for dataset in ['train', 'test', 'validation']:
     all_results["metadataset_cub_" + dataset] = results_cub[dataset]
     print("Done for metadataset_cub_" + dataset + " with " + str(results_cub[dataset]['num_classes']) + " classes and " + str(len(results_cub[dataset]["data"])) + " samples (" + str(len(results_cub[dataset]["targets"])) + ")")
@@ -182,6 +223,8 @@ for dataset in ['train', 'test', 'validation']:
     print("Done for metadataset_dtd_" + dataset + " with " + str(results_dtd[dataset]['num_classes']) + " classes and " + str(len(results_dtd[dataset]["data"])) + " samples (" + str(len(results_dtd[dataset]["targets"])) + ")")
     all_results["metadataset_fungi_" + dataset] = results_fungi[dataset]
     print("Done for metadataset_fungi_" + dataset + " with " + str(results_fungi[dataset]['num_classes']) + " classes and " + str(len(results_fungi[dataset]["data"])) + " samples (" + str(len(results_fungi[dataset]["targets"])) + ")")
+    all_results["metadataset_aircraft_" + dataset] = results_aircraft[dataset]
+    print("Done for metadataset_aircraft_" + dataset + " with " + str(results_aircraft[dataset]['num_classes']) + " classes and " + str(len(results_aircraft[dataset]["data"])) + " samples (" + str(len(results_aircraft[dataset]["targets"])) + ")")
 
 f = open(args.dataset_path + "datasets.json", "w")
 f.write(json.dumps(all_results))
