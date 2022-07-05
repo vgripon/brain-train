@@ -189,7 +189,7 @@ for nRun in range(args.runs):
     best_val = 1e10
     lr = args.lr
 
-    nSteps = torch.max(torch.tensor([len(dataset["dataloader"]) for dataset in trainSet])).item()
+    nSteps = torch.min(torch.tensor([len(dataset["dataloader"]) for dataset in trainSet])).item()
 
     for epoch in range(args.epochs):
         if epoch == 0:
