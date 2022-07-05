@@ -96,9 +96,9 @@ def testFewShot(features, datasets = None):
         accs = []
         feature = features[i]
         if datasets is not None:
-            if 'metadatasets_omniglot' in datasets[i]["name"]:
+            if 'metadataset_omniglot' in datasets[i]["name"]:
                 Generator = OmniglotGenerator
-            elif 'metadatasets_imagenet' in datasets[i]["name"]:
+            elif 'metadataset_imagenet' in datasets[i]["name"]:
                 Generator = ImageNetGenerator
             else:
                 Generator = EpisodicGenerator
