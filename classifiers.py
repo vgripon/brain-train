@@ -12,8 +12,7 @@ class LR(nn.Module):
     def __init__(self, inputDim, numClasses):
         super(LR, self).__init__()
         self.fc = nn.Linear(inputDim, numClasses)
-        if args.rotations:
-            self.fcRotations = nn.Linear(inputDim, 4)
+        self.fcRotations = nn.Linear(inputDim, 4)
         self.criterion = nn.CrossEntropyLoss()
 
     def forward(self, x, y, yRotations = None):
@@ -21,7 +20,7 @@ class LR(nn.Module):
         decision = output.argmax(dim = 1)
         score = (decision - y == 0).float().mean()
         loss = self.criterion(output, y)
-        if args.rotations and yRotations is not None:
+        if yRotations is not None:
             outputRotations = self.fcRotations(x)
             loss = 0.5 * loss + 0.5 * self.criterion(outputRotations, yRotations)
         return loss, score
@@ -31,8 +30,7 @@ class L2(nn.Module):
     def __init__(self, inputDim, numClasses):
         super(L2, self).__init__()
         self.centroids = torch.nn.Parameter(torch.zeros(numClasses, inputDim))
-        if args.rotations:
-            self.centroidsRotations = torch.nn.Parameter(torch.zeros(4, inputDim))
+        self.centroidsRotations = torch.nn.Parameter(torch.zeros(4, inputDim))
         self.criterion = nn.CrossEntropyLoss()
         self.numClasses = numClasses
 
@@ -41,7 +39,7 @@ class L2(nn.Module):
         decisions = distances.argmax(dim = 1)
         score = (decisions - y == 0).float().mean()
         loss = self.criterion(distances, y)
-        if args.rotations and yRotations is not None:
+        if yRotations is not None:
             distancesRotations = -1 * torch.pow(torch.norm(x.unsqueeze(1) - self.centroidsRotations.unsqueeze(0), dim = 2),2)
             loss = 0.5 * loss + 0.5 * self.criterion(distancesRotations, yRotations)
         return loss, score
