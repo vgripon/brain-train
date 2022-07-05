@@ -11,12 +11,11 @@ all_datasets = json.loads(f.read())
 f.close()
 
 class EpisodicGenerator():
-    def __init__(self, datasetName, max_classes=50, num_elements_per_class=None, balanced_queries=True, verbose=False):
+    def __init__(self, datasetName, max_classes=50, num_elements_per_class=None, verbose=False):
         assert datasetName != None or num_elements_per_class!=None, "datasetName and num_elements_per_class can't both be None"
         
         self.verbose = verbose
         self.datasetName = datasetName
-        self.balanced_queries = balanced_queries
         if datasetName != None and datasetName in all_datasets.keys():
             self.dataset = all_datasets[datasetName]
         if num_elements_per_class == None:
@@ -64,8 +63,8 @@ class EpisodicGenerator():
             n_shots_per_class = [n_shots]*len(choice_classes)
         return n_shots_per_class
 
-    def get_number_of_queries(self, choice_classes, query_size):
-        if self.balanced_queries:
+    def get_number_of_queries(self, choice_classes, query_size, balanced_queries):
+        if balanced_queries:
             n_queries_per_class = [query_size]*len(choice_classes)
         else:
             n_queries_per_class = [random.randint(1, query_size) for _ in range(len(choice_classes))]
@@ -81,7 +80,7 @@ class EpisodicGenerator():
             queries_idx.append(choices[k:k+q].tolist())
         return shots_idx, queries_idx
 
-    def sample_episode(self, ways=0, n_shots=0, n_queries=0):
+    def sample_episode(self, ways=0, n_shots=0, n_queries=0, balanced_queries=True):
         """
         Sample an episode
         """
@@ -92,7 +91,7 @@ class EpisodicGenerator():
         support_size = self.get_support_size(choice_classes, query_size, n_shots)
 
         n_shots_per_class = self.get_number_of_shots(choice_classes, support_size, query_size, n_shots)
-        n_queries_per_class = self.get_number_of_queries(choice_classes, query_size)
+        n_queries_per_class = self.get_number_of_queries(choice_classes, query_size, balanced_queries)
         shots_idx, queries_idx = self.sample_indices([self.num_elements_per_class[c] for c in choice_classes], n_shots_per_class, n_queries_per_class)
 
         if self.verbose:
