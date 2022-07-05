@@ -2,6 +2,8 @@ from args import args
 import torchvision
 import json
 import os
+from torchvision import transforms, datasets
+import torch 
 import numpy as np
 import collections
 
@@ -41,6 +43,8 @@ for dataset in ["train","validation","test"]:
                     result["name_classes"].append(imagenet_class_names[classIdx])
                     nClass += 1
     result["num_classes"] = nClass
+    result["num_elements_per_class"] = [600]*nClass
+    
     all_results["miniimagenet_" + dataset] = result
     print("Done for miniimagenet_" + dataset + " with " + str(nClass) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
 
@@ -49,9 +53,12 @@ for dataset,folderName in [("train","train"),("validation","val"),("test","test"
     directories = os.listdir(args.dataset_path + "tieredimagenet/" + folderName)
     result = {"data":[], "targets":[], "name":"tieredimagenet_" + dataset, "num_classes":0, "name_classes":[]}
     for i,classIdx in enumerate(directories):
+        num_elements_per_class = 0
         for fileName in os.listdir(args.dataset_path + "tieredimagenet/" + folderName + "/" + classIdx):
             result["data"].append("tieredimagenet/" + folderName + "/" + classIdx + "/" + fileName)
             result["targets"].append(i)
+            num_elements_per_class += 1
+        result["num_elements_per_class"] = num_elements_per_class
         result["name_classes"].append(imagenet_class_names[classIdx])
         
     result["num_classes"] = i + 1
@@ -63,15 +70,30 @@ for dataset,folderName in [("train","meta-train"),("validation","meta-val"),("te
     directories = os.listdir(args.dataset_path + "cifar_fs/" + folderName)
     result = {"data":[], "targets":[], "name":"cifarfs_" + dataset, "num_classes":0, "name_classes":[]}
     for i,classIdx in enumerate(directories):
+        num_elements_per_class = 0
         for fileName in os.listdir(args.dataset_path + "cifar_fs/" + folderName + "/" + classIdx):
             result["data"].append("cifar_fs/" + folderName + "/" + classIdx + "/" + fileName)
             result["targets"].append(i)
+        num_elements_per_class += 1
+        result["num_elements_per_class"] = num_elements_per_class
         result["name_classes"].append(classIdx)
-        
+
     result["num_classes"] = i + 1
     all_results["cifarfs_" + dataset] = result
     print("Done for cifarfs_" + dataset + " with " + str(i+1) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
 
+
+## generate data for mnist
+for dataset in ['train', 'test']:
+    result = {"data":[], "targets":[], "name":"mnist_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
+
+    pytorchDataset = datasets.MNIST(args.dataset_path, train = dataset != "test", download = False)
+    targets = pytorchDataset.targets
+    for c in range(targets.max()):
+        result["num_elements_per_class"].append(len(torch.where(targets==c)[0]))
+    result["num_classes"] = len(result["num_elements_per_class"])+1
+    all_results['mnist_'+ dataset] = result
+    print("Done for mnist_" + dataset + " with " + str(i+1) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
 
 ### generate data for imagenet metadatasets
 # Parse Graph 
@@ -86,13 +108,17 @@ for file in duplicate_files:
 
 path = os.path.join('metadatasets', 'ILSVRC2012_img_train')
 for dataset, folderName in [('train', 'TRAIN'), ('test', 'TEST'), ('validation','VALID')]:
-    result = {"data":[], "targets":[], "name":"metadataset_imagenet_" + dataset, "num_classes":0, "name_classes":[]}
+    result = {"data":[], "targets":[], "name":"metadataset_imagenet_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class":[], "classIdx":{}}
     for i, classIdx in enumerate(class_folders[folderName]):
+        num_elements_per_class = 0
         for fileName in os.listdir(os.path.join(args.dataset_path, path, classIdx)):
             if os.path.join(classIdx, fileName) not in duplicates:
                 result["data"].append(os.path.join(path, classIdx, fileName))
                 result["targets"].append(i)
-        result["name_classes"].append(classIdx)
+                num_elements_per_class +=1
+        result["name_classes"].append(imagenet_class_names[classIdx])
+        result["classIdx"][classIdx] = i
+        result["num_elements_per_class"].append(num_elements_per_class)
 
     result["num_classes"] = i + 1   
     all_results["metadataset_imagenet_" + dataset] = result
