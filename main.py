@@ -46,13 +46,15 @@ def train(epoch, backbone, criterion, optimizer):
                         targetRot[2*bs:3*bs] = 2
                         dataStep[3*bs:] = dataStep[3*bs:].transpose(3,2).flip(2)
                         targetRot[3*bs:] = 3
+                    else:
+                        targetRot = None
 
                     if "mixup" not in step and "manifold mixup" not in step:
-                        loss, score = criterion[trainingSetIdx](backbone(dataStep), target, yRotations = targetRot if args.rotations else None)
+                        loss, score = criterion[trainingSetIdx](backbone(dataStep), target, yRotations = targetRot if "rotations" in step else None)
                     else:                        
                         features = backbone(dataStep, mixup = "mixup" if "mixup" in step else "manifold mixup", lbda = lbda, perm = perm)
-                        loss_1, score_1 = criterion[trainingSetIdx](features, target, yRotations = targetRot if args.rotations else None)
-                        loss_2, score_2 = criterion[trainingSetIdx](features, target[perm], yRotations = targetRot if args.rotations else None)
+                        loss_1, score_1 = criterion[trainingSetIdx](features, target, yRotations = targetRot if "rotations" else None)
+                        loss_2, score_2 = criterion[trainingSetIdx](features, target[perm], yRotations = targetRot if "rotations" else None)
                         loss = lbda * loss_1 + (1 - lbda) * loss_2
                         score = lbda * score_1 + (1 - lbda) * score_2
 
@@ -171,12 +173,14 @@ for nRun in range(args.runs):
 
     
     for epoch in range(args.epochs):
-        if epoch == 0 or epoch in args.milestones:
+        if epoch in args.milestones:
+            index = args.milestones.index(epoch)
+            milestone = args.milestones[index + 1] - args.milestones[index]
             optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.weight_decay)
             if not args.cosine:
-                scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer = optimizer, milestones = eval(args.milestones), gamma = args.gamma)
+                scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer = optimizer, milestones = milestone, gamma = args.gamma)
             else:
-                scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimizer, T_max = eval(args.milestones))
+                scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimizer, T_max = milestone)
             lr = lr * args.gamma
 
         continueTest = False

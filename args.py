@@ -83,6 +83,12 @@ if args.wd < 0:
     args.wd = 5e-4 if args.optimizer.lower() == "sgd" else 0
 
 if isinstance(eval(args.milestones), int):
-    args.milestones = str([eval(args.milestones) * i for i in range(1, args.epochs // eval(args.milestones))])
+    args.milestones = [eval(args.milestones) * i for i in range(1, args.epochs // eval(args.milestones))]
+else:
+    args.milestones = eval(args.milestones)
+if 0 not in args.milestones:
+    args.milestones = [0] + args.milestones
+if args.epochs not in args.milestones:
+    args.milestones.append(args.epochs)
 
 print(" args,", end = '')
