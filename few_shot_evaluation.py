@@ -135,9 +135,8 @@ class ImageNetGenerator(EpisodicGenerator):
         """
         Different protocol for ImageNet
         """
-        print('dataset Name', self.datasetName)
         # Sample a node in the graph
-        node = self.node_candidates[random.randint(0, len(self.node_candidates))]
+        node = self.node_candidates[random.randint(0, len(self.node_candidates)-1)]
 
         leaves_candidates = self.get_spanning_leaves(node)
         max_classes = min(len(leaves_candidates), 50)
@@ -148,7 +147,6 @@ class ImageNetGenerator(EpisodicGenerator):
         choices_idx = torch.randperm(len(leaves_candidates))[:n_ways]
         choices_names = [leaves_candidates[idx] for idx in choices_idx]
         choices = torch.Tensor([self.classIdx[leaf] for leaf in choices_names]).int()
-        print(choices)
         return choices 
 class OmniglotGenerator(EpisodicGenerator):
     """
@@ -165,9 +163,10 @@ if __name__=='__main__':
     print('Test')
     print(args.dataset)
 
-    for suffix in ['_train', '_validation', '_test']:
+    for suffix in ['_validation', '_test']:
         if not (args.dataset == 'mnist' and suffix == '_validation'):
-            print(f'\n---------------Generating episodes for {args.dataset+suffix}--------------------')
-            generator = ImageNetGenerator(args.dataset+suffix, verbose=True)
-            _= generator.sample_episode(n_queries=args.few_shot_queries, ways=args.few_shot_ways, n_shots=args.few_shot_shots)
+            for _ in range(100):
+                print(f'\n---------------Generating episodes for {args.dataset+suffix}--------------------')
+                generator = ImageNetGenerator(args.dataset+suffix, verbose=True)
+                _= generator.sample_episode(n_queries=args.few_shot_queries, ways=args.few_shot_ways, n_shots=args.few_shot_shots)
   
