@@ -2,6 +2,7 @@ from args import args
 import torchvision
 import json
 import os
+import numpy as np
 
 # Read Graph for imagenet names and classes
 with open(os.path.join('datasets', 'ilsvrc_2012_dataset_spec.json'), 'r') as file:
@@ -109,7 +110,7 @@ def get_data(jsonpath, image_dir):
     data ,num_classes, num_elts = {},{},{}
     split = {"validation" if k == 'valid' else k:v for k,v in split.items()}
     for index_subset, subset in enumerate(split.keys()):
-        data[subset] = {'data': [], 'target' : [] , 'name_classes' : []}
+        data[subset] = {'data': [], 'targets' : [] , 'name_classes' : []}
         num_elts[subset] = []
         l_classes = split[subset]
         num_classes[subset] = len(l_classes)
@@ -118,20 +119,69 @@ def get_data(jsonpath, image_dir):
             images = sorted(os.listdir(cl_path))                    #Careful here you might mix the order (not sure that sorted is good enough)
             for index_image , im in enumerate(images):
                 data[subset]['data'].append(cl_path + im)
-                data[subset]['target'].append(index_class)
+                data[subset]['targets'].append(index_class)
+                num_elts[subset].append([cl, index_image+1])
+            data[subset]['name_classes'].append(cl)
+        data[subset]['num_classes'] = index_class+1
+    return data, num_elts
+
+
+def read_info_fungi():
+    info_sub={}
+    for subset in ['train', 'val']:
+        json_path = 'metadatasets/fungi/'+subset+'.json'
+        info_sub[subset] = split_fn(json_path)
+    L_id,L_fl ,L_ida,L_ca,L_imgid,L_idc,L_name,L_sup = [],[],[],[],[],[],[],[]
+    for subset in ['train', 'val']:
+        for x in info_sub[subset]['images']:
+            L_id.append(x['id'])
+            L_fl.append(x['file_name'])
+        for x in info_sub[subset]['annotations']:
+            L_ida.append(x['id'])
+            L_ca.append(x['category_id'])
+            L_imgid.append(x['image_id'])
+        for x in info_sub[subset]['categories']:
+            L_idc.append(x['id'])
+            L_name.append(x['name'])
+            L_sup.append(x['supercategory'])
+    np_ca = np.array(L_ca)
+    np_fl=np.array(L_fl)
+    np_idc = np.array(L_idc)
+    np_sup = np.array(L_sup)
+    return np_ca, np_fl, np_idc, np_sup
+
+def get_data_fungi():
+    split = split_fn('metadatasets/fungi/fungi_splits.json' )
+    np_ca, np_fl, np_idc, np_sup = read_info_fungi()
+    data ,num_classes, num_elts = {},{},{}
+    split = {"validation" if k == 'valid' else k:v for k,v in split.items()}
+    for index_subset, subset in enumerate(split.keys()):
+        data[subset] = {'data': [], 'targets' : [] , 'name_classes' : []}
+        num_elts[subset] = []
+        l_classes = split[subset]
+        num_classes[subset] = len(l_classes)
+        for index_class, cl in enumerate(l_classes):
+            clx = int(split['train'][index_class][:4])
+            idx = np.where(np_ca==clx)[0]
+            for index_image , im in enumerate(np_fl[idx]):
+                data[subset]['data'].append(args.dataset_path+'/metadatasets/fungi/'+im)
+                data[subset]['targets'].append(index_class)
                 num_elts[subset].append([cl, index_image+1])
             data[subset]['name_classes'].append(cl)
         data[subset]['num_classes'] = index_class+1
     return data, num_elts
 
 ##### generate data for CUB and DTD
-result_cub, nb_elts_cub = get_data("metadatasets/CUB_200_2011/cu_birds_splits.json", "metadatasets/CUB_200_2011/images/")
+results_cub, nb_elts_cub = get_data("metadatasets/CUB_200_2011/cu_birds_splits.json", "metadatasets/CUB_200_2011/images/")
 results_dtd , nb_elts_dtd = get_data('metadatasets/dtd/dtd_splits.json', 'metadatasets/dtd/images/')
+results_fungi , nb_elts_fungi = get_data_fungi()
 for dataset in ['train', 'test', 'validation']:
-    all_results["metadataset_cub_" + dataset] = result_cub[dataset]
-    print("Done for metadataset_cub_" + dataset + " with " + str(result_cub[dataset]['num_classes']) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
+    all_results["metadataset_cub_" + dataset] = results_cub[dataset]
+    print("Done for metadataset_cub_" + dataset + " with " + str(results_cub[dataset]['num_classes']) + " classes and " + str(len(results_cub[dataset]["data"])) + " samples (" + str(len(results_cub[dataset]["targets"])) + ")")
     all_results["metadataset_dtd_" + dataset] = results_dtd[dataset]
-    print("Done for metadataset_dtd_" + dataset + " with " + str(results_dtd[dataset]['num_classes']) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
+    print("Done for metadataset_dtd_" + dataset + " with " + str(results_dtd[dataset]['num_classes']) + " classes and " + str(len(results_dtd[dataset]["data"])) + " samples (" + str(len(results_dtd[dataset]["targets"])) + ")")
+    all_results["metadataset_fungi_" + dataset] = results_fungi[dataset]
+    print("Done for metadataset_fungi_" + dataset + " with " + str(results_fungi[dataset]['num_classes']) + " classes and " + str(len(results_fungi[dataset]["data"])) + " samples (" + str(len(results_fungi[dataset]["targets"])) + ")")
 
 f = open(args.dataset_path + "datasets.json", "w")
 f.write(json.dumps(all_results))

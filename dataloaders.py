@@ -164,6 +164,18 @@ def metadataset_cub(dataset_type):
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'meta_dataset_cub', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 
+def metadataset_fungi(dataset_type):
+    f = open(args.dataset_path + "datasets.json")    
+    all_datasets = json.loads(f.read())
+    f.close()
+    dataset = all_datasets["metadataset_fungi_" + dataset]
+    data = dataset["data"]
+    targets = dataset["targets"]
+    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalization])
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'meta_dataset_fungi', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+
+
 def prepareDataLoader(name):
     if isinstance(name, str):
         name = [name]
@@ -200,6 +212,9 @@ def prepareDataLoader(name):
             "metadataset_dtd_train": lambda: metadataset_dtd("train"),
             "metadataset_dtd_validation": lambda: metadataset_dtd("validation"),
             "metadataset_dtd_test": lambda: metadataset_dtd("test"),
+            "metadataset_fungi_train": lambda: metadataset_fungi("train"),
+            "metadataset_fungi_validation": lambda: metadataset_fungi("validation"),
+            "metadataset_fungi_test": lambda: metadataset_fungi("test"),
         }[elt.lower()]())
     return result
     
