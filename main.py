@@ -278,7 +278,7 @@ for nRun in range(args.runs):
 
     print()
     print("Run " + str(nRun+1) + "/" + str(args.runs) + " finished")
-    for phase, nameSet, stats in [("Train", trainSet, allRunTrainStats), ("Test", testSet, allRunTestStats)]:
+    for phase, nameSet, stats in [("Train", trainSet, allRunTrainStats), ("Validation", validationSet, allRunValidationStats),  ("Test", testSet, allRunTestStats)]:
         print(phase)
         for dataset in range(stats.shape[1]):
             print("\tDataset " + nameSet[dataset]["name"])
