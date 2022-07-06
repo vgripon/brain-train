@@ -65,7 +65,11 @@ class EpisodicGenerator():
 
     def get_number_of_queries(self, choice_classes, query_size, unbalanced_queries):
         if unbalanced_queries:
-            n_queries_per_class = [random.randint(1, query_size) for _ in range(len(choice_classes))]
+            alpha = np.full(len(choice_classes), 2)
+            prob_dist = np.random.dirichlet(alpha)
+            while prob_dist.min()*query_size*len(choice_classes)<1: # if there is a class with less than one query resample
+                prob_dist = np.random.dirichlet(alpha)
+            n_queries_per_class = self.convert_prob_to_samples(prob=prob_dist, q_shot=query_size*len(choice_classes))
         else:
             n_queries_per_class = [query_size]*len(choice_classes)
         return n_queries_per_class
@@ -112,6 +116,45 @@ class EpisodicGenerator():
             shots.append(features[c]['features'][shots_idx[i]])
             queries.append(features[c]['features'][queries_idx[i]])
         return shots, queries
+
+    def convert_prob_to_samples(self, prob, q_shot):
+        """
+        convert class probabilities to numbers of samples per class
+        reused : https://github.com/oveilleux/Realistic_Transductive_Few_Shot
+        Arguments:
+            - prob: probabilities of each class
+            - q_shot: total number of queries for all classes combined
+        """
+        prob = prob * q_shot
+        if sum(np.round(prob)) > q_shot:
+            while sum(np.round(prob)) != q_shot:
+                idx = 0
+                for j in range(len(prob)):
+                    frac, whole = math.modf(prob[j])
+                    if j == 0:
+                        frac_clos = abs(frac - 0.5)
+                    else:
+                        if abs(frac - 0.5) < frac_clos:
+                            idx = j
+                            frac_clos = abs(frac - 0.5)
+                prob[idx] = np.floor(prob[idx])
+            prob = np.round(prob)
+        elif sum(np.round(prob)) < q_shot:
+            while sum(np.round(prob)) != q_shot:
+                idx = 0
+                for j in range(len(prob)):
+                    frac, whole = math.modf(prob[j])
+                    if j == 0:
+                        frac_clos = abs(frac - 0.5)
+                    else:
+                        if abs(frac - 0.5) < frac_clos:
+                            idx = j
+                            frac_clos = abs(frac - 0.5)
+                prob[idx] = np.ceil(prob[idx])
+            prob = np.round(prob)
+        else:
+            prob = np.round(prob)
+        return prob.astype(int)
 
 class ImageNetGenerator(EpisodicGenerator):
     """
@@ -177,4 +220,3 @@ if __name__=='__main__':
                 print(f'\n---------------Generating episodes for {args.dataset+suffix}--------------------')
                 generator = ImageNetGenerator(args.dataset+suffix, verbose=True)
                 _= generator.sample_episode(n_queries=args.few_shot_queries, ways=args.few_shot_ways, n_shots=args.few_shot_shots, unbalanced_queries=args.few_shot_unbalanced_queries)
-  

@@ -58,8 +58,7 @@ parser.add_argument("--few-shot-runs", type=int, default=10000, help="total numb
 parser.add_argument("--few-shot-ways", type=int, default=5, help="number of classes in generated few shot tasks")
 parser.add_argument("--few-shot-shots", type=int, default=1, help="number of shots per class in generated few shot tasks")
 parser.add_argument("--few-shot-queries", type=int, default=15, help="number of query vectors per class in generated few shot tasks")
-parser.add_argument("--few-shot-unbalanced-queries", action="store_true", help="use unbalanced number of queries per class. The number of queries per class is sampled uniformly between 1 and the max number of queries allowed")
-
+parser.add_argument("--few-shot-unbalanced-queries", action="store_true", help="use unbalanced number of queries per class. The number of queries per class is sampled using a dirichlet distribution between 1 and the query set for all classes")
 parser.add_argument("--few-shot-classifier", type=str, default="ncm", help="classifier for few-shot runs, can be ncm or knn where k is an integer")
 parser.add_argument("--test-features", type=str, default="", help="test few-shot runs on saved features")
 
