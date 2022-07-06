@@ -191,8 +191,7 @@ def prepareDataLoader(name):
     if isinstance(name, str):
         name = [name]
     result = []
-    for elt in name:
-        result.append({
+    dataset_options = {
             "cifar10_train": lambda: cifar10("train"),
             "cifar10_validation": lambda: cifar10("validation"),
             "cifar10_test": lambda: cifar10("test"),
@@ -229,7 +228,10 @@ def prepareDataLoader(name):
             "metadataset_aircraft_train": lambda: metadataset_aircraft("train"),
             "metadataset_aircraft_validation": lambda: metadataset_aircraft("validation"),
             "metadataset_aircraft_test": lambda: metadataset_aircraft("test"),
-        }[elt.lower()]())
+        }
+    for elt in name:
+        assert elt in dataset_options.keys(), 'The chosen dataset is not existing, please provide a valid option'
+        result.append(dataset_options[elt.lower()]())
     return result
     
 if args.training_dataset != "":
