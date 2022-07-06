@@ -127,7 +127,7 @@ def process(featuresSet, mean):
         if "E" in args.feature_processing:
             for feat in features:
                 feat["features"] = feat["features"] / torch.norm(feat["features"], dim = 1, keepdim = True)
-    return features
+    return featuresSet
 
 def computeMean(featuresSet):
     avg = None
