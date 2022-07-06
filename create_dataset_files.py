@@ -133,7 +133,7 @@ if 'ILSVRC2012_img_train' in available_metadataset_datasets:
         print("Done for metadataset_imagenet_" + dataset + " with " + str(i+1) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
 
 def split_fn(json_path):
-    with open(args.dataset_path+json_path) as jsonFile:
+    with open(json_path) as jsonFile:
         split = json.load(jsonFile)
         jsonFile.close()
     return split
@@ -161,7 +161,7 @@ def get_data(jsonpath, image_dir):
 def read_info_fungi():
     info_sub={}
     for subset in ['train', 'val']:
-        json_path = 'metadatasets/fungi/'+subset+'.json'
+        json_path = args.dataset_path + 'metadatasets/fungi/'+subset+'.json'
         info_sub[subset] = split_fn(json_path)
     L_id,L_fl ,L_ida,L_ca,L_imgid,L_idc,L_name,L_sup = [],[],[],[],[],[],[],[]
     for subset in ['train', 'val']:
@@ -183,7 +183,7 @@ def read_info_fungi():
     return np_ca, np_fl, np_idc, np_sup
 
 def get_data_fungi():
-    split = split_fn('metadatasets/fungi/fungi_splits.json' )
+    split = split_fn('datasets/metadatasets/fungi/fungi_splits.json' )
     np_ca, np_fl, np_idc, np_sup = read_info_fungi()
     data ,num_classes, num_elts = {},{},{}
     split = {"validation" if k == 'valid' else k:v for k,v in split.items()}
@@ -205,7 +205,7 @@ def get_data_fungi():
 
 
 def get_images_class_aircraft():
-    with open(args.dataset_path + '/metadatasets/fgvc-aircraft-2013b/data/images_variant.txt') as f:
+    with open('datasets/metadatasets/aircraft/images_variant.txt') as f:
         lines = f.readlines()
     print(len(lines))
     couples = [x.split(' ', maxsplit=1) for x in lines]
@@ -219,7 +219,7 @@ def get_images_class_aircraft():
     return dico_class
 
 def get_data_aircraft():
-    split = split_fn('/metadatasets/fgvc-aircraft-2013b/aircraft_splits.json')
+    split = split_fn('datasets/metadatasets/aircraft/aircraft_splits.json')
     dico_class = get_images_class_aircraft()
     data ,num_classes, num_elts = {},{},{}
     split = {"validation" if k == 'valid' else k:v for k,v in split.items()}
@@ -232,7 +232,7 @@ def get_data_aircraft():
             images = dico_class[cl]
             if images != []:
                 for index_image , im in enumerate(images):
-                    data[subset]['data'].append(args.dataset_path+'/metadatasets/fungi/'+im)
+                    data[subset]['data'].append(args.dataset_path+'/metadatasets/fgvc-aircraft-2013b/'+im)
                     data[subset]['targets'].append(index_class)
                 num_elts[subset].append([cl, index_image+1])
                 data[subset]['name_classes'].append(cl)
@@ -243,15 +243,15 @@ def get_data_aircraft():
 
 ##### generate data for CUB and DTD
 if 'CUB_200_2011' in available_metadataset_datasets:
-    results_cub, nb_elts_cub = get_data("metadatasets/CUB_200_2011/cu_birds_splits.json", "metadatasets/CUB_200_2011/images/")
+    results_cub, nb_elts_cub = get_data("./datasets/metadatasets/cub/cu_birds_splits.json", "metadatasets/CUB_200_2011/images/")
 if 'dtd' in available_metadataset_datasets:
-    results_dtd , nb_elts_dtd = get_data('metadatasets/dtd/dtd_splits.json', 'metadatasets/dtd/images/')
+    results_dtd , nb_elts_dtd = get_data('./datasets/metadatasets/dtd/dtd_splits.json', 'metadatasets/dtd/images/')
 if 'fungi' in available_metadataset_datasets:
     results_fungi , nb_elts_fungi = get_data_fungi()
 if 'fgvc-aircraft-2013b' in available_metadataset_datasets:
     results_aircraft , nb_elts_aircraft = get_data_aircraft()
 if 'mscoco' in available_metadataset_datasets:
-    with open(args.dataset_path + 'metadatasets/mscoco/cropped_mscoco.json') as jsonFile:
+    with open(args.dataset_path + 'metadatasets/mscoco/cropped_mscoco.json') as jsonFile:   #this file is obtained by running datasets/metadatasets/mscoco/RUN_ONLY_ONCE.sh (read instructions carefully)
         results_mscoco  = json.load(jsonFile)
         jsonFile.close()
     
