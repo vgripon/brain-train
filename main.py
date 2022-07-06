@@ -38,7 +38,7 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                         lbda = random.random()                        
 
                     if "rotations" in step:
-                        bs = data.shape[0] // 4
+                        bs = dataStep.shape[0] // 4
                         targetRot = torch.LongTensor(dataStep.shape[0]).to(args.device)
                         targetRot[:bs] = 0
                         dataStep[bs:] = dataStep[bs:].transpose(3,2).flip(2)
