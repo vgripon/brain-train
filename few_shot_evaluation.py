@@ -6,9 +6,12 @@ import numpy as np
 import os 
 from args import args
 
-f = open(args.dataset_path + "datasets.json")    
-all_datasets = json.loads(f.read())
-f.close()
+if args.dataset_path != '' and args.dataset_path != None:
+    json_path = os.path.join(args.dataset_path, 'datasets.json')
+    if os.path.exists(json_path):
+        f = open(json_path)    
+        all_datasets = json.loads(f.read())
+        f.close()
 
 class EpisodicGenerator():
     def __init__(self, datasetName, max_classes=50, num_elements_per_class=None, verbose=False):
