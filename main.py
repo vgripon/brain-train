@@ -119,15 +119,24 @@ def testFewShot(features, datasets = None):
             display(" {:s} {:.2f}% (±{:.2f}%)".format(datasets[i]["name"], results[i, 0], results[i, 1]), end = '', force = True)
     return results
 
-def process(features):
-    if "M" in args.feature_processing:
-        avg = torch.cat([features[i]["features"] for i in range(len(features))]).mean(dim = 0)
-        for feat in features:
-            feat["features"] = feat["features"] - avg.unsqueeze(0)
-    if "E" in args.feature_processing:
-        for feat in features:
-            feat["features"] = feat["features"] / torch.norm(feat["features"], dim = 1, keepdim = True)
+def process(featuresSet, mean):
+    for features in featuresSet:
+        if "M" in args.feature_processing:
+            for feat in features:
+                feat["features"] = feat["features"] - mean.unsqueeze(0)
+        if "E" in args.feature_processing:
+            for feat in features:
+                feat["features"] = feat["features"] / torch.norm(feat["features"], dim = 1, keepdim = True)
     return features
+
+def computeMean(featuresSet):
+    avg = None
+    for features in featuresSet:
+        if avg == None:
+            avg = torch.cat([features[i]["features"] for i in range(len(features))]).mean(dim = 0)
+        else:
+            avg += torch.cat([features[i]["features"] for i in range(len(features))]).mean(dim = 0)
+    return avg / len(featuresSet)
 
 def generateFeatures(backbone, datasets):
     """
@@ -148,7 +157,7 @@ def generateFeatures(backbone, datasets):
                 features = backbone(data).to("cpu")
                 for i in range(features.shape[0]):
                     allFeatures[target[i]]["features"].append(features[i])
-        results.append(process([{"name_class": allFeatures[i]["name_class"], "features": torch.stack(allFeatures[i]["features"])} for i in range(len(allFeatures))]))
+        results.append([{"name_class": allFeatures[i]["name_class"], "features": torch.stack(allFeatures[i]["features"])} for i in range(len(allFeatures))])
     return results
 
 if args.test_features != "":
@@ -211,6 +220,8 @@ for nRun in range(args.runs):
         if validationSet != []:
             if args.few_shot:
                 features = generateFeatures(backbone, validationSet)
+                meanVector = computeMean(features)
+                features = process(features, meanVector)
                 validationStats = testFewShot(features, validationSet)
             else:
                 validationStats = test(backbone, validationSet, criterion)
@@ -218,6 +229,8 @@ for nRun in range(args.runs):
             if args.save_features_prefix != "":
                 if not args.few_shot:
                     features = generateFeatures(backbone, validationSet)
+                    meanVector = computeMean(features)
+                    features = process(features, meanVector)
                 for i, dataset in enumerate(validationSet):
                     torch.save(features[i], args.save_features_prefix + dataset["name"] + "_features.pt")
             if validationStats[:,0].mean().item() < best_val:
@@ -225,9 +238,11 @@ for nRun in range(args.runs):
                 continueTest = True
         else:
             continueTest = True
+            meanVector = None
         if testSet != []:
             if args.few_shot:
                 features = generateFeatures(backbone, testSet)
+                features = process(features, meanVector)
                 tempTestStats = testFewShot(features, testSet)
             else:
                 tempTestStats = test(backbone, testSet, criterion)
@@ -237,10 +252,12 @@ for nRun in range(args.runs):
                 if args.save_features_prefix != "":
                     if not args.few_shot:
                         features = generateFeatures(backbone, testSet)
+                        features = process(features, meanVector)
                     for i, dataset in enumerate(testSet):
                         torch.save(features[i], args.save_features_prefix + dataset["name"] + "_features.pt")
         if continueTest and args.save_backbone != "":
             torch.save(backbone.to("cpu").state_dict(), args.save_backbone)
+            backbone.to(args.device)
         scheduler.step()
         print(" " + timeToStr(time.time() - tick))
     if trainSet != []:
