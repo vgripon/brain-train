@@ -108,7 +108,7 @@ def testFewShot(features, datasets = None):
         for run in range(args.few_shot_runs):
             shots = []
             queries = []
-            episode = generator.sample_episode(ways=args.few_shot_ways, n_shots=args.few_shot_shots, n_queries=args.few_shot_queries)
+            episode = generator.sample_episode(ways=args.few_shot_ways, n_shots=args.few_shot_shots, n_queries=args.few_shot_queries, unbalanced_queries=args.few_shot_unbalanced_queries)
             shots, queries = generator.get_features_from_indices(feature, episode)
             accs.append(classifiers.evalFewShotRun(shots, queries))
         accs = 100 * torch.tensor(accs)

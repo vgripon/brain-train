@@ -63,12 +63,11 @@ class EpisodicGenerator():
             n_shots_per_class = [n_shots]*len(choice_classes)
         return n_shots_per_class
 
-    def get_number_of_queries(self, choice_classes, query_size, balanced_queries):
-        if balanced_queries:
-            n_queries_per_class = [query_size]*len(choice_classes)
-        else:
+    def get_number_of_queries(self, choice_classes, query_size, unbalanced_queries):
+        if unbalanced_queries:
             n_queries_per_class = [random.randint(1, query_size) for _ in range(len(choice_classes))]
-
+        else:
+            n_queries_per_class = [query_size]*len(choice_classes)
         return n_queries_per_class
 
     def sample_indices(self, num_elements_per_chosen_classes, n_shots_per_class, n_queries_per_class):
@@ -80,7 +79,7 @@ class EpisodicGenerator():
             queries_idx.append(choices[k:k+q].tolist())
         return shots_idx, queries_idx
 
-    def sample_episode(self, ways=0, n_shots=0, n_queries=0, balanced_queries=True):
+    def sample_episode(self, ways=0, n_shots=0, n_queries=0, unbalanced_queries=False):
         """
         Sample an episode
         """
@@ -91,7 +90,7 @@ class EpisodicGenerator():
         support_size = self.get_support_size(choice_classes, query_size, n_shots)
 
         n_shots_per_class = self.get_number_of_shots(choice_classes, support_size, query_size, n_shots)
-        n_queries_per_class = self.get_number_of_queries(choice_classes, query_size, balanced_queries)
+        n_queries_per_class = self.get_number_of_queries(choice_classes, query_size, unbalanced_queries)
         shots_idx, queries_idx = self.sample_indices([self.num_elements_per_class[c] for c in choice_classes], n_shots_per_class, n_queries_per_class)
 
         if self.verbose:
@@ -172,10 +171,10 @@ if __name__=='__main__':
     print('Test')
     print(args.dataset)
 
-    for suffix in ['_validation', '_test']:
+    for suffix in ['train_', '_validation', '_test']:
         if not (args.dataset == 'mnist' and suffix == '_validation'):
             for _ in range(1):
                 print(f'\n---------------Generating episodes for {args.dataset+suffix}--------------------')
-                generator = ImageNetGenerator(args.dataset+suffix, verbose=True, balanced_queries=False)
-                _= generator.sample_episode(n_queries=args.few_shot_queries, ways=args.few_shot_ways, n_shots=args.few_shot_shots)
+                generator = ImageNetGenerator(args.dataset+suffix, verbose=True)
+                _= generator.sample_episode(n_queries=args.few_shot_queries, ways=args.few_shot_ways, n_shots=args.few_shot_shots, unbalanced_queries=True)
   
