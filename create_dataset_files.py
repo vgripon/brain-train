@@ -151,7 +151,7 @@ def get_data(jsonpath, image_dir):
             cl_path = args.dataset_path + image_dir + cl
             images = sorted(os.listdir(cl_path)) #Careful here you might mix the order (not sure that sorted is good enough)
             for index_image , im in enumerate(images):
-                data[subset]['data'].append(cl_path + im)
+                data[subset]['data'].append( image_dir + cl +'/' + im)
                 data[subset]['targets'].append(index_class)
             num_elts[subset].append([cl, index_image+1])
             data[subset]['name_classes'].append(cl)
@@ -196,7 +196,7 @@ def get_data_fungi():
             clx = int(split['train'][index_class][:4])
             idx = np.where(np_ca==clx)[0]
             for index_image , im in enumerate(np_fl[idx]):
-                data[subset]['data'].append(args.dataset_path+'/metadatasets/fungi/'+im)
+                data[subset]['data'].append('/metadatasets/fungi/'+im)
                 data[subset]['targets'].append(index_class)
             num_elts[subset].append([cl, index_image+1])
             data[subset]['name_classes'].append(cl)
@@ -232,7 +232,7 @@ def get_data_aircraft():
             images = dico_class[cl]
             if images != []:
                 for index_image , im in enumerate(images):
-                    data[subset]['data'].append(args.dataset_path+'/metadatasets/fgvc-aircraft-2013b/'+im)
+                    data[subset]['data'].append('/metadatasets/fgvc-aircraft-2013b/data/images/'+im+'.jpg')
                     data[subset]['targets'].append(index_class)
                 num_elts[subset].append([cl, index_image+1])
                 data[subset]['name_classes'].append(cl)

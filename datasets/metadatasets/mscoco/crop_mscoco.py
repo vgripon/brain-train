@@ -81,8 +81,8 @@ def generate_mscoco_examples(metadata, paths, box_scale_ratio=1.2):
             crop_width, crop_height = image.size
             if crop_width <= 0 or crop_height <= 0:
                 raise ValueError('crops are not valid.')
-            filename = dataset_path+"metadatasets/mscoco/cropped/"+ f"{annotation['image_id']:012d}.jpg"
-            image.save(filename, "JPEG")
+            filename = "metadatasets/mscoco/cropped/"+ f"{annotation['image_id']:012d}.jpg"
+            image.save(dataset_path+filename, "JPEG")
             subset_data['data'].append(filename)
             subset_data['targets'].append(label)
         subset_data['name_classes'].append(class_name)

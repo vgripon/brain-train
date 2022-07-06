@@ -31,7 +31,7 @@ class DataHolder():
         return self.length
 
 def dataLoader(dataholder, shuffle):
-    return torch.utils.data.DataLoader(dataholder, batch_size = args.batch_size, shuffle = shuffle, num_workers = min(8, os.cpu_count()))
+    return torch.utils.data.DataLoader(dataholder, batch_size = args.batch_size, shuffle = shuffle, num_workers = min(os.cpu_count(), 8))
 
 def cifar10(dataset):
     pytorchDataset = datasets.CIFAR10(args.dataset_path, train = dataset != "test", download = False)
@@ -144,11 +144,11 @@ def metadataset_dtd(dataset_type):
     f = open(args.dataset_path + "datasets.json")    
     all_datasets = json.loads(f.read())
     f.close()
-    dataset = all_datasets["metadataset_dtd_" + dataset]
+    dataset = all_datasets["metadataset_dtd_" + dataset_type]
     data = dataset["data"]
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalization])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'meta_dataset_dtd', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 
@@ -156,11 +156,11 @@ def metadataset_cub(dataset_type):
     f = open(args.dataset_path + "datasets.json")    
     all_datasets = json.loads(f.read())
     f.close()
-    dataset = all_datasets["metadataset_cub_" + dataset]
+    dataset = all_datasets["metadataset_cub_" + dataset_type]
     data = dataset["data"]
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalization])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224),  normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'meta_dataset_cub', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 
@@ -168,22 +168,22 @@ def metadataset_fungi(dataset_type):
     f = open(args.dataset_path + "datasets.json")    
     all_datasets = json.loads(f.read())
     f.close()
-    dataset = all_datasets["metadataset_fungi_" + dataset]
+    dataset = all_datasets["metadataset_fungi_" + dataset_type]
     data = dataset["data"]
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalization])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'meta_dataset_fungi', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def metadataset_aircraft(dataset_type):
     f = open(args.dataset_path + "datasets.json")    
     all_datasets = json.loads(f.read())
     f.close()
-    dataset = all_datasets["metadataset_aircraft_" + dataset]
+    dataset = all_datasets["metadataset_aircraft_" + dataset_type]
     data = dataset["data"]
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalization])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'meta_dataset_aircraft', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def metadataset_mscoco(dataset_type):
@@ -192,11 +192,11 @@ def metadataset_mscoco(dataset_type):
     f = open(args.dataset_path + "datasets.json")    
     all_datasets = json.loads(f.read())
     f.close()
-    dataset = all_datasets["metadataset_mscoco_" + dataset]
+    dataset = all_datasets["metadataset_mscoco_" + dataset_type]
     data = dataset["data"]
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalization])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'meta_dataset_mscoco', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def prepareDataLoader(name):
