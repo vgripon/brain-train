@@ -250,6 +250,12 @@ if 'fungi' in available_metadataset_datasets:
     results_fungi , nb_elts_fungi = get_data_fungi()
 if 'fgvc-aircraft-2013b' in available_metadataset_datasets:
     results_aircraft , nb_elts_aircraft = get_data_aircraft()
+if 'mscoco' in available_metadataset_datasets:
+    with open(args.dataset_path + 'metadatasets/mscoco/cropped_mscoco.json') as jsonFile:
+        results_mscoco  = json.load(jsonFile)
+        jsonFile.close()
+    
+
 
 for dataset in ['train', 'test', 'validation']:
     if 'CUB_200_2011' in available_metadataset_datasets:
@@ -264,6 +270,9 @@ for dataset in ['train', 'test', 'validation']:
     if 'fgvc-aircraft-2013b' in available_metadataset_datasets:
         all_results["metadataset_aircraft_" + dataset] = results_aircraft[dataset]
         print("Done for metadataset_aircraft_" + dataset + " with " + str(results_aircraft[dataset]['num_classes']) + " classes and " + str(len(results_aircraft[dataset]["data"])) + " samples (" + str(len(results_aircraft[dataset]["targets"])) + ")")
+    if 'mscoco' in available_metadataset_datasets and dataset != 'train':
+        all_results["metadataset_mscoco_" + dataset] = results_mscoco[dataset]
+        print("Done for metadataset_mscoco_" + dataset + " with " + str(results_mscoco[dataset]['num_classes']) + " classes and " + str(len(results_mscoco[dataset]["data"])) + " samples (" + str(len(results_mscoco[dataset]["targets"])) + ")")
 
 f = open(args.dataset_path + "datasets.json", "w")
 f.write(json.dumps(all_results))

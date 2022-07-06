@@ -186,6 +186,18 @@ def metadataset_aircraft(dataset_type):
     trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'meta_dataset_aircraft', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
+def metadataset_mscoco(dataset_type):
+    if dataset_type=='train':
+        return 'mscoco is not a train dataset in metadataset (see official split)'
+    f = open(args.dataset_path + "datasets.json")    
+    all_datasets = json.loads(f.read())
+    f.close()
+    dataset = all_datasets["metadataset_mscoco_" + dataset]
+    data = dataset["data"]
+    targets = dataset["targets"]
+    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalization])
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'meta_dataset_mscoco', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def prepareDataLoader(name):
     if isinstance(name, str):
@@ -228,6 +240,9 @@ def prepareDataLoader(name):
             "metadataset_aircraft_train": lambda: metadataset_aircraft("train"),
             "metadataset_aircraft_validation": lambda: metadataset_aircraft("validation"),
             "metadataset_aircraft_test": lambda: metadataset_aircraft("test"),
+            "metadataset_mscoco_train": lambda: metadataset_mscoco("train"),
+            "metadataset_mscoco_validation": lambda: metadataset_mscoco("validation"),
+            "metadataset_mscoco_test": lambda: metadataset_mscoco("test"),
         }
     for elt in name:
         assert elt in dataset_options.keys(), 'The chosen dataset is not existing, please provide a valid option'
