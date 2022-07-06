@@ -233,7 +233,7 @@ for nRun in range(args.runs):
                     features = process(features, meanVector)
                 for i, dataset in enumerate(validationSet):
                     torch.save(features[i], args.save_features_prefix + dataset["name"] + "_features.pt")
-            if validationStats[:,0].mean().item() < best_val:
+            if (validationStats[:,0].mean().item() < best_val and not args.few_shot) or (args.few_shot and validationStats[:,0].mean().item() > best_val):
                 best_val = validationStats[:,0].mean().item()
                 continueTest = True
         else:
