@@ -217,10 +217,17 @@ for nRun in range(args.runs):
         if trainSet != []:
             trainStats = train(epoch + 1, backbone, criterion, optimizer, scheduler)
             updateCSV(trainStats, epoch = epoch)
+            if args.few_shot and "M" in args.feature_processing or args.save_features_prefix != "":
+                features = generateFeatures(backbone, trainSet)
+                meanVector = computeMean(features)
+                if args.save_features_prefix != "":
+                    for i, dataset in enumerate(trainSet):
+                        torch.save(features[i], args.save_features_prefix + dataset["name"] + "_features.pt")
+            else:
+                meanVector = None
         if validationSet != []:
             if args.few_shot:
                 features = generateFeatures(backbone, validationSet)
-                meanVector = computeMean(features)
                 features = process(features, meanVector)
                 validationStats = testFewShot(features, validationSet)
             else:
@@ -238,7 +245,6 @@ for nRun in range(args.runs):
                 continueTest = True
         else:
             continueTest = True
-            meanVector = None
         if testSet != []:
             if args.few_shot:
                 features = generateFeatures(backbone, testSet)
