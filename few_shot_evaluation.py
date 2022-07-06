@@ -171,10 +171,10 @@ if __name__=='__main__':
     print('Test')
     print(args.dataset)
 
-    for suffix in ['train_', '_validation', '_test']:
+    for suffix in ['_train', '_validation', '_test']:
         if not (args.dataset == 'mnist' and suffix == '_validation'):
             for _ in range(1):
                 print(f'\n---------------Generating episodes for {args.dataset+suffix}--------------------')
                 generator = ImageNetGenerator(args.dataset+suffix, verbose=True)
-                _= generator.sample_episode(n_queries=args.few_shot_queries, ways=args.few_shot_ways, n_shots=args.few_shot_shots, unbalanced_queries=True)
+                _= generator.sample_episode(n_queries=args.few_shot_queries, ways=args.few_shot_ways, n_shots=args.few_shot_shots, unbalanced_queries=args.few_shot_unbalanced_queries)
   
