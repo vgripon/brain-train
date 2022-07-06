@@ -1,6 +1,6 @@
 import sys
 dataset_path = str(sys.argv[1])
-print('this may take between one and two hours')
+print('AS SUCH THE CROPPING WILL BE UNEFFECTIVE (READ BELOW) \n this may take between one and two hours')
 print('As a security the names of files were changed \n -----> IF you really intend to crop the MSCOCO folder (2h) you should : <----')
 print('1) replace "cropped" by "cropped_imgs" at line 27 and 28 in RUN_ONLY_ONCE.sh and at line 84 of crop_mscoco.py')
 print('2) replace "cropped_mscoco_test.json" by "cropped_mscoco.json" at line 103 of crop_mscoco.py')
