@@ -15,7 +15,7 @@ class LR(nn.Module):
         super(LR, self).__init__()
         self.fc = nn.Linear(inputDim, numClasses)
         self.fcRotations = nn.Linear(inputDim, 4)
-        self.criterion = nn.CrossEntropyLoss()
+        self.criterion = nn.CrossEntropyLoss() if args.label_smoothing == 0 else LabelSmoothingLoss(numClasses, args.label_smoothing)
 
     def forward(self, x, y, yRotations = None):
         output = self.fc(x)
@@ -33,7 +33,7 @@ class L2(nn.Module):
         super(L2, self).__init__()
         self.centroids = torch.nn.Parameter(torch.zeros(numClasses, inputDim))
         self.centroidsRotations = torch.nn.Parameter(torch.zeros(4, inputDim))
-        self.criterion = nn.CrossEntropyLoss()
+        self.criterion = nn.CrossEntropyLoss() if args.label_smoothing == 0 else LabelSmoothingLoss(numClasses, args.label_smoothing)
         self.numClasses = numClasses
 
     def forward(self, x, y, yRotations = None):
@@ -45,6 +45,22 @@ class L2(nn.Module):
             distancesRotations = -1 * torch.pow(torch.norm(x.unsqueeze(1) - self.centroidsRotations.unsqueeze(0), dim = 2),2)
             loss = 0.5 * loss + 0.5 * self.criterion(distancesRotations, yRotations)
         return loss, score
+
+class LabelSmoothingLoss(nn.Module):
+    def __init__(self, num_classes, smoothing):
+        super(LabelSmoothingLoss, self).__init__()
+        self.smoothing = smoothing
+        self.cls = num_classes
+
+    def forward(self, pred, target):
+        assert 0 <= self.smoothing < 1
+        pred = pred.log_softmax(dim=-1)
+
+        with torch.no_grad():
+            true_dist = torch.zeros_like(pred)
+            true_dist.fill_(self.smoothing / (self.cls - 1))
+            true_dist.scatter_(1, target.data.unsqueeze(1), 1 - self.smoothing)
+        return torch.mean(torch.sum(-true_dist * pred, dim=-1))
 
 ### NCM
 def ncm(shots, queries):
