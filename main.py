@@ -200,11 +200,12 @@ for nRun in range(args.runs):
     nSteps = torch.min(torch.tensor([len(dataset["dataloader"]) for dataset in trainSet])).item()
 
     for epoch in range(args.epochs):
-        if epoch == 0:
+        if epoch == 0 and not args.cosine:
             optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.weight_decay)
             if not args.cosine:
                 scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer = optimizer, milestones = [n * nSteps for n in args.milestones], gamma = args.gamma)
         if args.cosine and (epoch in args.milestones or epoch == 0):
+            optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.weight_decay)
             if epoch == 0:
                 interval = nSteps * args.milestones[0]
             else:
