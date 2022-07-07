@@ -217,9 +217,34 @@ if __name__=='__main__':
     print('Test')
     print(args.dataset)
 
-    for suffix in ['_train', '_validation', '_test']:
-        if not (args.dataset == 'mnist' and suffix == '_validation'):
-            for _ in range(1):
-                print(f'\n---------------Generating episodes for {args.dataset+suffix}--------------------')
-                generator = ImageNetGenerator(args.dataset+suffix, verbose=True)
-                _= generator.sample_episode(n_queries=args.few_shot_queries, ways=args.few_shot_ways, n_shots=args.few_shot_shots, unbalanced_queries=args.few_shot_unbalanced_queries)
+    if args.test_features != '':
+        import classifiers
+        from utils import confInterval
+        feature = torch.load(args.test_features, map_location=args.device)
+
+    for _ in range(1):
+        print(f'\n---------------Generating episodes for {args.dataset}--------------------')
+        if args.dataset != None and args.dataset!='':
+            if 'metadataset_omniglot' in args.dataset:
+                Generator = OmniglotGenerator
+            elif 'metadataset_imagenet' in args.dataset:
+                Generator = ImageNetGenerator
+            else:
+                Generator = EpisodicGenerator
+        else:
+            Generator = EpisodicGenerator
+        if args.test_features != '':
+            num_elements_per_class = [len(feat['features']) for feat in feature]
+        else: 
+            num_elements_per_class = None
+        generator = Generator(args.dataset, verbose=True, num_elements_per_class=num_elements_per_class)
+        episode = generator.sample_episode(n_queries=args.few_shot_queries, ways=args.few_shot_ways, n_shots=args.few_shot_shots, unbalanced_queries=args.few_shot_unbalanced_queries)
+        if args.test_features != '':
+            shots, queries = generator.get_features_from_indices(feature, episode)
+            for c in range(len(shots)):
+                print(shots[c].shape, queries[c].shape)
+            
+            accs = classifiers.evalFewShotRun(shots, queries)
+            accs = 100 * torch.tensor([accs])
+            low, up = confInterval(accs)
+            print("acc={:.2f}% (±{:.2f}%)".format(torch.mean(accs).item(), (up - low) / 2))

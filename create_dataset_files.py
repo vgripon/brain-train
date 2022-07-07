@@ -110,7 +110,7 @@ if 'ILSVRC2012_img_train' in available_metadataset_datasets:
     duplicates = []
     duplicate_files =  ['ImageNet_CUBirds_duplicates.txt', 'ImageNet_Caltech101_duplicates.txt', 'ImageNet_Caltech256_duplicates.txt']
     for file in duplicate_files:
-        with open(os.path.join('datasets', file), 'r') as f:
+        with open(os.path.join('datasets', 'metadatasets', 'ilsvrc_2012', file), 'r') as f:
             duplicates_tmp = f.read().split('\n')
         duplicates += [p.split('#')[0].replace(' ','') for p in duplicates_tmp if len(p)>0 and p[0] not in ['#']] # parse the duplicates files
 
