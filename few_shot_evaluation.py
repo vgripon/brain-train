@@ -6,7 +6,7 @@ import numpy as np
 import os 
 
 class EpisodicGenerator():
-    def __init__(self, datasetName=None, dataset_path=None, max_classes=50, num_elements_per_class=None, verbose=False):
+    def __init__(self, datasetName=None, dataset_path=None, max_classes=50, num_elements_per_class=None):
         assert datasetName != None or num_elements_per_class!=None, "datasetName and num_elements_per_class can't both be None"
         
         all_datasets = {}
@@ -17,7 +17,6 @@ class EpisodicGenerator():
                 all_datasets = json.loads(f.read())
                 f.close()
 
-        self.verbose = verbose
         self.datasetName = datasetName
         if datasetName != None and datasetName in all_datasets.keys():
             self.dataset = all_datasets[datasetName]
@@ -86,7 +85,7 @@ class EpisodicGenerator():
             queries_idx.append(choices[k:k+q].tolist())
         return shots_idx, queries_idx
 
-    def sample_episode(self, ways=0, n_shots=0, n_queries=0, unbalanced_queries=False):
+    def sample_episode(self, ways=0, n_shots=0, n_queries=0, unbalanced_queries=False, verbose=False):
         """
         Sample an episode
         """
@@ -100,7 +99,7 @@ class EpisodicGenerator():
         n_queries_per_class = self.get_number_of_queries(choice_classes, query_size, unbalanced_queries)
         shots_idx, queries_idx = self.sample_indices([self.num_elements_per_class[c] for c in choice_classes], n_shots_per_class, n_queries_per_class)
 
-        if self.verbose:
+        if verbose:
             print(f'chosen class: {choice_classes}')
             print(f'n_ways={len(choice_classes)}, q={query_size}, S={support_size}, n_shots_per_class={n_shots_per_class}')
             print(f'queries per class:{n_queries_per_class}')
@@ -239,8 +238,8 @@ if __name__=='__main__':
             num_elements_per_class = [len(feat['features']) for feat in feature]
         else: 
             num_elements_per_class = None
-        generator = Generator(datasetName=args.dataset, dataset_path=args.dataset_path, verbose=True, num_elements_per_class=num_elements_per_class)
-        episode = generator.sample_episode(n_queries=args.few_shot_queries, ways=args.few_shot_ways, n_shots=args.few_shot_shots, unbalanced_queries=args.few_shot_unbalanced_queries)
+        generator = Generator(datasetName=args.dataset, dataset_path=args.dataset_path, num_elements_per_class=num_elements_per_class)
+        episode = generator.sample_episode(n_queries=args.few_shot_queries, ways=args.few_shot_ways, n_shots=args.few_shot_shots, unbalanced_queries=args.few_shot_unbalanced_queries, verbose=True)
         if args.test_features != '':
             shots, queries = generator.get_features_from_indices(feature, episode)
             for c in range(len(shots)):
