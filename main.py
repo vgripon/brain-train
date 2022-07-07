@@ -104,7 +104,7 @@ def testFewShot(features, datasets = None):
                 Generator = EpisodicGenerator
         else:
             Generator = EpisodicGenerator
-        generator = Generator(None if datasets is None else datasets[i]["name"], num_elements_per_class= [len(feat['features']) for feat in feature])
+        generator = Generator(datasetName=None if datasets is None else datasets[i]["name"], num_elements_per_class= [len(feat['features']) for feat in feature], dataset_path=args.dataset_path)
         for run in range(args.few_shot_runs):
             shots = []
             queries = []

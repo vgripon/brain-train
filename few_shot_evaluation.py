@@ -4,20 +4,19 @@ import torch
 import math
 import numpy as np
 import os 
-from args import args
-
-if args.dataset_path != '' and args.dataset_path != None:
-    json_path = os.path.join(args.dataset_path, 'datasets.json')
-    if os.path.exists(json_path):
-        f = open(json_path)    
-        all_datasets = json.loads(f.read())
-        f.close()
 
 class EpisodicGenerator():
-    def __init__(self, datasetName, max_classes=50, num_elements_per_class=None, verbose=False):
+    def __init__(self, datasetName=None, dataset_path=None, max_classes=50, num_elements_per_class=None):
         assert datasetName != None or num_elements_per_class!=None, "datasetName and num_elements_per_class can't both be None"
         
-        self.verbose = verbose
+        all_datasets = {}
+        if dataset_path != '' and dataset_path != None:
+            json_path = os.path.join(dataset_path, 'datasets.json')
+            if os.path.exists(json_path):
+                f = open(json_path)    
+                all_datasets = json.loads(f.read())
+                f.close()
+
         self.datasetName = datasetName
         if datasetName != None and datasetName in all_datasets.keys():
             self.dataset = all_datasets[datasetName]
@@ -86,7 +85,7 @@ class EpisodicGenerator():
             queries_idx.append(choices[k:k+q].tolist())
         return shots_idx, queries_idx
 
-    def sample_episode(self, ways=0, n_shots=0, n_queries=0, unbalanced_queries=False):
+    def sample_episode(self, ways=0, n_shots=0, n_queries=0, unbalanced_queries=False, verbose=False):
         """
         Sample an episode
         """
@@ -100,7 +99,7 @@ class EpisodicGenerator():
         n_queries_per_class = self.get_number_of_queries(choice_classes, query_size, unbalanced_queries)
         shots_idx, queries_idx = self.sample_indices([self.num_elements_per_class[c] for c in choice_classes], n_shots_per_class, n_queries_per_class)
 
-        if self.verbose:
+        if verbose:
             print(f'chosen class: {choice_classes}')
             print(f'n_ways={len(choice_classes)}, q={query_size}, S={support_size}, n_shots_per_class={n_shots_per_class}')
             print(f'queries per class:{n_queries_per_class}')
@@ -162,8 +161,8 @@ class EpisodicGenerator():
 class ImageNetGenerator(EpisodicGenerator):
     """
     """
-    def __init__(self, datasetName, **kwargs):
-        super().__init__(datasetName, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         # Read ImageNet graph
 
         split = {'train':'TRAIN', 'test':'TEST', 'validation': 'VALID'}[datasetName.split('_')[-1]]
@@ -205,8 +204,8 @@ class ImageNetGenerator(EpisodicGenerator):
 class OmniglotGenerator(EpisodicGenerator):
     """
     """
-    def __init__(self, datasetName, **kwargs):
-        super().__init__(datasetName, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def select_classes(self, ways):
         """
@@ -214,6 +213,8 @@ class OmniglotGenerator(EpisodicGenerator):
         """
         pass
 if __name__=='__main__':
+    from args import args
+
     print('Test')
     print(args.dataset)
 
@@ -237,8 +238,8 @@ if __name__=='__main__':
             num_elements_per_class = [len(feat['features']) for feat in feature]
         else: 
             num_elements_per_class = None
-        generator = Generator(args.dataset, verbose=True, num_elements_per_class=num_elements_per_class)
-        episode = generator.sample_episode(n_queries=args.few_shot_queries, ways=args.few_shot_ways, n_shots=args.few_shot_shots, unbalanced_queries=args.few_shot_unbalanced_queries)
+        generator = Generator(datasetName=args.dataset, dataset_path=args.dataset_path, num_elements_per_class=num_elements_per_class)
+        episode = generator.sample_episode(n_queries=args.few_shot_queries, ways=args.few_shot_ways, n_shots=args.few_shot_shots, unbalanced_queries=args.few_shot_unbalanced_queries, verbose=True)
         if args.test_features != '':
             shots, queries = generator.get_features_from_indices(feature, episode)
             for c in range(len(shots)):
