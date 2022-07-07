@@ -218,7 +218,7 @@ for nRun in range(args.runs):
             trainStats = train(epoch + 1, backbone, criterion, optimizer, scheduler)
             updateCSV(trainStats, epoch = epoch)
             if args.few_shot and "M" in args.feature_processing or args.save_features_prefix != "":
-                if epoch > args.skip_epochs:
+                if epoch >= args.skip_epochs:
                     features = generateFeatures(backbone, trainSet)
                     meanVector = computeMean(features)
                     if args.save_features_prefix != "":
