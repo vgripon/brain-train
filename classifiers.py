@@ -5,6 +5,8 @@
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+
 from args import args
 
 ### Logistic Regression module, which is the classic way to train deep models for classification
@@ -55,6 +57,31 @@ def ncm(shots, queries):
         total += queriesClass.shape[0]
     return score / total
 
+###  softkmeans
+def softkmeans(shots, queries):
+    T = 5
+    score, total = 0, 0
+    centroids = torch.stack([shotClass.mean(dim=0) for shotClass in shots])
+    support = centroids.clone()
+    support_size = sum([shotClass.shape[0] for shotClass in shots])
+    queriesFlat = torch.cat(queries)
+    queries_size = queriesFlat.shape[0]
+    # Compute means 
+    for i in range(30):
+        similarities = torch.cdist(queriesFlat, centroids)
+        soft_allocations = F.softmax(-similarities.pow(2)*T, dim=1)
+        soft_allocations = soft_allocations/soft_allocations.sum(dim=0, keepdim=True)
+        centroids = torch.einsum('qp,qd->pd', soft_allocations, queriesFlat)
+        centroids = support*support_size+centroids*queries_size
+        centroids /= (support_size + queries_size)
+        
+    for i, queriesClass in enumerate(queries):
+        distances = torch.cdist(queriesClass, centroids)
+        winners = distances.argmin(dim=1)
+        score += (winners == i).float().sum()
+        total += queriesClass.shape[0]
+    return score/total
+
 ### kNN
 def knn(shots, queries):
     k = int(args.few_shot_classifier[:-2])
@@ -82,7 +109,8 @@ def evalFewShotRun(shots, queries):
         search = args.few_shot_classifier.lower()
     return {
         "ncm": ncm,
-        "nn" : knn
+        "nn" : knn,
+        "softkmeans": softkmeans, 
         }[search](shots, queries)
 
 def prepareCriterion(outputDim, numClasses):
