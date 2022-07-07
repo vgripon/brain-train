@@ -8,11 +8,7 @@ import numpy as np
 import collections
 
 available_datasets = os.listdir(args.dataset_path)
-available_metadataset_datasets = []
-if 'metadatasets' in available_datasets: 
-    available_metadataset_datasets += os.listdir(os.path.join(args.dataset_path, 'metadatasets'))
 print('Available datasets:', available_datasets)
-print('Available metdataset datasets:', available_metadataset_datasets)
 
 # Read Graph for imagenet names and classes
 with open(os.path.join('datasets', 'ilsvrc_2012_dataset_spec.json'), 'r') as file:
@@ -103,7 +99,7 @@ for dataset in ['train', 'test']:
     print("Done for mnist_" + dataset + " with " + str(i+1) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
 
 ### generate data for imagenet metadatasets
-if 'ILSVRC2012_img_train' in available_metadataset_datasets:
+if 'imagenet' in available_datasets:
     # Parse Graph 
     class_folders = {k:[p['wn_id'] for p in graph['split_subgraphs'][k] if len(p['children_ids']) == 0] for k in ['TRAIN', 'TEST', 'VALID']} # Existing classes    
     # Get duplicates from other datasets which should be removed from ImageNet
@@ -113,8 +109,8 @@ if 'ILSVRC2012_img_train' in available_metadataset_datasets:
         with open(os.path.join('datasets', 'metadatasets', 'ilsvrc_2012', file), 'r') as f:
             duplicates_tmp = f.read().split('\n')
         duplicates += [p.split('#')[0].replace(' ','') for p in duplicates_tmp if len(p)>0 and p[0] not in ['#']] # parse the duplicates files
-
-    path = os.path.join('metadatasets', 'ILSVRC2012_img_train')
+    # check which file exists:
+    path = os.path.join('imagenet', 'ILSVRC2012_img_train' if os.path.exists(os.path.join(args.dataset_path, 'imagenet', 'ILSVRC2012_img_train')) else 'train')
     for dataset, folderName in [('train', 'TRAIN'), ('test', 'TEST'), ('validation','VALID')]:
         result = {"data":[], "targets":[], "name":"metadataset_imagenet_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class":[], "classIdx":{}}
         for i, classIdx in enumerate(class_folders[folderName]):
@@ -161,7 +157,7 @@ def get_data(jsonpath, image_dir):
 def read_info_fungi():
     info_sub={}
     for subset in ['train', 'val']:
-        json_path = args.dataset_path + 'metadatasets/fungi/'+subset+'.json'
+        json_path = args.dataset_path + 'fungi/'+subset+'.json'
         info_sub[subset] = split_fn(json_path)
     L_id,L_fl ,L_ida,L_ca,L_imgid,L_idc,L_name,L_sup = [],[],[],[],[],[],[],[]
     for subset in ['train', 'val']:
@@ -196,7 +192,7 @@ def get_data_fungi():
             clx = int(split['train'][index_class][:4])
             idx = np.where(np_ca==clx)[0]
             for index_image , im in enumerate(np_fl[idx]):
-                data[subset]['data'].append('/metadatasets/fungi/'+im)
+                data[subset]['data'].append('/fungi/'+im)
                 data[subset]['targets'].append(index_class)
             num_elts[subset].append([cl, index_image+1])
             data[subset]['name_classes'].append(cl)
@@ -232,7 +228,7 @@ def get_data_aircraft():
             images = dico_class[cl]
             if images != []:
                 for index_image , im in enumerate(images):
-                    data[subset]['data'].append('/metadatasets/fgvc-aircraft-2013b/data/images/'+im+'.jpg')
+                    data[subset]['data'].append('/fgvc-aircraft-2013b/data/images/'+im+'.jpg')
                     data[subset]['targets'].append(index_class)
                 num_elts[subset].append([cl, index_image+1])
                 data[subset]['name_classes'].append(cl)
@@ -242,35 +238,35 @@ def get_data_aircraft():
     return data, num_elts
 
 ##### generate data for CUB and DTD
-if 'CUB_200_2011' in available_metadataset_datasets:
-    results_cub, nb_elts_cub = get_data("./datasets/metadatasets/cub/cu_birds_splits.json", "metadatasets/CUB_200_2011/images/")
-if 'dtd' in available_metadataset_datasets:
-    results_dtd , nb_elts_dtd = get_data('./datasets/metadatasets/dtd/dtd_splits.json', 'metadatasets/dtd/images/')
-if 'fungi' in available_metadataset_datasets:
+if 'CUB_200_2011' in available_datasets:
+    results_cub, nb_elts_cub = get_data("./datasets/metadatasets/cub/cu_birds_splits.json", "CUB_200_2011/images/")
+if 'dtd' in available_datasets:
+    results_dtd , nb_elts_dtd = get_data('./datasets/metadatasets/dtd/dtd_splits.json', 'dtd/images/')
+if 'fungi' in available_datasets:
     results_fungi , nb_elts_fungi = get_data_fungi()
-if 'fgvc-aircraft-2013b' in available_metadataset_datasets:
+if 'fgvc-aircraft-2013b' in available_datasets:
     results_aircraft , nb_elts_aircraft = get_data_aircraft()
-if 'mscoco' in available_metadataset_datasets:
-    with open(args.dataset_path + 'metadatasets/mscoco/cropped_mscoco.json') as jsonFile:   #this file is obtained by running datasets/metadatasets/mscoco/RUN_ONLY_ONCE.sh (read instructions carefully)
+if 'mscoco' in available_datasets:
+    with open(args.dataset_path + 'mscoco/cropped_mscoco.json') as jsonFile:   #this file is obtained by running datasets/metadatasets/mscoco/RUN_ONLY_ONCE.sh (read instructions carefully)
         results_mscoco  = json.load(jsonFile)
         jsonFile.close()
     
 
 
 for dataset in ['train', 'test', 'validation']:
-    if 'CUB_200_2011' in available_metadataset_datasets:
+    if 'CUB_200_2011' in available_datasets:
         all_results["metadataset_cub_" + dataset] = results_cub[dataset]
         print("Done for metadataset_cub_" + dataset + " with " + str(results_cub[dataset]['num_classes']) + " classes and " + str(len(results_cub[dataset]["data"])) + " samples (" + str(len(results_cub[dataset]["targets"])) + ")")
-    if 'dtd' in available_metadataset_datasets:
+    if 'dtd' in available_datasets:
         all_results["metadataset_dtd_" + dataset] = results_dtd[dataset]
         print("Done for metadataset_dtd_" + dataset + " with " + str(results_dtd[dataset]['num_classes']) + " classes and " + str(len(results_dtd[dataset]["data"])) + " samples (" + str(len(results_dtd[dataset]["targets"])) + ")")
-    if 'fungi' in available_metadataset_datasets:
+    if 'fungi' in available_datasets:
         all_results["metadataset_fungi_" + dataset] = results_fungi[dataset]
         print("Done for metadataset_fungi_" + dataset + " with " + str(results_fungi[dataset]['num_classes']) + " classes and " + str(len(results_fungi[dataset]["data"])) + " samples (" + str(len(results_fungi[dataset]["targets"])) + ")")
-    if 'fgvc-aircraft-2013b' in available_metadataset_datasets:
+    if 'fgvc-aircraft-2013b' in available_datasets:
         all_results["metadataset_aircraft_" + dataset] = results_aircraft[dataset]
         print("Done for metadataset_aircraft_" + dataset + " with " + str(results_aircraft[dataset]['num_classes']) + " classes and " + str(len(results_aircraft[dataset]["data"])) + " samples (" + str(len(results_aircraft[dataset]["targets"])) + ")")
-    if 'mscoco' in available_metadataset_datasets and dataset != 'train':
+    if 'mscoco' in available_datasets and dataset != 'train':
         all_results["metadataset_mscoco_" + dataset] = results_mscoco[dataset]
         print("Done for metadataset_mscoco_" + dataset + " with " + str(results_mscoco[dataset]['num_classes']) + " classes and " + str(len(results_mscoco[dataset]["data"])) + " samples (" + str(len(results_mscoco[dataset]["targets"])) + ")")
 
