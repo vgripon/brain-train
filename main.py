@@ -194,7 +194,7 @@ for nRun in range(args.runs):
     print()
 
     tick = time.time()
-    best_val = 1e10
+    best_val = 1e10 if not args.few_shot else 0
     lr = args.lr
 
     nSteps = torch.min(torch.tensor([len(dataset["dataloader"]) for dataset in trainSet])).item()
