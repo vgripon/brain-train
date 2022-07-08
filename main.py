@@ -173,7 +173,7 @@ for nRun in range(args.runs):
     print("Preparing backbone... ", end='')
     backbone, outputDim = backbones.prepareBackbone()
     if args.load_backbone != "":
-        backbone = torch.load(args.load_backbone)
+        backbone.load_state_dict(torch.load(args.load_backbone))
     backbone = backbone.to(args.device)
     numParamsBackbone = torch.tensor([m.numel() for m in backbone.parameters()]).sum().item()
     print(" containing {:,} parameters.".format(numParamsBackbone))
@@ -197,7 +197,10 @@ for nRun in range(args.runs):
     best_val = 1e10 if not args.few_shot else 0
     lr = args.lr
 
-    nSteps = torch.min(torch.tensor([len(dataset["dataloader"]) for dataset in trainSet])).item()
+    try:
+        nSteps = torch.min(torch.tensor([len(dataset["dataloader"]) for dataset in trainSet])).item()
+    except:
+        nSteps = 0
 
     for epoch in range(args.epochs):
         if epoch == 0 and not args.cosine:
@@ -281,9 +284,10 @@ for nRun in range(args.runs):
     print("Run " + str(nRun+1) + "/" + str(args.runs) + " finished")
     for phase, nameSet, stats in [("Train", trainSet, allRunTrainStats), ("Validation", validationSet, allRunValidationStats),  ("Test", testSet, allRunTestStats)]:
         print(phase)
-        for dataset in range(stats.shape[1]):
-            print("\tDataset " + nameSet[dataset]["name"])
-            for stat in range(stats.shape[2]):
-                low, up = confInterval(stats[:,dataset,stat])
-                print("\t{:.3f} ±{:.3f} (conf. [{:.3f}, {:.3f}])".format(stats[:,dataset,stat].mean().item(), stats[:,dataset,stat].std().item(), low, up), end = '')
-            print()
+        if nameSet != []:
+            for dataset in range(stats.shape[1]):
+                print("\tDataset " + nameSet[dataset]["name"])
+                for stat in range(stats.shape[2]):
+                    low, up = confInterval(stats[:,dataset,stat])
+                    print("\t{:.3f} ±{:.3f} (conf. [{:.3f}, {:.3f}])".format(stats[:,dataset,stat].mean().item(), stats[:,dataset,stat].std().item(), low, up), end = '')
+                print()
