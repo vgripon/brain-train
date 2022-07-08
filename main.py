@@ -187,7 +187,10 @@ for nRun in range(args.runs):
     print(" total is {:,} parameters.".format(numParamsBackbone + numParamsCriterions))
 
     print("Preparing optimizer... ", end='')
-    parameters = list(backbone.parameters())
+    if not args.freeze_backbone:
+        parameters = list(backbone.parameters())
+    else:
+        parameters = []
     for c in criterion:
         parameters += list(c.parameters())    
     print(" done.")
