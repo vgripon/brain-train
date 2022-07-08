@@ -248,7 +248,7 @@ for nRun in range(args.runs):
             updateCSV(tempTestStats)
             if continueTest:
                 testStats = tempTestStats
-        if continueTest and args.save_backbone != "":
+        if continueTest and args.save_backbone != "" and epoch >= args.skip_epochs:
             torch.save(backbone.to("cpu").state_dict(), args.save_backbone)
             backbone.to(args.device)
         if continueTest and args.save_features_prefix != "" and epoch >= args.skip_epochs:
