@@ -9,13 +9,14 @@ from utils import *
 from dataloaders import trainSet, validationSet, testSet
 import classifiers
 import backbones
+from few_shot_evaluation import EpisodicGenerator, ImageNetGenerator, OmniglotGenerator
 print(" done.")
 
 print()
 print(args)
 print()
 
-def train(epoch, backbone, criterion, optimizer):
+def train(epoch, backbone, criterion, optimizer, scheduler):
     backbone.train()
     for c in criterion:
         c.train()
@@ -29,30 +30,36 @@ def train(epoch, backbone, criterion, optimizer):
                 batchIdx, (data, target) = next(iterators[trainingSetIdx])
                 data, target = data.to(args.device), target.to(args.device)
 
-                if args.rotations:
-                    bs = data.shape[0] // 4
-                    targetRot = torch.LongTensor(data.shape[0]).to(args.device)
-                    targetRot[:bs] = 0
-                    data[bs:] = data[bs:].transpose(3,2).flip(2)
-                    targetRot[bs:2*bs] = 1
-                    data[2*bs:] = data[2*bs:].transpose(3,2).flip(2)
-                    targetRot[2*bs:3*bs] = 2
-                    data[3*bs:] = data[3*bs:].transpose(3,2).flip(2)
-                    targetRot[3*bs:] = 3
+                for step in eval(args.steps):
+                    dataStep = data.clone()
+                    
+                    if "mixup" in step or "manifold mixup" in step:
+                        perm = torch.randperm(dataStep.shape[0])
+                        lbda = random.random()                        
 
-                if args.mixup:
-                    perm = torch.randperm(data.shape[0])
-                    lbda = random.random()
-                    data = lbda * data + (1 - lbda) * data[perm]
+                    if "rotations" in step:
+                        bs = dataStep.shape[0] // 4
+                        targetRot = torch.LongTensor(dataStep.shape[0]).to(args.device)
+                        targetRot[:bs] = 0
+                        dataStep[bs:] = dataStep[bs:].transpose(3,2).flip(2)
+                        targetRot[bs:2*bs] = 1
+                        dataStep[2*bs:] = dataStep[2*bs:].transpose(3,2).flip(2)
+                        targetRot[2*bs:3*bs] = 2
+                        dataStep[3*bs:] = dataStep[3*bs:].transpose(3,2).flip(2)
+                        targetRot[3*bs:] = 3
+                    else:
+                        targetRot = None
 
-                if not args.mixup:
-                    loss, score = criterion[trainingSetIdx](backbone(data), target, yRotations = targetRot if args.rotations else None)
-                else:
-                    loss_1, score_1 = criterion[trainingSetIdx](backbone(data), target, yRotations = targetRot if args.rotations else None)
-                    loss_2, score_2 = criterion[trainingSetIdx](backbone(data), target[perm], yRotations = targetRot if args.rotations else None)
-                    loss = lbda * loss_1 + (1 - lbda) * loss_2
-                    score = lbda * score_1 + (1 - lbda) * score_2
-                loss.backward()
+                    if "mixup" not in step and "manifold mixup" not in step:
+                        loss, score = criterion[trainingSetIdx](backbone(dataStep), target, yRotations = targetRot if "rotations" in step else None)
+                    else:                        
+                        features = backbone(dataStep, mixup = "mixup" if "mixup" in step else "manifold mixup", lbda = lbda, perm = perm)
+                        loss_1, score_1 = criterion[trainingSetIdx](features, target, yRotations = targetRot if "rotations" in step else None)
+                        loss_2, score_2 = criterion[trainingSetIdx](features, target[perm], yRotations = targetRot[perm] if "rotations" in step else None)
+                        loss = lbda * loss_1 + (1 - lbda) * loss_2
+                        score = lbda * score_1 + (1 - lbda) * score_2
+
+                    loss.backward()
 
                 losses[trainingSetIdx] += data.shape[0] * loss.item()
                 accuracies[trainingSetIdx] += data.shape[0] * score.item()
@@ -60,8 +67,8 @@ def train(epoch, backbone, criterion, optimizer):
                 finished = (batchIdx + 1) / len(trainSet[trainingSetIdx]["dataloader"])
                 text += " {:s} {:3d}% {:.3f} {:3.2f}%".format(trainSet[trainingSetIdx]["name"], round(100*finished), losses[trainingSetIdx] / total_elt[trainingSetIdx], 100 * accuracies[trainingSetIdx] / total_elt[trainingSetIdx])
             optimizer.step()
-            display("\r{:3d}".format(epoch) + text, end = '', force = finished == 1)
-
+            scheduler.step()
+            display("\r{:3d} {:.5f}".format(epoch, float(scheduler.get_last_lr()[0])) + text, end = '', force = finished == 1)
         except StopIteration:
             return torch.stack([losses / total_elt, 100 * accuracies / total_elt]).transpose(0,1)
 
@@ -87,15 +94,22 @@ def testFewShot(features, datasets = None):
     results = torch.zeros(len(features), 2)
     for i in range(len(features)):
         accs = []
+        feature = features[i]
+        if datasets is not None:
+            if 'metadataset_omniglot' in datasets[i]["name"]:
+                Generator = OmniglotGenerator
+            elif 'metadataset_imagenet' in datasets[i]["name"]:
+                Generator = ImageNetGenerator
+            else:
+                Generator = EpisodicGenerator
+        else:
+            Generator = EpisodicGenerator
+        generator = Generator(datasetName=None if datasets is None else datasets[i]["name"], num_elements_per_class= [len(feat['features']) for feat in feature], dataset_path=args.dataset_path)
         for run in range(args.few_shot_runs):
-            feature = features[i]
             shots = []
             queries = []
-            choice_classes = torch.randperm(len(feature))
-            for j in range(args.few_shot_ways):
-                choice_samples = torch.randperm(feature[choice_classes[j]]["features"].shape[0])
-                shots.append(feature[choice_classes[j]]["features"][choice_samples[:args.few_shot_shots]])
-                queries.append(feature[choice_classes[j]]["features"][choice_samples[args.few_shot_shots:args.few_shot_shots + args.few_shot_queries]])
+            episode = generator.sample_episode(ways=args.few_shot_ways, n_shots=args.few_shot_shots, n_queries=args.few_shot_queries, unbalanced_queries=args.few_shot_unbalanced_queries)
+            shots, queries = generator.get_features_from_indices(feature, episode)
             accs.append(classifiers.evalFewShotRun(shots, queries))
         accs = 100 * torch.tensor(accs)
         low, up = confInterval(accs)
@@ -105,7 +119,34 @@ def testFewShot(features, datasets = None):
             display(" {:s} {:.2f}% (±{:.2f}%)".format(datasets[i]["name"], results[i, 0], results[i, 1]), end = '', force = True)
     return results
 
+def process(featuresSet, mean):
+    for features in featuresSet:
+        if "M" in args.feature_processing:
+            for feat in features:
+                feat["features"] = feat["features"] - mean.unsqueeze(0)
+        if "E" in args.feature_processing:
+            for feat in features:
+                feat["features"] = feat["features"] / torch.norm(feat["features"], dim = 1, keepdim = True)
+    return featuresSet
+
+def computeMean(featuresSet):
+    avg = None
+    for features in featuresSet:
+        if avg == None:
+            avg = torch.cat([features[i]["features"] for i in range(len(features))]).mean(dim = 0)
+        else:
+            avg += torch.cat([features[i]["features"] for i in range(len(features))]).mean(dim = 0)
+    return avg / len(featuresSet)
+
 def generateFeatures(backbone, datasets):
+    """
+    Generate features for all datasets
+    Inputs:
+        - backbone: torch model
+        - datasets: list of datasets to generate features from, each dataset is a dictionnary following the structure in dataloaders.py
+    Returns:
+        - results:  list of results for each dataset. Format for each dataset is a list of dictionnaries: [{"name_class":str, "features": torch.Tensor} for all classes]
+    """
     backbone.eval()
     results = []
     for testSetIdx, dataset in enumerate(datasets):
@@ -125,6 +166,7 @@ if args.test_features != "":
     exit()
 
 allRunTrainStats = None
+allRunValidationStats = None
 allRunTestStats = None
 createCSV(trainSet, validationSet, testSet)
 for nRun in range(args.runs):
@@ -147,26 +189,48 @@ for nRun in range(args.runs):
     print("Preparing optimizer... ", end='')
     parameters = list(backbone.parameters())
     for c in criterion:
-        parameters += list(c.parameters())
-    optimizer = torch.optim.SGD(parameters, lr = args.lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = args.lr, weight_decay = args.weight_decay)
+        parameters += list(c.parameters())    
     print(" done.")
-
-    print("Preparing scheduler... ", end='')
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer = optimizer, milestones = eval(args.milestones), gamma = args.gamma)
-    print(" done.")
-
     print()
 
     tick = time.time()
-    best_val = 1e10
+    best_val = 1e10 if not args.few_shot else 0
+    lr = args.lr
+
+    nSteps = torch.min(torch.tensor([len(dataset["dataloader"]) for dataset in trainSet])).item()
+
     for epoch in range(args.epochs):
+        if epoch == 0 and not args.cosine:
+            optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.weight_decay)
+            if not args.cosine:
+                scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer = optimizer, milestones = [n * nSteps for n in args.milestones], gamma = args.gamma)
+        if args.cosine and (epoch in args.milestones or epoch == 0):
+            optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.weight_decay)
+            if epoch == 0:
+                interval = nSteps * args.milestones[0]
+            else:
+                index = args.milestones.index(epoch)
+                interval = nSteps * (args.milestones[index + 1] - args.milestones[index])
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimizer, T_max = interval)
+            lr = lr * args.gamma
+        
         continueTest = False
         if trainSet != []:
-            trainStats = train(epoch + 1, backbone, criterion, optimizer)
+            trainStats = train(epoch + 1, backbone, criterion, optimizer, scheduler)
             updateCSV(trainStats, epoch = epoch)
-        if validationSet != []:
+            if args.few_shot and "M" in args.feature_processing or args.save_features_prefix != "":
+                if epoch >= args.skip_epochs:
+                    features = generateFeatures(backbone, trainSet)
+                    meanVector = computeMean(features)
+                    if args.save_features_prefix != "":
+                        for i, dataset in enumerate(trainSet):
+                            torch.save(features[i], args.save_features_prefix + dataset["name"] + "_features.pt")
+            else:
+                meanVector = None
+        if validationSet != [] and epoch >= args.skip_epochs:
             if args.few_shot:
                 features = generateFeatures(backbone, validationSet)
+                features = process(features, meanVector)
                 validationStats = testFewShot(features, validationSet)
             else:
                 validationStats = test(backbone, validationSet, criterion)
@@ -174,16 +238,19 @@ for nRun in range(args.runs):
             if args.save_features_prefix != "":
                 if not args.few_shot:
                     features = generateFeatures(backbone, validationSet)
+                    meanVector = computeMean(features)
+                    features = process(features, meanVector)
                 for i, dataset in enumerate(validationSet):
                     torch.save(features[i], args.save_features_prefix + dataset["name"] + "_features.pt")
-            if validationStats[:,0].mean().item() < best_val:
+            if (validationStats[:,0].mean().item() < best_val and not args.few_shot) or (args.few_shot and validationStats[:,0].mean().item() > best_val):
                 best_val = validationStats[:,0].mean().item()
                 continueTest = True
         else:
             continueTest = True
-        if testSet != []:
+        if testSet != [] and epoch >= args.skip_epochs:
             if args.few_shot:
                 features = generateFeatures(backbone, testSet)
+                features = process(features, meanVector)
                 tempTestStats = testFewShot(features, testSet)
             else:
                 tempTestStats = test(backbone, testSet, criterion)
@@ -193,10 +260,12 @@ for nRun in range(args.runs):
                 if args.save_features_prefix != "":
                     if not args.few_shot:
                         features = generateFeatures(backbone, testSet)
+                        features = process(features, meanVector)
                     for i, dataset in enumerate(testSet):
                         torch.save(features[i], args.save_features_prefix + dataset["name"] + "_features.pt")
         if continueTest and args.save_backbone != "":
             torch.save(backbone.to("cpu").state_dict(), args.save_backbone)
+            backbone.to(args.device)
         scheduler.step()
         print(" " + timeToStr(time.time() - tick))
     if trainSet != []:
@@ -217,7 +286,7 @@ for nRun in range(args.runs):
 
     print()
     print("Run " + str(nRun+1) + "/" + str(args.runs) + " finished")
-    for phase, nameSet, stats in [("Train", trainSet, allRunTrainStats), ("Test", testSet, allRunTestStats)]:
+    for phase, nameSet, stats in [("Train", trainSet, allRunTrainStats), ("Validation", validationSet, allRunValidationStats),  ("Test", testSet, allRunTestStats)]:
         print(phase)
         for dataset in range(stats.shape[1]):
             print("\tDataset " + nameSet[dataset]["name"])

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from args import args
+import random # for manifold mixup
 
 class ConvBN2d(nn.Module):
     def __init__(self, in_f, out_f, kernel_size = 3, stride = 1, padding = 1, groups = 1, outRelu = False):
@@ -69,13 +70,25 @@ class ResNet(nn.Module):
                 lastMult = multiplier
         self.blocks = nn.ModuleList(blocks)
 
-    def forward(self, x):
+    def forward(self, x, mixup = None, lbda = None, perm = None):
+        mixup_layer = -1
+        if mixup == "mixup":
+            mixup_layer = 0
+        elif mixup == "manifold mixup":
+            mixup_layer = random.randint(0, len(self.blocks) + 1)
+        if mixup_layer == 0:
+            x = lbda * x + (1 - lbda) * x[perm]
         if x.shape[1] == 1:
             x = x.repeat(1,3,1,1)
         y = self.embed(x)
-        for block in self.blocks:
+        if mixup_layer == 1:
+            y = lbda * y + (1 - lbda) * y[perm]
+        for i, block in enumerate(self.blocks):
             y = block(y)
-        return y.mean(dim = list(range(2, len(y.shape))))
+            if mixup_layer == i + 2:
+                y = lbda * y + (1 - lbda) * y[perm]
+        y = y.mean(dim = list(range(2, len(y.shape))))
+        return y
 
 class BasicBlockRN12(nn.Module):
     def __init__(self, in_f, out_f):
@@ -101,14 +114,30 @@ class ResNet12(nn.Module):
         self.block4 = BasicBlockRN12(5 * featureMaps, 10 * featureMaps)
         self.mp = nn.MaxPool2d(2)
 
-    def forward(self, x):
+    def forward(self, x, mixup = None, lbda = None, perm = None):
+        mixup_layer = -1
+        if mixup == "mixup":
+            mixup_layer = 0
+        elif mixup == "manifold mixup":
+            mixup_layer = random.randint(0, 4)
+        if mixup_layer == 0:
+            x = lbda * x + (1 - lbda) * x[perm]
         if x.shape[1] == 1:
             x = x.repeat(1,3,1,1)
         y = self.mp(self.block1(x))
+        if mixup_layer == 1:
+            y = lbda * y + (1 - lbda) * y[perm]
         y = self.mp(self.block2(y))
+        if mixup_layer == 2:
+            y = lbda * y + (1 - lbda) * y[perm]
         y = self.mp(self.block3(y))
+        if mixup_layer == 3:
+            y = lbda * y + (1 - lbda) * y[perm]
         y = self.block4(y)
-        return y.mean(dim = list(range(2, len(y.shape))))
+        if mixup_layer == 4:
+            y = lbda * y + (1 - lbda) * y[perm]
+        y = y.mean(dim = list(range(2, len(y.shape))))
+        return y
 
 def prepareBackbone():
     large = False

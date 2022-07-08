@@ -31,7 +31,7 @@ class DataHolder():
         return self.length
 
 def dataLoader(dataholder, shuffle):
-    return torch.utils.data.DataLoader(dataholder, batch_size = args.batch_size, shuffle = shuffle, num_workers = min(8, os.cpu_count()))
+    return torch.utils.data.DataLoader(dataholder, batch_size = args.batch_size, shuffle = shuffle, num_workers = min(os.cpu_count(), 8))
 
 def cifar10(dataset):
     pytorchDataset = datasets.CIFAR10(args.dataset_path, train = dataset != "test", download = False)
@@ -97,6 +97,17 @@ def cifarfs(datasetName):
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
+def metadataset_imagenet(datasetName):
+    f = open(args.dataset_path + "datasets.json")    
+    all_datasets = json.loads(f.read())
+    f.close()
+    dataset = all_datasets["metadataset_imagenet_" + datasetName]
+    data = dataset["data"]
+    targets = dataset["targets"]
+    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), normalization])
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+
 def imagenet(dataset):
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
@@ -128,12 +139,71 @@ def fashionMnist(dataset):
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset == "train"), "name": "fashion-mnist_" + dataset, "num_classes": 10, "name_classes": pytorchDataset.classes}
 
+
+def metadataset_dtd(dataset_type):
+    f = open(args.dataset_path + "datasets.json")    
+    all_datasets = json.loads(f.read())
+    f.close()
+    dataset = all_datasets["metadataset_dtd_" + dataset_type]
+    data = dataset["data"]
+    targets = dataset["targets"]
+    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), normalization])
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'meta_dataset_dtd', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+
+
+def metadataset_cub(dataset_type):
+    f = open(args.dataset_path + "datasets.json")    
+    all_datasets = json.loads(f.read())
+    f.close()
+    dataset = all_datasets["metadataset_cub_" + dataset_type]
+    data = dataset["data"]
+    targets = dataset["targets"]
+    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224),  normalization])
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'meta_dataset_cub', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+
+
+def metadataset_fungi(dataset_type):
+    f = open(args.dataset_path + "datasets.json")    
+    all_datasets = json.loads(f.read())
+    f.close()
+    dataset = all_datasets["metadataset_fungi_" + dataset_type]
+    data = dataset["data"]
+    targets = dataset["targets"]
+    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), normalization])
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'meta_dataset_fungi', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+
+def metadataset_aircraft(dataset_type):
+    f = open(args.dataset_path + "datasets.json")    
+    all_datasets = json.loads(f.read())
+    f.close()
+    dataset = all_datasets["metadataset_aircraft_" + dataset_type]
+    data = dataset["data"]
+    targets = dataset["targets"]
+    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), normalization])
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'meta_dataset_aircraft', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+
+def metadataset_mscoco(dataset_type):
+    if dataset_type=='train':
+        return 'mscoco is not a train dataset in metadataset (see official split)'
+    f = open(args.dataset_path + "datasets.json")    
+    all_datasets = json.loads(f.read())
+    f.close()
+    dataset = all_datasets["metadataset_mscoco_" + dataset_type]
+    data = dataset["data"]
+    targets = dataset["targets"]
+    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), normalization])
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'meta_dataset_mscoco', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+
 def prepareDataLoader(name):
     if isinstance(name, str):
         name = [name]
     result = []
-    for elt in name:
-        result.append({
+    dataset_options = {
             "cifar10_train": lambda: cifar10("train"),
             "cifar10_validation": lambda: cifar10("validation"),
             "cifar10_test": lambda: cifar10("test"),
@@ -155,7 +225,28 @@ def prepareDataLoader(name):
             "cifarfs_train": lambda: cifarfs("train"),
             "cifarfs_validation": lambda: cifarfs("validation"),
             "cifarfs_test": lambda: cifarfs("test"),
-        }[elt.lower()]())
+            "metadataset_imagenet_train": lambda: metadataset_imagenet("train"),
+            "metadataset_imagenet_validation": lambda: metadataset_imagenet("validation"),
+            "metadataset_imagenet_test": lambda: metadataset_imagenet("test"),
+            "metadataset_cub_train": lambda: metadataset_cub("train"),
+            "metadataset_cub_validation": lambda: metadataset_cub("validation"),
+            "metadataset_cub_test": lambda: metadataset_cub("test"),
+            "metadataset_dtd_train": lambda: metadataset_dtd("train"),
+            "metadataset_dtd_validation": lambda: metadataset_dtd("validation"),
+            "metadataset_dtd_test": lambda: metadataset_dtd("test"),
+            "metadataset_fungi_train": lambda: metadataset_fungi("train"),
+            "metadataset_fungi_validation": lambda: metadataset_fungi("validation"),
+            "metadataset_fungi_test": lambda: metadataset_fungi("test"),
+            "metadataset_aircraft_train": lambda: metadataset_aircraft("train"),
+            "metadataset_aircraft_validation": lambda: metadataset_aircraft("validation"),
+            "metadataset_aircraft_test": lambda: metadataset_aircraft("test"),
+            "metadataset_mscoco_train": lambda: metadataset_mscoco("train"),
+            "metadataset_mscoco_validation": lambda: metadataset_mscoco("validation"),
+            "metadataset_mscoco_test": lambda: metadataset_mscoco("test"),
+        }
+    for elt in name:
+        assert elt in dataset_options.keys(), 'The chosen dataset is not existing, please provide a valid option'
+        result.append(dataset_options[elt.lower()]())
     return result
     
 if args.training_dataset != "":

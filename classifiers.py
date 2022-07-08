@@ -5,6 +5,8 @@
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+
 from args import args
 
 ### Logistic Regression module, which is the classic way to train deep models for classification
@@ -12,16 +14,15 @@ class LR(nn.Module):
     def __init__(self, inputDim, numClasses):
         super(LR, self).__init__()
         self.fc = nn.Linear(inputDim, numClasses)
-        if args.rotations:
-            self.fcRotations = nn.Linear(inputDim, 4)
-        self.criterion = nn.CrossEntropyLoss()
+        self.fcRotations = nn.Linear(inputDim, 4)
+        self.criterion = nn.CrossEntropyLoss() if args.label_smoothing == 0 else LabelSmoothingLoss(numClasses, args.label_smoothing)
 
     def forward(self, x, y, yRotations = None):
         output = self.fc(x)
         decision = output.argmax(dim = 1)
         score = (decision - y == 0).float().mean()
         loss = self.criterion(output, y)
-        if args.rotations and yRotations is not None:
+        if yRotations is not None:
             outputRotations = self.fcRotations(x)
             loss = 0.5 * loss + 0.5 * self.criterion(outputRotations, yRotations)
         return loss, score
@@ -31,20 +32,35 @@ class L2(nn.Module):
     def __init__(self, inputDim, numClasses):
         super(L2, self).__init__()
         self.centroids = torch.nn.Parameter(torch.zeros(numClasses, inputDim))
-        if args.rotations:
-            self.centroidsRotations = torch.nn.Parameter(torch.zeros(4, inputDim))
-        self.criterion = nn.CrossEntropyLoss()
+        self.centroidsRotations = torch.nn.Parameter(torch.zeros(4, inputDim))
+        self.criterion = nn.CrossEntropyLoss() if args.label_smoothing == 0 else LabelSmoothingLoss(numClasses, args.label_smoothing)
         self.numClasses = numClasses
 
     def forward(self, x, y, yRotations = None):
-        distances = -1 * torch.norm(x.unsqueeze(1) - self.centroids.unsqueeze(0), dim = 2)
+        distances = -1 * torch.pow(torch.norm(x.unsqueeze(1) - self.centroids.unsqueeze(0), dim = 2), 2)
         decisions = distances.argmax(dim = 1)
         score = (decisions - y == 0).float().mean()
         loss = self.criterion(distances, y)
-        if args.rotations and yRotations is not None:
-            distancesRotations = -1 * torch.norm(x.unsqueeze(1) - self.centroidsRotations.unsqueeze(0), dim = 2)
+        if yRotations is not None:
+            distancesRotations = -1 * torch.pow(torch.norm(x.unsqueeze(1) - self.centroidsRotations.unsqueeze(0), dim = 2),2)
             loss = 0.5 * loss + 0.5 * self.criterion(distancesRotations, yRotations)
         return loss, score
+
+class LabelSmoothingLoss(nn.Module):
+    def __init__(self, num_classes, smoothing):
+        super(LabelSmoothingLoss, self).__init__()
+        self.smoothing = smoothing
+        self.cls = num_classes
+
+    def forward(self, pred, target):
+        assert 0 <= self.smoothing < 1
+        pred = pred.log_softmax(dim=-1)
+
+        with torch.no_grad():
+            true_dist = torch.zeros_like(pred)
+            true_dist.fill_(self.smoothing / (self.cls - 1))
+            true_dist.scatter_(1, target.data.unsqueeze(1), 1 - self.smoothing)
+        return torch.mean(torch.sum(-true_dist * pred, dim=-1))
 
 ### NCM
 def ncm(shots, queries):
@@ -56,6 +72,31 @@ def ncm(shots, queries):
         score += (distances.argmin(dim = 1) - i == 0).float().sum()
         total += queriesClass.shape[0]
     return score / total
+
+###  softkmeans
+def softkmeans(shots, queries):
+    T = 5
+    score, total = 0, 0
+    centroids = torch.stack([shotClass.mean(dim=0) for shotClass in shots])
+    support = centroids.clone()
+    support_size = sum([shotClass.shape[0] for shotClass in shots])
+    queriesFlat = torch.cat(queries)
+    queries_size = queriesFlat.shape[0]
+    # Compute means 
+    for i in range(30):
+        similarities = torch.cdist(queriesFlat, centroids)
+        soft_allocations = F.softmax(-similarities.pow(2)*T, dim=1)
+        soft_allocations = soft_allocations/soft_allocations.sum(dim=0, keepdim=True)
+        centroids = torch.einsum('qp,qd->pd', soft_allocations, queriesFlat)
+        centroids = support*support_size+centroids*queries_size
+        centroids /= (support_size + queries_size)
+        
+    for i, queriesClass in enumerate(queries):
+        distances = torch.cdist(queriesClass, centroids)
+        winners = distances.argmin(dim=1)
+        score += (winners == i).float().sum()
+        total += queriesClass.shape[0]
+    return score/total
 
 ### kNN
 def knn(shots, queries):
@@ -84,7 +125,8 @@ def evalFewShotRun(shots, queries):
         search = args.few_shot_classifier.lower()
     return {
         "ncm": ncm,
-        "nn" : knn
+        "nn" : knn,
+        "softkmeans": softkmeans, 
         }[search](shots, queries)
 
 def prepareCriterion(outputDim, numClasses):

@@ -10,11 +10,14 @@ parser.add_argument("--csv", type=str, default="", help="name of csv file to wri
 parser.add_argument("--save-features-prefix", type=str, default="", help="save features of validation and test sets to hard drive, use this parameter as prefix to file names")
 parser.add_argument("--save-backbone", type=str, default="", help="save backbone to hard drive at the specified location")
 parser.add_argument("--load-backbone", type=str, default="", help="load backbone from hard drive at the specified location")
+parser.add_argument("--skip-epochs", type=int, default=0, help="number of epochs for which validation and test are ignored")
 
 ### optimizer args
 parser.add_argument("--optimizer", type=str, default="SGD", help="can be SGD or Adam")
 parser.add_argument("--lr", type=float, default=-1., help="initial learning rate, defaut to 0.1 for SGD and 0.001 for Adam")
 parser.add_argument("--wd", type=float, default=-1., help="weight decay, default to 5e-4 for SGD and 0 for Adam")
+parser.add_argument("--steps", type=str, default="[[]]", help="describe what steps during training are made of, is a list of lists containing 'rotations', 'mixup' or 'manifold mixup', for example \"[['manifold mixup'],['rotations']]\" does two steps: first with manifold mixup then with rotations as additional self-supervision. Last list is used to compute losses and scores")
+parser.add_argument("--label-smoothing", type=float, default=0, help="use label smoothing with given smoothing factor. 0 means no smoothing")
 
 ### dataloaders args
 # list of datasets, which automatically define a train, a validation and a test set
@@ -27,6 +30,7 @@ datasets = {
     "miniimagenet": ("miniimagenet_train", "miniimagenet_validation", "miniimagenet_test"),
     "tieredimagenet": ("tieredimagenet_train", "tieredimagenet_validation", "tieredimagenet_test"),
     "cifarfs": ("cifarfs_train", "cifarfs_validation", "cifarfs_test"),
+    "metadataset_imagenet": ("metadataset_imagenet_train", "metadataset_imagenet_validation", "metadataset_imagenet_test"),
 }
 
 parser.add_argument("--dataset-path", type=str, default=os.environ.get("DATASETS"), help="path to dataset files")
@@ -39,6 +43,7 @@ parser.add_argument("--test-dataset", type=str, default="", help="test dataset, 
 ### backbones parameters
 parser.add_argument("--feature-maps", type=int, default=64, help="initial number of feature maps in first embedding, used as a base downstream convolutions")
 parser.add_argument("--backbone", type=str, default="resnet18", help="backbone architecture")
+parser.add_argument("--feature-processing", type=str, default="", help="feature processing before few-shot classifiers, can contain M (remove mean of feature vectors), and E (unit sphere projection of feature vectors)")
 
 ### criterion
 parser.add_argument("--classifier", type=str, default="lr", help="define which classifier is used on top of selected backbone, can be any of lr for logistic regression, or L2 for euclidean distance regression")
@@ -47,10 +52,7 @@ parser.add_argument("--classifier", type=str, default="lr", help="define which c
 parser.add_argument("--epochs", type=int, default=350, help="total number of training epochs")
 parser.add_argument("--milestones", type=str, default="[100,200,300]", help="milestones for scheduler")
 parser.add_argument("--gamma", type=float, default=0.1, help="learning rate multiplier after each milestone")
-
-### regularizers
-parser.add_argument("--mixup", action="store_true", help="use mixup during training")
-parser.add_argument("--rotations", action="store_true", help="add rotations SSL during training")
+parser.add_argument("--cosine", action="store_true", help="use cosine annealing instead of multisteplr")
 
 ### few shot evaluation
 parser.add_argument("--few-shot", action="store_true", help="evaluation using few shot tasks")
@@ -58,6 +60,7 @@ parser.add_argument("--few-shot-runs", type=int, default=10000, help="total numb
 parser.add_argument("--few-shot-ways", type=int, default=5, help="number of classes in generated few shot tasks")
 parser.add_argument("--few-shot-shots", type=int, default=1, help="number of shots per class in generated few shot tasks")
 parser.add_argument("--few-shot-queries", type=int, default=15, help="number of query vectors per class in generated few shot tasks")
+parser.add_argument("--few-shot-unbalanced-queries", action="store_true", help="use unbalanced number of queries per class. The number of queries per class is sampled using a dirichlet distribution between 1 and the query set for all classes")
 parser.add_argument("--few-shot-classifier", type=str, default="ncm", help="classifier for few-shot runs, can be ncm or knn where k is an integer")
 parser.add_argument("--test-features", type=str, default="", help="test few-shot runs on saved features")
 
@@ -81,6 +84,10 @@ if args.wd < 0:
     args.wd = 5e-4 if args.optimizer.lower() == "sgd" else 0
 
 if isinstance(eval(args.milestones), int):
-    args.milestones = str([eval(args.milestones) * i for i in range(1, args.epochs // eval(args.milestones))])
+    args.milestones = [eval(args.milestones) * i for i in range(1, args.epochs // eval(args.milestones))]
+else:
+    args.milestones = eval(args.milestones)
+if args.epochs not in args.milestones:
+    args.milestones.append(args.epochs)
 
 print(" args,", end = '')
