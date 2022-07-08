@@ -173,7 +173,7 @@ for nRun in range(args.runs):
     print("Preparing backbone... ", end='')
     backbone, outputDim = backbones.prepareBackbone()
     if args.load_backbone != "":
-        backbone = torch.load(args.load_backbone)
+        backbone.load_state_dict(torch.load(args.load_backbone))
     backbone = backbone.to(args.device)
     numParamsBackbone = torch.tensor([m.numel() for m in backbone.parameters()]).sum().item()
     print(" containing {:,} parameters.".format(numParamsBackbone))
@@ -187,7 +187,10 @@ for nRun in range(args.runs):
     print(" total is {:,} parameters.".format(numParamsBackbone + numParamsCriterions))
 
     print("Preparing optimizer... ", end='')
-    parameters = list(backbone.parameters())
+    if not args.freeze_backbone:
+        parameters = list(backbone.parameters())
+    else:
+        parameters = []
     for c in criterion:
         parameters += list(c.parameters())    
     print(" done.")
@@ -197,7 +200,10 @@ for nRun in range(args.runs):
     best_val = 1e10 if not args.few_shot else 0
     lr = args.lr
 
-    nSteps = torch.min(torch.tensor([len(dataset["dataloader"]) for dataset in trainSet])).item()
+    try:
+        nSteps = torch.min(torch.tensor([len(dataset["dataloader"]) for dataset in trainSet])).item()
+    except:
+        nSteps = 0
 
     for epoch in range(args.epochs):
         if epoch == 0 and not args.cosine:
@@ -218,54 +224,47 @@ for nRun in range(args.runs):
         if trainSet != []:
             trainStats = train(epoch + 1, backbone, criterion, optimizer, scheduler)
             updateCSV(trainStats, epoch = epoch)
-            if args.few_shot and "M" in args.feature_processing or args.save_features_prefix != "":
+            if (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
                 if epoch >= args.skip_epochs:
-                    features = generateFeatures(backbone, trainSet)
-                    meanVector = computeMean(features)
-                    if args.save_features_prefix != "":
-                        for i, dataset in enumerate(trainSet):
-                            torch.save(features[i], args.save_features_prefix + dataset["name"] + "_features.pt")
+                    featuresTrain = generateFeatures(backbone, trainSet)
+                    meanVector = computeMean(featuresTrain)
+                    featuresTrain = process(featuresTrain, meanVector)
             else:
                 meanVector = None
         if validationSet != [] and epoch >= args.skip_epochs:
-            if args.few_shot:
-                features = generateFeatures(backbone, validationSet)
-                features = process(features, meanVector)
-                validationStats = testFewShot(features, validationSet)
+            if args.few_shot or args.save_features_prefix != "":
+                featuresValidation = generateFeatures(backbone, validationSet)
+                featuresValidation = process(featuresValidation, meanVector)
+                validationStats = testFewShot(featuresValidation, validationSet)
             else:
                 validationStats = test(backbone, validationSet, criterion)
             updateCSV(validationStats)
-            if args.save_features_prefix != "":
-                if not args.few_shot:
-                    features = generateFeatures(backbone, validationSet)
-                    meanVector = computeMean(features)
-                    features = process(features, meanVector)
-                for i, dataset in enumerate(validationSet):
-                    torch.save(features[i], args.save_features_prefix + dataset["name"] + "_features.pt")
             if (validationStats[:,0].mean().item() < best_val and not args.few_shot) or (args.few_shot and validationStats[:,0].mean().item() > best_val):
                 best_val = validationStats[:,0].mean().item()
                 continueTest = True
         else:
             continueTest = True
         if testSet != [] and epoch >= args.skip_epochs:
-            if args.few_shot:
-                features = generateFeatures(backbone, testSet)
-                features = process(features, meanVector)
-                tempTestStats = testFewShot(features, testSet)
+            if args.few_shot or args.save_features_prefix != "":
+                featuresTest = generateFeatures(backbone, testSet)
+                featuresTest = process(featuresTest, meanVector)
+                tempTestStats = testFewShot(featuresTest, testSet)
             else:
                 tempTestStats = test(backbone, testSet, criterion)
             updateCSV(tempTestStats)
             if continueTest:
                 testStats = tempTestStats
-                if args.save_features_prefix != "":
-                    if not args.few_shot:
-                        features = generateFeatures(backbone, testSet)
-                        features = process(features, meanVector)
-                    for i, dataset in enumerate(testSet):
-                        torch.save(features[i], args.save_features_prefix + dataset["name"] + "_features.pt")
-        if continueTest and args.save_backbone != "":
+        if continueTest and args.save_backbone != "" and epoch >= args.skip_epochs:
             torch.save(backbone.to("cpu").state_dict(), args.save_backbone)
             backbone.to(args.device)
+        if continueTest and args.save_features_prefix != "" and epoch >= args.skip_epochs:
+            for i, dataset in enumerate(trainSet):
+                torch.save(featuresTrain[i], args.save_features_prefix + dataset["name"] + "_features.pt")
+            for i, dataset in enumerate(validationSet):
+                torch.save(featuresValidation[i], args.save_features_prefix + dataset["name"] + "_features.pt")
+            for i, dataset in enumerate(testSet):
+                torch.save(featuresTest[i], args.save_features_prefix + dataset["name"] + "_features.pt")
+
         scheduler.step()
         print(" " + timeToStr(time.time() - tick))
     if trainSet != []:
@@ -288,9 +287,10 @@ for nRun in range(args.runs):
     print("Run " + str(nRun+1) + "/" + str(args.runs) + " finished")
     for phase, nameSet, stats in [("Train", trainSet, allRunTrainStats), ("Validation", validationSet, allRunValidationStats),  ("Test", testSet, allRunTestStats)]:
         print(phase)
-        for dataset in range(stats.shape[1]):
-            print("\tDataset " + nameSet[dataset]["name"])
-            for stat in range(stats.shape[2]):
-                low, up = confInterval(stats[:,dataset,stat])
-                print("\t{:.3f} ±{:.3f} (conf. [{:.3f}, {:.3f}])".format(stats[:,dataset,stat].mean().item(), stats[:,dataset,stat].std().item(), low, up), end = '')
-            print()
+        if nameSet != []:
+            for dataset in range(stats.shape[1]):
+                print("\tDataset " + nameSet[dataset]["name"])
+                for stat in range(stats.shape[2]):
+                    low, up = confInterval(stats[:,dataset,stat])
+                    print("\t{:.3f} ±{:.3f} (conf. [{:.3f}, {:.3f}])".format(stats[:,dataset,stat].mean().item(), stats[:,dataset,stat].std().item(), low, up), end = '')
+                print()
