@@ -251,7 +251,7 @@ for nRun in range(args.runs):
         if continueTest and args.save_backbone != "":
             torch.save(backbone.to("cpu").state_dict(), args.save_backbone)
             backbone.to(args.device)
-        if continueTest and args.save_features_prefix != "":
+        if continueTest and args.save_features_prefix != "" and epoch >= args.skip_epochs:
             for i, dataset in enumerate(trainSet):
                 torch.save(featuresTrain[i], args.save_features_prefix + dataset["name"] + "_features.pt")
             for i, dataset in enumerate(validationSet):
