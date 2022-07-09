@@ -235,11 +235,12 @@ for nRun in range(args.runs):
             if args.few_shot or args.save_features_prefix != "":
                 featuresValidation = generateFeatures(backbone, validationSet)
                 featuresValidation = process(featuresValidation, meanVector)
-                validationStats = testFewShot(featuresValidation, validationSet)
+                tempValidationStats = testFewShot(featuresValidation, validationSet)
             else:
-                validationStats = test(backbone, validationSet, criterion)
-            updateCSV(validationStats)
-            if (validationStats[:,0].mean().item() < best_val and not args.few_shot) or (args.few_shot and validationStats[:,0].mean().item() > best_val):
+                tempValidationStats = test(backbone, validationSet, criterion)
+            updateCSV(tempValidationStats)
+            if (tempValidationStats[:,0].mean().item() < best_val and not args.few_shot) or (args.few_shot and tempValidationStats[:,0].mean().item() > best_val):
+                validationStats = tempValidationStats
                 best_val = validationStats[:,0].mean().item()
                 continueTest = True
         else:
