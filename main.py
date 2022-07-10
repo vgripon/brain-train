@@ -27,6 +27,8 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
             optimizer.zero_grad()
             text = ""
             for trainingSetIdx in range(len(iterators)):
+                if args.dataset_size > 0 and total_elt[trainingSetIdx] > args.dataset_size:
+                    raise StopIteration
                 batchIdx, (data, target) = next(iterators[trainingSetIdx])
                 data, target = data.to(args.device), target.to(args.device)
 
@@ -202,6 +204,8 @@ for nRun in range(args.runs):
 
     try:
         nSteps = torch.min(torch.tensor([len(dataset["dataloader"]) for dataset in trainSet])).item()
+        if args.dataset_size > 0 and args.dataset_size // args.batch_size < nSteps:
+            nSteps = args.dataset_size // args.batch_size
     except:
         nSteps = 0
 

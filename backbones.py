@@ -10,8 +10,10 @@ class ConvBN2d(nn.Module):
         self.bn = nn.BatchNorm2d(out_f)
         self.outRelu = outRelu
 
-    def forward(self, x):
+    def forward(self, x, lbda = None, perm = None):
         y = self.bn(self.conv(x))
+        if lbda is not None:
+            y = lbda * y + (1 - lbda) * y[perm]
         if self.outRelu:
             return torch.relu(y)
         else:
@@ -24,13 +26,15 @@ class BasicBlock(nn.Module):
         self.convbn2 = ConvBN2d(out_f, out_f)
         self.shortcut = None if stride == 1 else ConvBN2d(in_f, out_f, kernel_size = 1, stride = stride, padding = 0)
 
-    def forward(self, x):
+    def forward(self, x, lbda = None, perm = None):
         y = self.convbn1(x)
         z = self.convbn2(y)
         if self.shortcut is not None:
             z += self.shortcut(x)
         else:
             z += x
+        if lbda is not None:
+            z = lbda * z + (1 - lbda) * z[perm]
         z = torch.relu(z)
         return z
 
@@ -42,7 +46,7 @@ class BottleneckBlock(nn.Module):
         self.convbn3 = ConvBN2d(out_f, 4*out_f, kernel_size = 1, padding = 0)
         self.shortcut = None if stride == 1 and in_expansion == 4 else ConvBN2d(in_expansion*in_f, 4*out_f, kernel_size = 1, stride = stride, padding = 0)
 
-    def forward(self, x):
+    def forward(self, x, lbda = None, perm = None):
         y = self.convbn1(x)
         z = self.convbn2(y)
         out = self.convbn3(z)
@@ -50,6 +54,8 @@ class BottleneckBlock(nn.Module):
             out += self.shortcut(x)
         else:
             out += x
+        if lbda is not None:
+            out = lbda * out + (1 - lbda) * out[perm]
         return torch.relu(out)
 
 
@@ -76,17 +82,23 @@ class ResNet(nn.Module):
             mixup_layer = 0
         elif mixup == "manifold mixup":
             mixup_layer = random.randint(0, len(self.blocks) + 1)
+        
         if mixup_layer == 0:
             x = lbda * x + (1 - lbda) * x[perm]
         if x.shape[1] == 1:
             x = x.repeat(1,3,1,1)
-        y = self.embed(x)
+
         if mixup_layer == 1:
-            y = lbda * y + (1 - lbda) * y[perm]
+            y = self.embed(x, lbda, perm)
+        else:
+            y = self.embed(x)
+
         for i, block in enumerate(self.blocks):
-            y = block(y)
             if mixup_layer == i + 2:
-                y = lbda * y + (1 - lbda) * y[perm]
+                y = block(y, lbda, perm)
+            else:
+                y = block(y)
+
         y = y.mean(dim = list(range(2, len(y.shape))))
         return y
 
@@ -98,11 +110,13 @@ class BasicBlockRN12(nn.Module):
         self.conv3 = ConvBN2d(out_f, out_f)
         self.sc = ConvBN2d(in_f, out_f, kernel_size = 1, padding = 0)
 
-    def forward(self, x):
+    def forward(self, x, lbda = None, perm = None):
         y = self.conv1(x)
         y = self.conv2(y)
         y = self.conv3(y)
         y += self.sc(x)
+        if lbda is not None:
+            y = lbda * y + (1 - lbda) * y[perm]
         return torch.relu(y)
         
 class ResNet12(nn.Module):
@@ -120,22 +134,32 @@ class ResNet12(nn.Module):
             mixup_layer = 0
         elif mixup == "manifold mixup":
             mixup_layer = random.randint(0, 4)
+        
         if mixup_layer == 0:
             x = lbda * x + (1 - lbda) * x[perm]
         if x.shape[1] == 1:
             x = x.repeat(1,3,1,1)
-        y = self.mp(self.block1(x))
+
         if mixup_layer == 1:
-            y = lbda * y + (1 - lbda) * y[perm]
-        y = self.mp(self.block2(y))
+            y = self.mp(self.block1(x, lbda, perm))
+        else:
+            y = self.mp(self.block1(x))
+
         if mixup_layer == 2:
-            y = lbda * y + (1 - lbda) * y[perm]
-        y = self.mp(self.block3(y))
+            y = self.mp(self.block2(y, lbda, perm))
+        else:
+            y = self.mp(self.block2(y))
+
         if mixup_layer == 3:
-            y = lbda * y + (1 - lbda) * y[perm]
-        y = self.block4(y)
+            y = self.mp(self.block3(y, lbda, perm))
+        else:
+            y = self.mp(self.block3(y))
+
         if mixup_layer == 4:
-            y = lbda * y + (1 - lbda) * y[perm]
+            y = self.block4(y, lbda, perm)
+        else:
+            y = self.block4(y)
+        
         y = y.mean(dim = list(range(2, len(y.shape))))
         return y
 

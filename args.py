@@ -40,6 +40,7 @@ parser.add_argument("--dataset", type=str, default="", help="dataset to use, can
 parser.add_argument("--training-dataset", type=str, default="", help="training dataset, overriden by --dataset")
 parser.add_argument("--validation-dataset", type=str, default="", help="validation dataset, overriden by --dataset")
 parser.add_argument("--test-dataset", type=str, default="", help="test dataset, overriden by --dataset")
+parser.add_argument("--dataset-size", type=int, default=0, help="defines a maximum of samples considered at each epoch, 0 means it is ignored")
 
 ### backbones parameters
 parser.add_argument("--feature-maps", type=int, default=64, help="initial number of feature maps in first embedding, used as a base downstream convolutions")
