@@ -13,7 +13,7 @@ parser.add_argument("--save-backbone", type=str, default="", help="save backbone
 parser.add_argument("--load-backbone", type=str, default="", help="load backbone from hard drive at the specified location")
 parser.add_argument("--freeze-backbone", action="store_true", help="freeze the backbone during training, can be useful in conjonction with load-backbone")
 parser.add_argument("--skip-epochs", type=int, default=0, help="number of epochs for which validation and test are ignored")
-parser.add_argument("--seed", type=int, default=random.randint(0, 10000000000), help="initial random seed")
+parser.add_argument("--seed", type=int, default=random.randint(0, 1000000000), help="initial random seed")
 parser.add_argument("--deterministic", action="store_true", help="force deterministic mode for cuda")
 
 ### optimizer args
