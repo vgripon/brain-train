@@ -379,6 +379,7 @@ if 'GTSRB' in available_datasets:
             result['data'].append(filename)
             result['targets'].append(class_target)
     all_results['traffic_signs_test'] = result
+    print('Done for traffic_signs_test with '+str(result['num_classes'])+' classes and '+str(np.sum(np.array(result['num_elements_per_class']))) +' samples')
 
 if 'audioset' in available_datasets:
     ### generate data for quickdraw
