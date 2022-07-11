@@ -68,8 +68,9 @@ class BottleneckBlock(nn.Module):
 
 
 class ResNet(nn.Module):
-    def __init__(self, block, blockList, featureMaps):
+    def __init__(self, block, blockList, featureMaps, poolEntry=False):
         super(ResNet, self).__init__()
+        self.poolEntry = poolEntry
         self.embed = ConvBN1d(1, featureMaps, outRelu = True)
         blocks = []
         lastMult = 1
@@ -82,6 +83,8 @@ class ResNet(nn.Module):
         self.blocks = nn.ModuleList(blocks)
 
     def forward(self, x, mixup = None, lbda = None, perm = None):
+        if self.poolEntry:
+            pass
         mixup_layer = -1
         if mixup == "mixup":
             mixup_layer = 0
@@ -123,8 +126,9 @@ class BasicBlockRN12(nn.Module):
         return torch.nn.functional.leaky_relu(y, negative_slope = 0.1)
         
 class ResNet12(nn.Module):
-    def __init__(self, featureMaps):
+    def __init__(self, featureMaps, poolEntry=False):
         super(ResNet12, self).__init__()
+        self.poolEntry = poolEntry
         self.block1 = BasicBlockRN12(1, featureMaps)
         self.block2 = BasicBlockRN12(featureMaps, int(2.5 * featureMaps))
         self.block3 = BasicBlockRN12(int(2.5 * featureMaps), 5 * featureMaps)
@@ -132,6 +136,8 @@ class ResNet12(nn.Module):
         self.mp = nn.MaxPool1d(4)
 
     def forward(self, x, mixup = None, lbda = None, perm = None):
+        if self.poolEntry:
+            pass
         mixup_layer = -1
         if mixup == "mixup":
             mixup_layer = 0
