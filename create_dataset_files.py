@@ -10,7 +10,8 @@ import scipy.io
 import tqdm
 from collections import defaultdict
 
-available_datasets = ['miniimagenetimages','GTSRB']
+
+available_datasets = os.listdir(args.dataset_path)
 print('Available datasets:', available_datasets)
 
 # Read Graph for imagenet names and classes
@@ -91,16 +92,15 @@ if 'cifar_fs' in available_datasets:
         print("Done for cifarfs_" + dataset + " with " + str(i+1) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
 
 ## generate data for mnist
-if 'MNIST' in available_datasets :
-    for dataset in ['train', 'test']:
-        result = {"data":[], "targets":[], "name":"mnist_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
-        pytorchDataset = datasets.MNIST(args.dataset_path, train = dataset != "test", download = not 'MNIST' in available_datasets) # download if not existing
-        targets = pytorchDataset.targets
-        for c in range(targets.max()):
-            result["num_elements_per_class"].append(len(torch.where(targets==c)[0]))
-        result["num_classes"] = len(result["num_elements_per_class"])+1
-        all_results['mnist_'+ dataset] = result
-        print("Done for mnist_" + dataset + " with " + str(i+1) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
+for dataset in ['train', 'test']:
+    result = {"data":[], "targets":[], "name":"mnist_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
+    pytorchDataset = datasets.MNIST(args.dataset_path, train = dataset != "test", download = not ('MNIST' in available_datasets)) # download if not existing
+    targets = pytorchDataset.targets
+    for c in range(targets.max()):
+        result["num_elements_per_class"].append(len(torch.where(targets==c)[0]))
+    result["num_classes"] = len(result["num_elements_per_class"])+1
+    all_results['mnist_'+ dataset] = result
+    print("Done for mnist_" + dataset + " with " + str(result["num_classes"]) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
 
 ### generate data for imagenet metadatasets
 if 'imagenet' in available_datasets:
