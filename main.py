@@ -1,6 +1,7 @@
 # Loading main libraries
 import torch
 import random # for mixup
+import numpy as np # for manifold mixup
 
 # Loading other files
 print("Loading local files... ", end ='')
@@ -16,6 +17,16 @@ print()
 print(args)
 print()
 
+### generate random seeds
+random.seed(args.seed)
+np.random.seed(args.seed)
+torch.manual_seed(args.seed)
+torch.cuda.manual_seed_all(args.seed)
+if args.deterministic:
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+
 def train(epoch, backbone, criterion, optimizer, scheduler):
     backbone.train()
     for c in criterion:
@@ -27,6 +38,8 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
             optimizer.zero_grad()
             text = ""
             for trainingSetIdx in range(len(iterators)):
+                if args.dataset_size > 0 and total_elt[trainingSetIdx] > args.dataset_size:
+                    raise StopIteration
                 batchIdx, (data, target) = next(iterators[trainingSetIdx])
                 data, target = data.to(args.device), target.to(args.device)
 
@@ -35,7 +48,10 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                     
                     if "mixup" in step or "manifold mixup" in step:
                         perm = torch.randperm(dataStep.shape[0])
-                        lbda = random.random()                        
+                        if "mixup" in step:
+                            lbda = random.random()
+                        else:
+                            lbda = np.random.beta(2,2)
 
                     if "rotations" in step:
                         bs = dataStep.shape[0] // 4
@@ -202,6 +218,8 @@ for nRun in range(args.runs):
 
     try:
         nSteps = torch.min(torch.tensor([len(dataset["dataloader"]) for dataset in trainSet])).item()
+        if args.dataset_size > 0 and args.dataset_size // args.batch_size < nSteps:
+            nSteps = args.dataset_size // args.batch_size
     except:
         nSteps = 0
 
@@ -235,11 +253,12 @@ for nRun in range(args.runs):
             if args.few_shot or args.save_features_prefix != "":
                 featuresValidation = generateFeatures(backbone, validationSet)
                 featuresValidation = process(featuresValidation, meanVector)
-                validationStats = testFewShot(featuresValidation, validationSet)
+                tempValidationStats = testFewShot(featuresValidation, validationSet)
             else:
-                validationStats = test(backbone, validationSet, criterion)
-            updateCSV(validationStats)
-            if (validationStats[:,0].mean().item() < best_val and not args.few_shot) or (args.few_shot and validationStats[:,0].mean().item() > best_val):
+                tempValidationStats = test(backbone, validationSet, criterion)
+            updateCSV(tempValidationStats)
+            if (tempValidationStats[:,0].mean().item() < best_val and not args.few_shot) or (args.few_shot and tempValidationStats[:,0].mean().item() > best_val):
+                validationStats = tempValidationStats
                 best_val = validationStats[:,0].mean().item()
                 continueTest = True
         else:

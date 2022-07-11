@@ -199,6 +199,54 @@ def metadataset_mscoco(dataset_type):
     trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'meta_dataset_mscoco', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
+def metadataset_vggflower(dataset_type):
+    f = open(args.dataset_path + "datasets.json")    
+    all_datasets = json.loads(f.read())
+    f.close()
+    dataset = all_datasets["metadataset_vggflower_" + dataset_type]
+    data = dataset["data"]
+    targets = dataset["targets"]
+    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalization])
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'metadataset_vggflower', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+
+
+def metadataset_quickdraw(dataset_type):
+    f = open(args.dataset_path + "datasets.json")    
+    all_datasets = json.loads(f.read())
+    f.close()
+    dataset = all_datasets["metadataset_quickdraw_" + dataset_type]
+    data = dataset["data"]
+    targets = dataset["targets"]
+    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalization])
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'metadataset_quickdraw', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+
+
+def metadataset_omniglot(dataset_type):
+    f = open(args.dataset_path + "datasets.json")    
+    all_datasets = json.loads(f.read())
+    f.close()
+    dataset = all_datasets["metadataset_omniglot_" + dataset_type]
+    data = dataset["data"]
+    targets = dataset["targets"]
+    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalization])
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'metadataset_omniglot', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+
+
+def metadataset_GTSRB(dataset_type):
+    f = open(args.dataset_path + "datasets.json")    
+    all_datasets = json.loads(f.read())
+    f.close()
+    dataset = all_datasets["metadataset_GTSRB_" + dataset_type]
+    data = dataset["data"]
+    targets = dataset["targets"]
+    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalization])
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'metadataset_GTSRB', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+
+
 def prepareDataLoader(name):
     if isinstance(name, str):
         name = [name]
@@ -246,6 +294,21 @@ def prepareDataLoader(name):
             "metadataset_mscoco_train": lambda: metadataset_mscoco("train"),
             "metadataset_mscoco_validation": lambda: metadataset_mscoco("validation"),
             "metadataset_mscoco_test": lambda: metadataset_mscoco("test"),
+            "metadataset_cub_train": lambda: metadataset_cub("train"),
+            "metadataset_cub_validation": lambda: metadataset_cub("validation"),
+            "metadataset_cub_test": lambda: metadataset_cub("test"),
+            "metadataset_omniglot_train": lambda: metadataset_omniglot("train"),
+            "metadataset_omniglot_validation": lambda: metadataset_omniglot("validation"),
+            "metadataset_omniglot_test": lambda: metadataset_omniglot("test"),
+            "metadataset_quickdraw_train": lambda: metadataset_quickdraw("train"),
+            "metadataset_quickdraw_validation": lambda: metadataset_quickdraw("validation"),
+            "metadataset_quickdraw_test": lambda: metadataset_quickdraw("test"),
+            "metadataset_vggflower_train": lambda: metadataset_vggflower("train"),
+            "metadataset_vggflower_validation": lambda: metadataset_vggflower("validation"),
+            "metadataset_vggflower_test": lambda: metadataset_vggflower("test"),
+            "metadataset_GTSRB_train": lambda: metadataset_GTSRB("train"),
+            "metadataset_GTSRB_validation": lambda: metadataset_GTSRB("validation"),
+            "metadataset_GTSRB_test": lambda: metadataset_GTSRB("test"),
         }
     for elt in name:
         assert elt in dataset_options.keys(), 'The chosen dataset is not existing, please provide a valid option'
