@@ -376,6 +376,28 @@ for dataset in ['train', 'test', 'validation']:
         all_results["metadataset_mscoco_" + dataset] = results_mscoco[dataset]
         print("Done for metadataset_mscoco_" + dataset + " with " + str(results_mscoco[dataset]['num_classes']) + " classes and " + str(len(results_mscoco[dataset]["data"])) + " samples (" + str(len(results_mscoco[dataset]["targets"])) + ")")
 
+if 'audioset' in available_datasets:
+    ### generate data for quickdraw
+    for dataset in ['train', 'test']:
+        result = {"data":[], "targets":[], "name":"audioset_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
+        path = os.path.join(args.dataset_path, 'audioset', 'audioset', 'processed', 'data', dataset)
+        class_num_tracker = {}
+        num_classes = 0
+        for filename in os.listdir(path):
+            result['data'].append(os.path.join('audioset', 'audioset', 'processed', 'data', dataset, filename))
+            targets = list(map(int, filename.replace('.pt','').split('_')[1:]))
+            result['targets'].append(targets)
+            for c in targets:
+                if c in class_num_tracker.keys():
+                    class_num_tracker[c]+=1
+                else:
+                    class_num_tracker[c] = 1
+            num_classes = max(num_classes, max(targets))
+        result['num_elements_per_class'] = list(dict(sorted(class_num_tracker.items())).values())
+        result['num_classes'] = num_classes+1
+        all_results["audioset_" + dataset] = result
+        print("Done for audioset_" + dataset + " with " + str(result['num_classes']) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
+
 f = open(args.dataset_path + "datasets.json", "w")
 f.write(json.dumps(all_results))
 f.close()

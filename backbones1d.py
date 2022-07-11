@@ -68,7 +68,7 @@ class BottleneckBlock(nn.Module):
 
 
 class ResNet(nn.Module):
-    def __init__(self, block, blockList, featureMaps, large = False):
+    def __init__(self, block, blockList, featureMaps):
         super(ResNet, self).__init__()
         self.embed = ConvBN1d(1, featureMaps, outRelu = True)
         blocks = []
@@ -166,7 +166,7 @@ class ResNet12(nn.Module):
 
 def prepareBackbone():
     return {
-        "resnet18": lambda: (ResNet(BasicBlock, [(1, 1, 1), (1, 2, 1.5), (1, 2, 2), (1, 2, 3), (1, 2, 4), (1, 2, 5), (1, 2, 6), (1, 2, 8)], args.feature_maps, large = large), 8 * args.feature_maps),
+        "resnet18": lambda: (ResNet(BasicBlock, [(1, 1, 1), (1, 2, 1.5), (1, 2, 2), (1, 2, 3), (1, 2, 4), (1, 2, 5), (1, 2, 6), (1, 2, 8)], args.feature_maps), 8 * args.feature_maps),
         # "resnet20": lambda: (ResNet(BasicBlock, [(3, 1, 1), (3, 2, 2), (3, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
         # "resnet56": lambda: (ResNet(BasicBlock, [(9, 1, 1), (9, 2, 2), (9, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
         # "resnet110": lambda: (ResNet(BasicBlock, [(18, 1, 1), (18, 2, 2), (18, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
