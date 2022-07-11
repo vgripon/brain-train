@@ -252,8 +252,12 @@ def audioset(datasetName):
     def randcrop(tensor):
         freq = 32000
         N = tensor.size(0)
-        i = random.randint(0,N*2//freq-2)
+        if N*2//freq-2>0:
+            i = random.randint(0,N*2//freq-2)
+        else:
+            i = 0
         return tensor[i*freq//2:(i+2)*freq//2]
+
     f = open(args.dataset_path + "datasets.json")    
     all_datasets = json.loads(f.read())
     f.close()
