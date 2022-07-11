@@ -4,18 +4,26 @@ from args import args
 import random # for manifold mixup
 
 class ConvBN2d(nn.Module):
-    def __init__(self, in_f, out_f, kernel_size = 3, stride = 1, padding = 1, groups = 1, outRelu = False):
+    def __init__(self, in_f, out_f, kernel_size = 3, stride = 1, padding = 1, groups = 1, outRelu = False, leaky = False):
         super(ConvBN2d, self).__init__()
         self.conv = nn.Conv2d(in_f, out_f, kernel_size = kernel_size, stride = stride, padding = padding, groups = groups, bias = False)
         self.bn = nn.BatchNorm2d(out_f)
         self.outRelu = outRelu
+        self.leaky = leaky
+        if leaky:
+            nn.init.kaiming_normal_(self.conv.weight, mode='fan_out', nonlinearity='leaky_relu')
+            nn.init.constant_(self.bn.weight, 1)
+            nn.init.constant_(self.bn.bias, 0)
 
     def forward(self, x, lbda = None, perm = None):
         y = self.bn(self.conv(x))
         if lbda is not None:
             y = lbda * y + (1 - lbda) * y[perm]
         if self.outRelu:
-            return torch.relu(y)
+            if not self.leaky:
+                return torch.relu(y)
+            else:
+                return torch.leaky_relu(y, negative_slope = 0.1)
         else:
             return y
 
@@ -105,8 +113,8 @@ class ResNet(nn.Module):
 class BasicBlockRN12(nn.Module):
     def __init__(self, in_f, out_f):
         super(BasicBlockRN12, self).__init__()
-        self.conv1 = ConvBN2d(in_f, out_f, outRelu = True)
-        self.conv2 = ConvBN2d(out_f, out_f, outRelu = True)
+        self.conv1 = ConvBN2d(in_f, out_f, outRelu = True, leaky = True)
+        self.conv2 = ConvBN2d(out_f, out_f, outRelu = True, leaky = True)
         self.conv3 = ConvBN2d(out_f, out_f)
         self.sc = ConvBN2d(in_f, out_f, kernel_size = 1, padding = 0)
 
@@ -117,7 +125,7 @@ class BasicBlockRN12(nn.Module):
         y += self.sc(x)
         if lbda is not None:
             y = lbda * y + (1 - lbda) * y[perm]
-        return torch.relu(y)
+        return torch.leaky_relu(y, negative_slope = 0.1)
         
 class ResNet12(nn.Module):
     def __init__(self, featureMaps):
@@ -156,9 +164,9 @@ class ResNet12(nn.Module):
             y = self.mp(self.block3(y))
 
         if mixup_layer == 4:
-            y = self.block4(y, lbda, perm)
+            y = self.mp(self.block4(y, lbda, perm))
         else:
-            y = self.block4(y)
+            y = self.mp(self.block4(y))
         
         y = y.mean(dim = list(range(2, len(y.shape))))
         return y

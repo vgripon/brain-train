@@ -1,6 +1,7 @@
 # Loading main libraries
 import torch
 import random # for mixup
+import numpy as np # for manifold mixup
 
 # Loading other files
 print("Loading local files... ", end ='')
@@ -37,7 +38,10 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                     
                     if "mixup" in step or "manifold mixup" in step:
                         perm = torch.randperm(dataStep.shape[0])
-                        lbda = random.random()                        
+                        if "mixup" in step:
+                            lbda = random.random()
+                        else:
+                            lbda = np.random.beta(2,2)
 
                     if "rotations" in step:
                         bs = dataStep.shape[0] // 4
