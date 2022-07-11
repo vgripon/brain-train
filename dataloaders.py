@@ -237,16 +237,16 @@ def metadataset_omniglot(dataset_type):
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'metadataset_omniglot', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 
-def metadataset_GTSRB(dataset_type):
+def metadataset_traffic_signs(dataset_type):
     f = open(args.dataset_path + "datasets.json")    
     all_datasets = json.loads(f.read())
     f.close()
-    dataset = all_datasets["metadataset_GTSRB_" + dataset_type]
+    dataset = all_datasets["metadataset_traffic_signs_" + dataset_type]
     data = dataset["data"]
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalization])
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'metadataset_GTSRB', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'metadataset_traffic_signs', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def audioset(datasetName):
     def randcrop(tensor):
@@ -331,9 +331,9 @@ def prepareDataLoader(name):
             "metadataset_vggflower_train": lambda: metadataset_vggflower("train"),
             "metadataset_vggflower_validation": lambda: metadataset_vggflower("validation"),
             "metadataset_vggflower_test": lambda: metadataset_vggflower("test"),
-            "metadataset_GTSRB_train": lambda: metadataset_GTSRB("train"),
-            "metadataset_GTSRB_validation": lambda: metadataset_GTSRB("validation"),
-            "metadataset_GTSRB_test": lambda: metadataset_GTSRB("test"),
+            "metadataset_traffic_signs_train": lambda: metadataset_traffic_signs("train"),
+            "metadataset_traffic_signs_validation": lambda: metadataset_traffic_signs("validation"),
+            "metadataset_traffic_signs_test": lambda: metadataset_traffic_signs("test"),
             "audioset_train":lambda: audioset("train"),
             "audioset_test":lambda: audioset("test"), 
         }
