@@ -10,6 +10,7 @@ from utils import *
 from dataloaders import trainSet, validationSet, testSet
 import classifiers
 import backbones
+import backbones1d
 from few_shot_evaluation import EpisodicGenerator, ImageNetGenerator, OmniglotGenerator
 print(" done.")
 
@@ -187,7 +188,10 @@ allRunTestStats = None
 createCSV(trainSet, validationSet, testSet)
 for nRun in range(args.runs):
     print("Preparing backbone... ", end='')
-    backbone, outputDim = backbones.prepareBackbone()
+    if args.audio:
+        backbone, outputDim = backbones1d.prepareBackbone()
+    else:
+        backbone, outputDim = backbones.prepareBackbone()
     if args.load_backbone != "":
         backbone.load_state_dict(torch.load(args.load_backbone))
     backbone = backbone.to(args.device)
