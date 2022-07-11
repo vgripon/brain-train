@@ -12,7 +12,7 @@ from utils import *
 
 ### first define dataholder, which will be used as an argument to dataloaders
 class DataHolder():
-    def __init__(self, data, targets, transforms):
+    def __init__(self, data, targets, transforms, target_transforms=lambda x:x, opener=lambda x: transforms.ToTensor()(np.array(Image.open(x).convert('RGB')))):
         self.data = data
         if torch.is_tensor(data):
             self.length = data.shape[0]
@@ -21,12 +21,14 @@ class DataHolder():
         self.targets = targets
         assert(self.length == len(targets))
         self.transforms = transforms
+        self.target_transforms = target_transforms
+        self.opener = opener
     def __getitem__(self, idx):
         if isinstance(self.data[idx], str):
-            elt = transforms.ToTensor()(np.array(Image.open(args.dataset_path + self.data[idx]).convert('RGB')))
+            elt = self.opener(args.dataset_path + self.data[idx])
         else:
             elt = self.data[idx]
-        return self.transforms(elt), self.targets[idx]
+        return self.transforms(elt), self.target_transforms(self.targets[idx])
     def __len__(self):
         return self.length
 
@@ -246,6 +248,20 @@ def metadataset_GTSRB(dataset_type):
     trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'metadataset_GTSRB', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
+def audioset(datasetName):
+    f = open(args.dataset_path + "datasets.json")    
+    all_datasets = json.loads(f.read())
+    f.close()
+    dataset = all_datasets["audioset_" + datasetName]
+    data = dataset["data"]
+    targets = dataset["targets"]
+    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    trans = transforms.Compose([normalization])
+    target_trans = lambda x: torch.zeros(dataset['num_classes']).scatter_(0,torch.Tensor(x).long(), 1.)
+    opener = lambda x: torch.load(x, map_location='cpu')
+
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans, target_transforms=target_trans, opener=opener), shuffle = dataset == "train"), "name":'audioset'+datasetName, "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+
 
 def prepareDataLoader(name):
     if isinstance(name, str):
@@ -309,6 +325,8 @@ def prepareDataLoader(name):
             "metadataset_GTSRB_train": lambda: metadataset_GTSRB("train"),
             "metadataset_GTSRB_validation": lambda: metadataset_GTSRB("validation"),
             "metadataset_GTSRB_test": lambda: metadataset_GTSRB("test"),
+            "audioset_train":lambda: audioset("train"),
+            "audioset_test":lambda: audioset("test"), 
         }
     for elt in name:
         assert elt in dataset_options.keys(), 'The chosen dataset is not existing, please provide a valid option'
