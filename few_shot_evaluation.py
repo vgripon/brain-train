@@ -108,25 +108,16 @@ class EpisodicGenerator():
 
         return {'choice_classes':choice_classes, 'shots_idx':shots_idx, 'queries_idx':queries_idx}
 
-    def get_features_from_indices(self, features, episode, validation=False):
+    def get_features_from_indices(self, features, episode):
         """
         Get features from a list of all features and from a dictonnary describing an episode
         """
         choice_classes, shots_idx, queries_idx = episode['choice_classes'], episode['shots_idx'], episode['queries_idx']
-        if validation : 
-            validation_idx = episode['validations_idx']
-            val = []
         shots, queries = [], []
         for i, c in enumerate(choice_classes):
             shots.append(features[c]['features'][shots_idx[i]])
             queries.append(features[c]['features'][queries_idx[i]])
-            if validation : 
-                val.append(features[c]['features'][validation_idx[i]])
-        if validation:
-            return shots, queries, val
-        else:
-            return shots, queries
-        
+        return shots, queries
 
     def convert_prob_to_samples(self, prob, q_shot):
         """
@@ -217,10 +208,10 @@ class OmniglotGenerator(EpisodicGenerator):
         super().__init__(**kwargs)
 
     def select_classes(self, ways):
-        """
-        Different protocol for Omniglot
-        """
-        pass
+        superclass_id = torch.randint(self.dataset['num_superclasses'],(1,1)).reshape(-1)
+        classes_ids = self.dataset['classes_per_superclass'][superclass_id]
+        num_sampled_classes = torch.randint(5,min(len(classes_ids),50),(1,1)).reshape(-1)
+        return classes_ids[torch.randperm(len(classes_ids))[:num_sampled_classes]]
 if __name__=='__main__':
     from args import args
 

@@ -23,7 +23,7 @@ for subset in graph['split_subgraphs'].values():
         if len(entity['children_ids']) == 0:
             imagenet_class_names[entity['wn_id']] = entity['words']
 
-all_results = {}
+all_results = defaultdict(dict)
 
 ### generate data for miniimagenet
 if 'miniimagenetimages' in available_datasets:
@@ -259,12 +259,13 @@ if 'mscoco' in available_datasets:
 with open("./datasets/metadatasets/omniglot/"+"omniglot_dataset_spec.json") as jsonFile:
         split = json.load(jsonFile)
         jsonFile.close()
-all_results = defaultdict(dict)
+
 
 superclass_count = 0
-class_count = 0
+
 
 for splitName,dataset in [("TRAIN","train"),("VALID","validation"),("TEST","test")]:
+    class_count = 0
     result = {"data":[], "targets":[], "name":"omniglot_" + dataset, "num_classes":0, "name_classes":[], "num_superclasses":0, "classes_per_superclass":defaultdict(list), "num_elements_per_class": []}
     for superclass_id in range(superclass_count,superclass_count+split["superclasses_per_split"][splitName]):
         result['num_superclasses'] = split["superclasses_per_split"][splitName]
@@ -295,7 +296,6 @@ with open('./datasets/metadatasets/vgg_flower/'+"vgg_flower_splits.json") as jso
         split = json.load(jsonFile)
         jsonFile.close()
 split_rev = defaultdict(str)
-all_results = defaultdict(dict)
 for dataset,splitName in [("train","train"),("validation","valid"),("test","test")]:
     all_results["vgg_flower_"+dataset] = {"data":[], "targets":[], "name":"vgg_flower_" + dataset, "num_classes":0, "name_classes":[], "dataset_targets":defaultdict(int), "num_elements_per_class":[]}
     for class_name in split[splitName]:
@@ -322,7 +322,6 @@ all_samples_path = args.dataset_path + "quickdraw/"+'all_samples/'
 with open("./datasets/metadatasets/quickdraw/"+"quickdraw_splits.json") as jsonFile:
         split = json.load(jsonFile)
         jsonFile.close()
-all_results = defaultdict(dict)
 for dataset,splitName in [("train","train"),("validation","valid"),("test","test")]:
     class_count = 0
     directories = os.listdir(args.dataset_path + "quickdraw/")
@@ -347,7 +346,6 @@ for dataset,splitName in [("train","train"),("validation","valid"),("test","test
 with open('./datasets/metadatasets/traffic_sign/'+"traffic_sign_splits.json") as jsonFile:
         split = json.load(jsonFile)
         jsonFile.close()
-all_results = defaultdict(dict)
 dataset = 'test'
 directories = sorted(os.listdir(args.dataset_path + "GTSRB/Final_Training/Images/"))
 result = {"data":[], "targets":[], "name":"traffic_sign_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
