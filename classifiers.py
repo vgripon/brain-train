@@ -27,6 +27,25 @@ class LR(nn.Module):
             loss = 0.5 * loss + 0.5 * self.criterion(outputRotations, yRotations)
         return loss, score
 
+### MultiLabel BCE
+class MultiLabelBCE(nn.Module):
+    def __init__(self, inputDim, numClasses):
+        super(MultiLabelBCE, self).__init__()
+        self.fc = nn.Linear(inputDim, numClasses)
+        self.criterion = nn.BCEWithLogitsLoss() 
+
+    def forward(self, x, y, yRotations = None):
+        output = self.fc(x)
+        score = 0.
+        for b in range(args.batch_size):
+            decision = output[b].argsort(dim=0)[-y[b].sum().int():]
+            gt = torch.where(y[b]==1)[0]
+            score += sum([t in gt for t in decision])
+        score /= y.sum()
+        loss = self.criterion(output, y)
+        return loss, score
+
+
 ### with Euclidean distance
 class L2(nn.Module):
     def __init__(self, inputDim, numClasses):
@@ -132,7 +151,8 @@ def evalFewShotRun(shots, queries):
 def prepareCriterion(outputDim, numClasses):
     return {
         "lr": lambda: LR(outputDim, numClasses),
-        "l2": lambda: L2(outputDim, numClasses)
+        "l2": lambda: L2(outputDim, numClasses), 
+        'multilabelbce': lambda : MultiLabelBCE(outputDim, numClasses), 
         }[args.classifier.lower()]()
 
 print(" classifiers,", end="")
