@@ -9,7 +9,6 @@ import json
 import numpy as np
 from PIL import Image
 from utils import *
-
 ### first define dataholder, which will be used as an argument to dataloaders
 class DataHolder():
     def __init__(self, data, targets, transforms, target_transforms=lambda x:x, opener=lambda x: transforms.ToTensor()(np.array(Image.open(x).convert('RGB')))):
@@ -256,11 +255,11 @@ def audioset(datasetName):
     data = dataset["data"]
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    trans = transforms.Compose([normalization])
+    trans = lambda x : x
     target_trans = lambda x: torch.zeros(dataset['num_classes']).scatter_(0,torch.Tensor(x).long(), 1.)
     opener = lambda x: torch.load(x, map_location='cpu')
 
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans, target_transforms=target_trans, opener=opener), shuffle = dataset == "train"), "name":'audioset'+datasetName, "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans, target_transforms=target_trans, opener=opener), shuffle = datasetName == "train"), "name":'audioset'+datasetName, "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 
 def prepareDataLoader(name):
