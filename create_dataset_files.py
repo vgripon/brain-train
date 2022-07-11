@@ -361,7 +361,7 @@ if 'quickdraw' in available_datasets:
 
 
 ### generate data for traffic_sign
-if 'traffic_signs' in available_datasets:
+if 'GTSRB' in available_datasets:
     with open('./datasets/metadatasets/traffic_signs/'+"traffic_sign_splits.json") as jsonFile:
             split = json.load(jsonFile)
             jsonFile.close()
