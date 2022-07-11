@@ -17,6 +17,16 @@ print()
 print(args)
 print()
 
+### generate random seeds
+random.seed(args.seed)
+np.random.seed(args.seed)
+torch.manual_seed(args.seed)
+torch.cuda.manual_seed_all(args.seed)
+if args.deterministic:
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+
 def train(epoch, backbone, criterion, optimizer, scheduler):
     backbone.train()
     for c in criterion:

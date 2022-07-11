@@ -23,7 +23,7 @@ class ConvBN2d(nn.Module):
             if not self.leaky:
                 return torch.relu(y)
             else:
-                return torch.leaky_relu(y, negative_slope = 0.1)
+                return torch.nn.functional.leaky_relu(y, negative_slope = 0.1)
         else:
             return y
 
@@ -125,7 +125,7 @@ class BasicBlockRN12(nn.Module):
         y += self.sc(x)
         if lbda is not None:
             y = lbda * y + (1 - lbda) * y[perm]
-        return torch.leaky_relu(y, negative_slope = 0.1)
+        return torch.nn.functional.leaky_relu(y, negative_slope = 0.1)
         
 class ResNet12(nn.Module):
     def __init__(self, featureMaps):
