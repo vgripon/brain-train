@@ -142,11 +142,12 @@ def evalFewShotRun(shots, queries):
         search = "nn"
     else:
         search = args.few_shot_classifier.lower()
-    return {
-        "ncm": ncm,
-        "nn" : knn,
-        "softkmeans": softkmeans, 
-        }[search](shots, queries)
+    with torch.no_grad():
+        return {
+            "ncm": ncm,
+            "nn" : knn,
+            "softkmeans": softkmeans, 
+            }[search](shots, queries)
 
 def prepareCriterion(outputDim, numClasses):
     return {
