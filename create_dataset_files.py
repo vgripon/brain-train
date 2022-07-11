@@ -262,9 +262,10 @@ with open("./datasets/metadatasets/omniglot/"+"omniglot_dataset_spec.json") as j
 all_results = defaultdict(dict)
 
 superclass_count = 0
-class_count = 0
+
 
 for splitName,dataset in [("TRAIN","train"),("VALID","validation"),("TEST","test")]:
+    class_count = 0
     result = {"data":[], "targets":[], "name":"omniglot_" + dataset, "num_classes":0, "name_classes":[], "num_superclasses":0, "classes_per_superclass":defaultdict(list), "num_elements_per_class": []}
     for superclass_id in range(superclass_count,superclass_count+split["superclasses_per_split"][splitName]):
         result['num_superclasses'] = split["superclasses_per_split"][splitName]
