@@ -10,7 +10,7 @@ import scipy.io
 import tqdm
 from collections import defaultdict
 
-available_datasets = os.listdir(args.dataset_path)
+available_datasets = ['miniimagenetimages','GTSRB']
 print('Available datasets:', available_datasets)
 
 # Read Graph for imagenet names and classes
@@ -91,15 +91,16 @@ if 'cifar_fs' in available_datasets:
         print("Done for cifarfs_" + dataset + " with " + str(i+1) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
 
 ## generate data for mnist
-for dataset in ['train', 'test']:
-    result = {"data":[], "targets":[], "name":"mnist_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
-    pytorchDataset = datasets.MNIST(args.dataset_path, train = dataset != "test", download = not 'MNIST' in available_datasets) # download if not existing
-    targets = pytorchDataset.targets
-    for c in range(targets.max()):
-        result["num_elements_per_class"].append(len(torch.where(targets==c)[0]))
-    result["num_classes"] = len(result["num_elements_per_class"])+1
-    all_results['mnist_'+ dataset] = result
-    print("Done for mnist_" + dataset + " with " + str(i+1) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
+if 'MNIST' in available_datasets :
+    for dataset in ['train', 'test']:
+        result = {"data":[], "targets":[], "name":"mnist_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
+        pytorchDataset = datasets.MNIST(args.dataset_path, train = dataset != "test", download = not 'MNIST' in available_datasets) # download if not existing
+        targets = pytorchDataset.targets
+        for c in range(targets.max()):
+            result["num_elements_per_class"].append(len(torch.where(targets==c)[0]))
+        result["num_classes"] = len(result["num_elements_per_class"])+1
+        all_results['mnist_'+ dataset] = result
+        print("Done for mnist_" + dataset + " with " + str(i+1) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
 
 ### generate data for imagenet metadatasets
 if 'imagenet' in available_datasets:
@@ -366,7 +367,7 @@ if 'GTSRB' in available_datasets:
             jsonFile.close()
     dataset = 'test'
     directories = sorted(os.listdir(args.dataset_path + "GTSRB/Final_Training/Images/"))
-    result = {"data":[], "targets":[], "name":"traffic_sign_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
+    result = {"data":[], "targets":[], "name":"traffic_signs_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
     for class_dir in directories:
         filenames = os.listdir(args.dataset_path + "GTSRB/Final_Training/Images/"+class_dir)
         class_target = int(class_dir)
@@ -376,7 +377,7 @@ if 'GTSRB' in available_datasets:
         for filename in filenames:
             result['data'].append(filename)
             result['targets'].append(class_target)
-
+    all_results['traffic_signs_test'] = result
 
 f = open(args.dataset_path + "datasets.json", "w")
 f.write(json.dumps(all_results))
