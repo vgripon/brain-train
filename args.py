@@ -35,8 +35,13 @@ datasets = {
     "tieredimagenet": ("tieredimagenet_train", "tieredimagenet_validation", "tieredimagenet_test"),
     "cifarfs": ("cifarfs_train", "cifarfs_validation", "cifarfs_test"),
     "metadataset_imagenet": ("metadataset_imagenet_train", "metadataset_imagenet_validation", "metadataset_imagenet_test"),
+    "metadataset_vgg_flower":("metadataset_vgg_flower_train", "metadataset_vgg_flower_validation", "metadataset_vgg_flower_test"),
+    "metadataset_quickdraw":("metadataset_quickdraw_train", "metadataset_quickdraw_validation", "metadataset_quickdraw_test"),
+    "metadataset_omniglot":("metadataset_omniglot_train", "metadataset_omniglot_validation", "metadataset_omniglot_test"),
+    "metadataset_traffic_signs":("metadataset_traffic_signs_test"),
     "audioset": ("audioset_train", "", "audioset_test"),
 }
+
 
 parser.add_argument("--dataset-path", type=str, default=os.environ.get("DATASETS"), help="path to dataset files")
 parser.add_argument("--batch-size", type=int, default=64, help="batch size")

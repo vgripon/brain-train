@@ -303,7 +303,7 @@ if 'omniglot' in available_datasets:
                     result['targets'].append(class_count)
                 class_count += 1
         superclass_count += split["superclasses_per_split"][splitName]
-        all_results["omniglot_" + dataset] = result
+        all_results["metadataset_omniglot_" + dataset] = result
         print("Done for omniglot " + dataset + " with " + str(result['num_classes']) + " classes ")
 
 
@@ -315,25 +315,25 @@ if 'vgg_flower' in available_datasets:
             jsonFile.close()
     split_rev = defaultdict(str)
     for dataset,splitName in [("train","train"),("validation","valid"),("test","test")]:
-        all_results["vgg_flower_"+dataset] = {"data":[], "targets":[], "name":"vgg_flower_" + dataset, "num_classes":0, "name_classes":[], "dataset_targets":defaultdict(int), "num_elements_per_class":[]}
+        all_results["metadataset_vgg_flower_"+dataset] = {"data":[], "targets":[], "name":"vgg_flower_" + dataset, "num_classes":0, "name_classes":[], "dataset_targets":defaultdict(int), "num_elements_per_class":[]}
         for class_name in split[splitName]:
             split_rev[int(class_name[:3])] = dataset
-            all_results["vgg_flower_"+dataset]['dataset_targets'][int(class_name[:3])] = all_results["vgg_flower_"+dataset]['num_classes']
-            all_results["vgg_flower_"+dataset]['name_classes'].append(class_name)
-            all_results["vgg_flower_"+dataset]['num_classes']+=1
-        print("Initialized for Vgg Flower " + dataset + " with " + str(all_results["vgg_flower_"+dataset]['num_classes']) + " classes" )
+            all_results["metadataset_vgg_flower_"+dataset]['dataset_targets'][int(class_name[:3])] = all_results["metadataset_vgg_flower_"+dataset]['num_classes']
+            all_results["metadataset_vgg_flower_"+dataset]['name_classes'].append(class_name)
+            all_results["metadataset_vgg_flower_"+dataset]['num_classes']+=1
+        print("Initialized for Vgg Flower " + dataset + " with " + str(all_results["metadataset_vgg_flower_"+dataset]['num_classes']) + " classes" )
 
     for fileName in sorted(os.listdir(args.dataset_path + "vgg_flower/" + 'jpg')):
         label = int(labels[int(fileName[7:11])-1])
         dataset = split_rev[label]
-        all_results["vgg_flower_"+dataset]['data'].append(fileName)
-        all_results["vgg_flower_"+dataset]['targets'].append(all_results["vgg_flower_"+dataset]['dataset_targets'][label])
+        all_results["metadataset_vgg_flower_"+dataset]['data'].append(fileName)
+        all_results["metadataset_vgg_flower_"+dataset]['targets'].append(all_results["metadataset_vgg_flower_"+dataset]['dataset_targets'][label])
 
     for dataset in ['train','validation','test']:
-        all_results["vgg_flower_"+dataset]['num_elements_per_class']=all_results["vgg_flower_"+dataset]['num_classes']*[0]
-        for i in all_results["vgg_flower_"+dataset]['targets']:
-            all_results["vgg_flower_"+dataset]['num_elements_per_class'][i]+= 1    
-        print("Done for Vgg Flower " + dataset + " with " + str(all_results["vgg_flower_"+dataset]['num_classes']) + " classes ")
+        all_results["metadataset_vgg_flower_"+dataset]['num_elements_per_class']=all_results["metadataset_vgg_flower_"+dataset]['num_classes']*[0]
+        for i in all_results["metadataset_vgg_flower_"+dataset]['targets']:
+            all_results["metadataset_vgg_flower_"+dataset]['num_elements_per_class'][i]+= 1    
+        print("Done for Vgg Flower " + dataset + " with " + str(all_results["metadataset_vgg_flower_"+dataset]['num_classes']) + " classes ")
 
 ### generate data for quickdraw
 if 'quickdraw' in available_datasets:
@@ -356,7 +356,7 @@ if 'quickdraw' in available_datasets:
                 result['data'].append(sample_path)
                 result['targets'].append(class_count)
             class_count += 1
-        all_results["quickdraw_" + dataset] = result
+        all_results["metadataset_quickdraw_" + dataset] = result
         print("Done for quickdraw " + dataset + " with " + str(result['num_classes']) + " classes ")
 
 
@@ -378,7 +378,7 @@ if 'GTSRB' in available_datasets:
         for filename in filenames:
             result['data'].append(filename)
             result['targets'].append(class_target)
-    all_results['traffic_signs_test'] = result
+    all_results['metadataset_traffic_signs_test'] = result
     print('Done for traffic_signs_test with '+str(result['num_classes'])+' classes and '+str(np.sum(np.array(result['num_elements_per_class']))) +' samples')
 
 if 'audioset' in available_datasets:
