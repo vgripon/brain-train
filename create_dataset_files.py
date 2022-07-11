@@ -5,7 +5,10 @@ import os
 from torchvision import transforms, datasets
 import torch 
 import numpy as np
-import collections
+from PIL import Image
+import scipy.io
+import tqdm
+from collections import defaultdict
 
 available_datasets = os.listdir(args.dataset_path)
 print('Available datasets:', available_datasets)
@@ -208,7 +211,7 @@ def get_images_class_aircraft():
     images = [x[0] for x in couples]
     classes = [x[1][:-1] for x in couples]
     dico_class = {}
-    dico_class = collections.defaultdict(list)
+    dico_class = defaultdict(list)
     for i ,x in enumerate(images):
         cl = classes[i]
         dico_class[cl].append(x)
@@ -252,6 +255,111 @@ if 'mscoco' in available_datasets:
         jsonFile.close()
     
 
+# generate data for omniglot
+with open("./datasets/metadatasets/omniglot/"+"omniglot_dataset_spec.json") as jsonFile:
+        split = json.load(jsonFile)
+        jsonFile.close()
+all_results = defaultdict(dict)
+
+superclass_count = 0
+class_count = 0
+
+for splitName,dataset in [("TRAIN","train"),("VALID","validation"),("TEST","test")]:
+    result = {"data":[], "targets":[], "name":"omniglot_" + dataset, "num_classes":0, "name_classes":[], "num_superclasses":0, "classes_per_superclass":defaultdict(list), "num_elements_per_class": []}
+    for superclass_id in range(superclass_count,superclass_count+split["superclasses_per_split"][splitName]):
+        result['num_superclasses'] = split["superclasses_per_split"][splitName]
+        superclass_name = split["superclass_names"][str(superclass_id)]
+
+        superclass_path = args.dataset_path + "omniglot/images_background/"+superclass_name+'/' 
+        if dataset=='test':
+            superclass_path = args.dataset_path + "omniglot/images_evaluation/"+superclass_name+'/'
+        for class_name in os.listdir(superclass_path):
+            result['classes_per_superclass'][superclass_id-superclass_count].append(class_count)
+            class_path = superclass_path+class_name+'/'
+            result['num_classes'] +=1
+            result['name_classes'].append(superclass_name+'-'+class_name)
+            result['num_elements_per_class'].append(len(os.listdir(class_path)))
+
+            for filename in os.listdir(class_path):
+                result['data'].append(class_path+filename)
+                result['targets'].append(class_count)
+            class_count += 1
+    superclass_count += split["superclasses_per_split"][splitName]
+    all_results["omniglot_" + dataset] = result
+    print("Done for omniglot " + dataset + " with " + str(result['num_classes']) + " classes ")
+
+
+## generate data for vgg_flower
+labels = scipy.io.loadmat(args.dataset_path+'vgg_flower/'+'imagelabels.mat')['labels'][0]
+with open('./datasets/metadatasets/vgg_flower/'+"vgg_flower_splits.json") as jsonFile:
+        split = json.load(jsonFile)
+        jsonFile.close()
+split_rev = defaultdict(str)
+all_results = defaultdict(dict)
+for dataset,splitName in [("train","train"),("validation","valid"),("test","test")]:
+    all_results["vgg_flower_"+dataset] = {"data":[], "targets":[], "name":"vgg_flower_" + dataset, "num_classes":0, "name_classes":[], "dataset_targets":defaultdict(int), "num_elements_per_class":[]}
+    for class_name in split[splitName]:
+        split_rev[int(class_name[:3])] = dataset
+        all_results["vgg_flower_"+dataset]['dataset_targets'][int(class_name[:3])] = all_results["vgg_flower_"+dataset]['num_classes']
+        all_results["vgg_flower_"+dataset]['name_classes'].append(class_name)
+        all_results["vgg_flower_"+dataset]['num_classes']+=1
+    print("Initialized for Vgg Flower " + dataset + " with " + str(all_results["vgg_flower_"+dataset]['num_classes']) + " classes" )
+
+for fileName in sorted(os.listdir(args.dataset_path + "vgg_flower/" + 'jpg')):
+    label = int(labels[int(fileName[7:11])-1])
+    dataset = split_rev[label]
+    all_results["vgg_flower_"+dataset]['data'].append(fileName)
+    all_results["vgg_flower_"+dataset]['targets'].append(all_results["vgg_flower_"+dataset]['dataset_targets'][label])
+
+for dataset in ['train','validation','test']:
+    all_results["vgg_flower_"+dataset]['num_elements_per_class']=all_results["vgg_flower_"+dataset]['num_classes']*[0]
+    for i in all_results["vgg_flower_"+dataset]['targets']:
+        all_results["vgg_flower_"+dataset]['num_elements_per_class'][i]+= 1    
+    print("Done for Vgg Flower " + dataset + " with " + str(all_results["vgg_flower_"+dataset]['num_classes']) + " classes ")
+
+### generate data for quickdraw
+all_samples_path = args.dataset_path + "quickdraw/"+'all_samples/'
+with open("./datasets/metadatasets/quickdraw/"+"quickdraw_splits.json") as jsonFile:
+        split = json.load(jsonFile)
+        jsonFile.close()
+all_results = defaultdict(dict)
+for dataset,splitName in [("train","train"),("validation","valid"),("test","test")]:
+    class_count = 0
+    directories = os.listdir(args.dataset_path + "quickdraw/")
+    result = {"data":[], "targets":[], "name":"quickdraw_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
+    for class_name in split[splitName]:
+        samples = np.load(args.dataset_path + "quickdraw/"+class_name +'.npy')
+        result['num_elements_per_class'].append(samples.shape[0])
+        result['num_classes'] +=1
+        result['name_classes'].append(class_name)
+        for i in range(samples.shape[0]):
+            class_path = all_samples_path+class_name+'/'
+            sample_path = os.path.join(class_path, str(i)+'.JPEG')
+            result['data'].append(sample_path)
+            result['targets'].append(class_count)
+        class_count += 1
+    all_results["quickdraw_" + dataset] = result
+    print("Done for quickdraw " + dataset + " with " + str(result['num_classes']) + " classes ")
+
+
+
+### generate data for traffic_sign
+with open('./datasets/metadatasets/traffic_sign/'+"traffic_sign_splits.json") as jsonFile:
+        split = json.load(jsonFile)
+        jsonFile.close()
+all_results = defaultdict(dict)
+dataset = 'test'
+directories = sorted(os.listdir(args.dataset_path + "GTSRB/Final_Training/Images/"))
+result = {"data":[], "targets":[], "name":"traffic_sign_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
+for class_dir in directories:
+    filenames = os.listdir(args.dataset_path + "GTSRB/Final_Training/Images/"+class_dir)
+    class_target = int(class_dir)
+    result['name_classes'].append(split['test'][result['num_classes']])
+    result['num_classes'] +=1
+    result['num_elements_per_class'].append(len(filenames))
+    for filename in filenames:
+        result['data'].append(filename)
+        result['targets'].append(class_target)
 
 for dataset in ['train', 'test', 'validation']:
     if 'CUB_200_2011' in available_datasets:
