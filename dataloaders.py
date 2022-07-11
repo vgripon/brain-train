@@ -252,6 +252,11 @@ def audioset(datasetName):
     def randcrop(tensor):
         freq = 32000
         N = tensor.size(0)
+        if N<freq:
+            new_tensor = torch.zeros(freq)
+            new_tensor[:N] = tensor
+            return tensor
+        
         if N*2//freq-2>0:
             i = random.randint(0,N*2//freq-2)
         else:
