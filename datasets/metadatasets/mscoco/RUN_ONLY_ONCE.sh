@@ -24,8 +24,8 @@ then
 fi
 
 # Begin script in case all parameters are correct
-mkdir $dataset_path/mscoco/cropped_imgs
-echo folder $dataset_path/mscoco/cropped_imgs created ! 
+mkdir $dataset_path/mscoco/cropped
+echo folder $dataset_path/mscoco/cropped created ! 
 
 python crop_mscoco.py $dataset_path
 

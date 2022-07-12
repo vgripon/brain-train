@@ -82,7 +82,7 @@ def generate_mscoco_examples(metadata, paths, box_scale_ratio=1.2):
             crop_width, crop_height = image.size
             if crop_width <= 0 or crop_height <= 0:
                 raise ValueError('crops are not valid.')
-            filename = "mscoco/cropped_imgs/"+ f"{annotation['image_id']:012d}.jpg"
+            filename = "mscoco/cropped/"+ f"{annotation['image_id']:012d}.jpg"
             image.save(dataset_path+filename, "JPEG")
             subset_data['data'].append(filename)
             subset_data['targets'].append(label)
@@ -101,5 +101,5 @@ for index_subset, subset in enumerate(split.keys()):
         print(subset, 'sucesss')
     except Exception as e: print(e, subset, 'if the subet is "train" is empty it is normal this subset is not used in metadataset-mscoco')
         
-with open(dataset_path+'mscoco/cropped_mscoco.json', 'w') as fp:
+with open(dataset_path+'mscoco/cropped_mscoco_test.json', 'w') as fp:
     json.dump(data, fp)
