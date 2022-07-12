@@ -5,7 +5,11 @@ import os
 from torchvision import transforms, datasets
 import torch 
 import numpy as np
-import collections
+from PIL import Image
+import scipy.io
+import tqdm
+from collections import defaultdict
+
 
 available_datasets = os.listdir(args.dataset_path)
 print('Available datasets:', available_datasets)
@@ -20,7 +24,7 @@ for subset in graph['split_subgraphs'].values():
         if len(entity['children_ids']) == 0:
             imagenet_class_names[entity['wn_id']] = entity['words']
 
-all_results = {}
+all_results = defaultdict(dict)
 
 ### generate data for miniimagenet
 if 'miniimagenetimages' in available_datasets:
@@ -90,13 +94,13 @@ if 'cifar_fs' in available_datasets:
 ## generate data for mnist
 for dataset in ['train', 'test']:
     result = {"data":[], "targets":[], "name":"mnist_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
-    pytorchDataset = datasets.MNIST(args.dataset_path, train = dataset != "test", download = not 'MNIST' in available_datasets) # download if not existing
+    pytorchDataset = datasets.MNIST(args.dataset_path, train = dataset != "test", download = not ('MNIST' in available_datasets)) # download if not existing
     targets = pytorchDataset.targets
     for c in range(targets.max()):
         result["num_elements_per_class"].append(len(torch.where(targets==c)[0]))
     result["num_classes"] = len(result["num_elements_per_class"])+1
     all_results['mnist_'+ dataset] = result
-    print("Done for mnist_" + dataset + " with " + str(i+1) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
+    print("Done for mnist_" + dataset + " with " + str(result["num_classes"]) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
 
 ### generate data for imagenet metadatasets
 if 'imagenet' in available_datasets:
@@ -208,7 +212,7 @@ def get_images_class_aircraft():
     images = [x[0] for x in couples]
     classes = [x[1][:-1] for x in couples]
     dico_class = {}
-    dico_class = collections.defaultdict(list)
+    dico_class = defaultdict(list)
     for i ,x in enumerate(images):
         cl = classes[i]
         dico_class[cl].append(x)
@@ -251,8 +255,6 @@ if 'mscoco' in available_datasets:
         results_mscoco  = json.load(jsonFile)
         jsonFile.close()
     
-
-
 for dataset in ['train', 'test', 'validation']:
     if 'CUB_200_2011' in available_datasets:
         all_results["metadataset_cub_" + dataset] = results_cub[dataset]
@@ -269,6 +271,138 @@ for dataset in ['train', 'test', 'validation']:
     if 'mscoco' in available_datasets and dataset != 'train':
         all_results["metadataset_mscoco_" + dataset] = results_mscoco[dataset]
         print("Done for metadataset_mscoco_" + dataset + " with " + str(results_mscoco[dataset]['num_classes']) + " classes and " + str(len(results_mscoco[dataset]["data"])) + " samples (" + str(len(results_mscoco[dataset]["targets"])) + ")")
+
+
+
+# generate data for omniglot
+if 'omniglot' in available_datasets:
+    with open("./datasets/metadatasets/omniglot/"+"omniglot_dataset_spec.json") as jsonFile:
+            split = json.load(jsonFile)
+            jsonFile.close()
+
+    superclass_count = 0
+    for splitName,dataset in [("TRAIN","train"),("VALID","validation"),("TEST","test")]:
+        class_count = 0
+        result = {"data":[], "targets":[], "name":"omniglot_" + dataset, "num_classes":0, "name_classes":[], "num_superclasses":0, "classes_per_superclass":defaultdict(list), "num_elements_per_class": []}
+        for superclass_id in range(superclass_count,superclass_count+split["superclasses_per_split"][splitName]):
+            result['num_superclasses'] = split["superclasses_per_split"][splitName]
+            superclass_name = split["superclass_names"][str(superclass_id)]
+
+            superclass_path = args.dataset_path + "omniglot/images_background/"+superclass_name+'/' 
+            if dataset=='test':
+                superclass_path = args.dataset_path + "omniglot/images_evaluation/"+superclass_name+'/'
+            for class_name in os.listdir(superclass_path):
+                result['classes_per_superclass'][superclass_id-superclass_count].append(class_count)
+                class_path = superclass_path+class_name+'/'
+                result['num_classes'] +=1
+                result['name_classes'].append(superclass_name+'-'+class_name)
+                result['num_elements_per_class'].append(len(os.listdir(class_path)))
+
+                for filename in os.listdir(class_path):
+                    result['data'].append(class_path+filename)
+                    result['targets'].append(class_count)
+                class_count += 1
+        superclass_count += split["superclasses_per_split"][splitName]
+        all_results["metadataset_omniglot_" + dataset] = result
+        print("Done for omniglot " + dataset + " with " + str(result['num_classes']) + " classes ")
+
+
+## generate data for vgg_flower
+if 'vgg_flower' in available_datasets:
+    labels = scipy.io.loadmat(args.dataset_path+'vgg_flower/'+'imagelabels.mat')['labels'][0]
+    with open('./datasets/metadatasets/vgg_flower/'+"vgg_flower_splits.json") as jsonFile:
+            split = json.load(jsonFile)
+            jsonFile.close()
+    split_rev = defaultdict(str)
+    for dataset,splitName in [("train","train"),("validation","valid"),("test","test")]:
+        all_results["metadataset_vgg_flower_"+dataset] = {"data":[], "targets":[], "name":"vgg_flower_" + dataset, "num_classes":0, "name_classes":[], "dataset_targets":defaultdict(int), "num_elements_per_class":[]}
+        for class_name in split[splitName]:
+            split_rev[int(class_name[:3])] = dataset
+            all_results["metadataset_vgg_flower_"+dataset]['dataset_targets'][int(class_name[:3])] = all_results["metadataset_vgg_flower_"+dataset]['num_classes']
+            all_results["metadataset_vgg_flower_"+dataset]['name_classes'].append(class_name)
+            all_results["metadataset_vgg_flower_"+dataset]['num_classes']+=1
+        print("Initialized for Vgg Flower " + dataset + " with " + str(all_results["metadataset_vgg_flower_"+dataset]['num_classes']) + " classes" )
+
+    for fileName in sorted(os.listdir(args.dataset_path + "vgg_flower/" + 'jpg')):
+        label = int(labels[int(fileName[7:11])-1])
+        dataset = split_rev[label]
+        all_results["metadataset_vgg_flower_"+dataset]['data'].append(fileName)
+        all_results["metadataset_vgg_flower_"+dataset]['targets'].append(all_results["metadataset_vgg_flower_"+dataset]['dataset_targets'][label])
+
+    for dataset in ['train','validation','test']:
+        all_results["metadataset_vgg_flower_"+dataset]['num_elements_per_class']=all_results["metadataset_vgg_flower_"+dataset]['num_classes']*[0]
+        for i in all_results["metadataset_vgg_flower_"+dataset]['targets']:
+            all_results["metadataset_vgg_flower_"+dataset]['num_elements_per_class'][i]+= 1    
+        print("Done for Vgg Flower " + dataset + " with " + str(all_results["metadataset_vgg_flower_"+dataset]['num_classes']) + " classes ")
+
+### generate data for quickdraw
+if 'quickdraw' in available_datasets:
+    all_samples_path = args.dataset_path + "quickdraw/"+'all_samples/'
+    with open("./datasets/metadatasets/quickdraw/"+"quickdraw_splits.json") as jsonFile:
+            split = json.load(jsonFile)
+            jsonFile.close()
+    for dataset,splitName in [("train","train"),("validation","valid"),("test","test")]:
+        class_count = 0
+        directories = os.listdir(args.dataset_path + "quickdraw/")
+        result = {"data":[], "targets":[], "name":"quickdraw_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
+        for class_name in split[splitName]:
+            samples = np.load(args.dataset_path + "quickdraw/"+class_name +'.npy')
+            result['num_elements_per_class'].append(samples.shape[0])
+            result['num_classes'] +=1
+            result['name_classes'].append(class_name)
+            for i in range(samples.shape[0]):
+                class_path = all_samples_path+class_name+'/'
+                sample_path = os.path.join(class_path, str(i)+'.JPEG')
+                result['data'].append(sample_path)
+                result['targets'].append(class_count)
+            class_count += 1
+        all_results["metadataset_quickdraw_" + dataset] = result
+        print("Done for quickdraw " + dataset + " with " + str(result['num_classes']) + " classes ")
+
+
+
+### generate data for traffic_sign
+if 'GTSRB' in available_datasets:
+    with open('./datasets/metadatasets/traffic_signs/'+"traffic_sign_splits.json") as jsonFile:
+            split = json.load(jsonFile)
+            jsonFile.close()
+    dataset = 'test'
+    directories = sorted(os.listdir(args.dataset_path + "GTSRB/Final_Training/Images/"))
+    result = {"data":[], "targets":[], "name":"traffic_signs_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
+    for class_dir in directories:
+        filenames = os.listdir(args.dataset_path + "GTSRB/Final_Training/Images/"+class_dir)
+        class_target = int(class_dir)
+        result['name_classes'].append(split['test'][result['num_classes']])
+        result['num_classes'] +=1
+        result['num_elements_per_class'].append(len(filenames))
+        for filename in filenames:
+            result['data'].append(filename)
+            result['targets'].append(class_target)
+    all_results['metadataset_traffic_signs_test'] = result
+    print('Done for traffic_signs_test with '+str(result['num_classes'])+' classes and '+str(np.sum(np.array(result['num_elements_per_class']))) +' samples')
+
+if 'audioset' in available_datasets:
+    ### generate data for quickdraw
+    for dataset in ['train', 'test']:
+        result = {"data":[], "targets":[], "name":"audioset_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
+        path = os.path.join(args.dataset_path, 'audioset', 'audioset', 'processed', 'data', dataset)
+        class_num_tracker = {}
+        num_classes = 0
+        for filename in os.listdir(path):
+            result['data'].append(os.path.join('audioset', 'audioset', 'processed', 'data', dataset, filename))
+            targets = list(map(int, filename.replace('.pt','').split('_')[1:]))
+            result['targets'].append(targets)
+            for c in targets:
+                if c in class_num_tracker.keys():
+                    class_num_tracker[c]+=1
+                else:
+                    class_num_tracker[c] = 1
+            num_classes = max(num_classes, max(targets))
+        result['num_elements_per_class'] = list(dict(sorted(class_num_tracker.items())).values())
+        result['num_classes'] = num_classes+1
+        all_results["audioset_" + dataset] = result
+        print("Done for audioset_" + dataset + " with " + str(result['num_classes']) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
+
 
 f = open(args.dataset_path + "datasets.json", "w")
 f.write(json.dumps(all_results))

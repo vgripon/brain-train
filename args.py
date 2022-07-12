@@ -1,5 +1,6 @@
 import argparse
 import os
+import random # for seed
 
 parser = argparse.ArgumentParser(description="BRAIn team routines for training on standard benchmarks")
 
@@ -10,7 +11,10 @@ parser.add_argument("--csv", type=str, default="", help="name of csv file to wri
 parser.add_argument("--save-features-prefix", type=str, default="", help="save features of validation and test sets to hard drive, use this parameter as prefix to file names")
 parser.add_argument("--save-backbone", type=str, default="", help="save backbone to hard drive at the specified location")
 parser.add_argument("--load-backbone", type=str, default="", help="load backbone from hard drive at the specified location")
+parser.add_argument("--freeze-backbone", action="store_true", help="freeze the backbone during training, can be useful in conjonction with load-backbone")
 parser.add_argument("--skip-epochs", type=int, default=0, help="number of epochs for which validation and test are ignored")
+parser.add_argument("--seed", type=int, default=random.randint(0, 1000000000), help="initial random seed")
+parser.add_argument("--deterministic", action="store_true", help="force deterministic mode for cuda")
 
 ### optimizer args
 parser.add_argument("--optimizer", type=str, default="SGD", help="can be SGD or Adam")
@@ -36,7 +40,13 @@ datasets = {
     "metadataset_mscoco": ("", "metadataset_mscoco_validation", "metadataset_mscoco_test"),
     "metadataset_fungi": ("metadataset_fungi_train", "metadataset_fungi_validation", "metadataset_fungi_test"),
     "metadataset_aircraft": ("metadataset_aircraft_train", "metadataset_aircraft_validation", "metadataset_aircraft_test"),
+    "metadataset_vgg_flower":("metadataset_vgg_flower_train", "metadataset_vgg_flower_validation", "metadataset_vgg_flower_test"),
+    "metadataset_quickdraw":("metadataset_quickdraw_train", "metadataset_quickdraw_validation", "metadataset_quickdraw_test"),
+    "metadataset_omniglot":("metadataset_omniglot_train", "metadataset_omniglot_validation", "metadataset_omniglot_test"),
+    "metadataset_traffic_signs":("metadataset_traffic_signs_test"),
+    "audioset": ("audioset_train", "", "audioset_test"),
 }
+
 
 parser.add_argument("--dataset-path", type=str, default=os.environ.get("DATASETS"), help="path to dataset files")
 parser.add_argument("--batch-size", type=int, default=64, help="batch size")
@@ -44,6 +54,8 @@ parser.add_argument("--dataset", type=str, default="", help="dataset to use, can
 parser.add_argument("--training-dataset", type=str, default="", help="training dataset, overriden by --dataset")
 parser.add_argument("--validation-dataset", type=str, default="", help="validation dataset, overriden by --dataset")
 parser.add_argument("--test-dataset", type=str, default="", help="test dataset, overriden by --dataset")
+parser.add_argument("--dataset-size", type=int, default=0, help="defines a maximum of samples considered at each epoch, 0 means it is ignored")
+parser.add_argument("--audio", action="store_true", help="used audio inputs, so switch back to 1d backbones")
 
 ### backbones parameters
 parser.add_argument("--feature-maps", type=int, default=64, help="initial number of feature maps in first embedding, used as a base downstream convolutions")
@@ -51,7 +63,7 @@ parser.add_argument("--backbone", type=str, default="resnet18", help="backbone a
 parser.add_argument("--feature-processing", type=str, default="", help="feature processing before few-shot classifiers, can contain M (remove mean of feature vectors), and E (unit sphere projection of feature vectors)")
 
 ### criterion
-parser.add_argument("--classifier", type=str, default="lr", help="define which classifier is used on top of selected backbone, can be any of lr for logistic regression, or L2 for euclidean distance regression")
+parser.add_argument("--classifier", type=str, default="lr", help="define which classifier is used on top of selected backbone, can be any of lr for logistic regression, or L2 for euclidean distance regression, or multilabelBCE for multi label classification")
 
 ### scheduler parameters
 parser.add_argument("--epochs", type=int, default=350, help="total number of training epochs")
