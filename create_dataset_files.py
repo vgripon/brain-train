@@ -143,20 +143,20 @@ def get_data(jsonpath, image_dir):
     data ,num_classes, num_elts = {},{},{}
     split = {"validation" if k == 'valid' else k:v for k,v in split.items()}
     for index_subset, subset in enumerate(split.keys()):
-        data[subset] = {'data': [], 'targets' : [] , 'name_classes' : []}
-        num_elts[subset] = []
+        data[subset] = {'data': [], 'targets' : [] , 'name_classes' : [], 'num_elements_per_class': [], 'num_classes': []}
         l_classes = split[subset]
-        num_classes[subset] = len(l_classes)
+        data[subset]['num_classes'] = len(l_classes)
         for index_class, cl in enumerate(l_classes):
+            
             cl_path = args.dataset_path + image_dir + cl
             images = sorted(os.listdir(cl_path)) #Careful here you might mix the order (not sure that sorted is good enough)
+            data[subset]['num_elements_per_class'].append(len(images))
             for index_image , im in enumerate(images):
                 data[subset]['data'].append( image_dir + cl +'/' + im)
                 data[subset]['targets'].append(index_class)
-            num_elts[subset].append([cl, index_image+1])
+            
             data[subset]['name_classes'].append(cl)
-        data[subset]['num_classes'] = index_class+1
-    return data, num_elts
+    return data
 
 def read_info_fungi():
     info_sub={}
@@ -185,24 +185,23 @@ def read_info_fungi():
 def get_data_fungi():
     split = split_fn('datasets/metadatasets/fungi/fungi_splits.json' )
     np_ca, np_fl, np_idc, np_sup = read_info_fungi()
-    data ,num_classes, num_elts = {},{},{}
+    data = {}
     split = {"validation" if k == 'valid' else k:v for k,v in split.items()}
     for index_subset, subset in enumerate(split.keys()):
-        data[subset] = {'data': [], 'targets' : [] , 'name_classes' : []}
-        num_elts[subset] = []
+        data[subset] = {'data': [], 'targets' : [] , 'name_classes' : [],'num_elements_per_class':[], 'num_classes': [] }
         l_classes = split[subset]
-        num_classes[subset] = len(l_classes)
+        data[subset]['num_classes'] = len(l_classes)
         for index_class, cl in enumerate(l_classes):
             clx = int(split['train'][index_class][:4])
             idx = np.where(np_ca==clx)[0]
+            data[subset]['num_elements_per_class'].append(idx.shape[0])
             for index_image , im in enumerate(np_fl[idx]):
                 data[subset]['data'].append('/fungi/'+im)
                 data[subset]['targets'].append(index_class)
-            num_elts[subset].append([cl, index_image+1])
+            
             data[subset]['name_classes'].append(cl)
-        data[subset]['num_classes'] = index_class+1
-    return data, num_elts
-
+        
+    return data
 
 def get_images_class_aircraft():
     with open('datasets/metadatasets/aircraft/images_variant.txt') as f:
@@ -221,35 +220,33 @@ def get_images_class_aircraft():
 def get_data_aircraft():
     split = split_fn('datasets/metadatasets/aircraft/aircraft_splits.json')
     dico_class = get_images_class_aircraft()
-    data ,num_classes, num_elts = {},{},{}
+    data  = {}
     split = {"validation" if k == 'valid' else k:v for k,v in split.items()}
     for index_subset, subset in enumerate(split.keys()):
-        data[subset] = {'data': [], 'targets' : [] , 'name_classes' : []}
-        num_elts[subset] = []
+        data[subset] = {'data': [], 'targets' : [] , 'name_classes' : [],'num_elements_per_class':[], 'num_classes': []}
         l_classes = split[subset]
-        num_classes[subset] = len(l_classes)
+        data[subset]['num_classes'] = len(l_classes)
         for index_class, cl in enumerate(l_classes):
             images = dico_class[cl]
             if images != []:
+                data[subset]['num_elements_per_class'].append(len(images))
                 for index_image , im in enumerate(images):
                     data[subset]['data'].append('/fgvc-aircraft-2013b/data/images/'+im+'.jpg')
                     data[subset]['targets'].append(index_class)
-                num_elts[subset].append([cl, index_image+1])
                 data[subset]['name_classes'].append(cl)
             else:
                 print(cl, 'not found')
-        data[subset]['num_classes'] = index_class+1
-    return data, num_elts
+    return data
 
 ##### generate data for CUB and DTD
 if 'CUB_200_2011' in available_datasets:
-    results_cub, nb_elts_cub = get_data("./datasets/metadatasets/cub/cu_birds_splits.json", "CUB_200_2011/images/")
+    results_cub = get_data("./datasets/metadatasets/cub/cu_birds_splits.json", "CUB_200_2011/images/")
 if 'dtd' in available_datasets:
-    results_dtd , nb_elts_dtd = get_data('./datasets/metadatasets/dtd/dtd_splits.json', 'dtd/images/')
+    results_dtd  = get_data('./datasets/metadatasets/dtd/dtd_splits.json', 'dtd/images/')
 if 'fungi' in available_datasets:
-    results_fungi , nb_elts_fungi = get_data_fungi()
+    results_fungi  = get_data_fungi()
 if 'fgvc-aircraft-2013b' in available_datasets:
-    results_aircraft , nb_elts_aircraft = get_data_aircraft()
+    results_aircraft  = get_data_aircraft()
 if 'mscoco' in available_datasets:
     with open(args.dataset_path + 'mscoco/cropped_mscoco.json') as jsonFile:   #this file is obtained by running datasets/metadatasets/mscoco/RUN_ONLY_ONCE.sh (read instructions carefully)
         results_mscoco  = json.load(jsonFile)

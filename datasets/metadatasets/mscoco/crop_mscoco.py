@@ -22,7 +22,7 @@ def split_fn(json_path):
     return split
 
 def generate_mscoco_examples(metadata, paths, box_scale_ratio=1.2):
-    subset_data = {'data': [], 'targets' : [] , 'name_classes' : []}
+    subset_data = {'data': [], 'targets' : [] , 'name_classes' : [], 'num_classes': [], 'num_elements_per_class' : []}
     """Generates MSCOCO examples."""
     if box_scale_ratio < 1.0:
         raise ValueError('Box scale ratio must be greater or equal to 1.0.')
@@ -47,7 +47,9 @@ def generate_mscoco_examples(metadata, paths, box_scale_ratio=1.2):
             label_to_annotations[coco_id_to_label[category_id]].append(annotation)
 
     print('number of classes', len(metadata['class_names']))
+    subset_data['num_classes'] = len(metadata['class_names'])
     for label, class_name in enumerate(tqdm(metadata['class_names'])):
+        subset_data['num_elements_per_class'].append(len(label_to_annotations[label]))
         for annotation in label_to_annotations[label]:
             image_path = image_dir + f"{annotation['image_id']:012d}.jpg"
 
@@ -86,7 +88,7 @@ def generate_mscoco_examples(metadata, paths, box_scale_ratio=1.2):
             subset_data['data'].append(filename)
             subset_data['targets'].append(label)
         subset_data['name_classes'].append(class_name)
-    subset_data['num_classes'] = label+1
+    
     return subset_data
       
 metadata = {}
