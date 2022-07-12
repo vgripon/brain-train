@@ -12,7 +12,7 @@ from PIL import Image
 from utils import *
 ### first define dataholder, which will be used as an argument to dataloaders
 class DataHolder():
-    def __init__(self, data, targets, transforms, target_transforms=lambda x:x, opener=lambda x: transforms.ToTensor()(np.array(Image.open(x).convert('RGB')))):
+    def __init__(self, data, targets, transforms, target_transforms=lambda x:x, opener=lambda x: Image.fromarray(np.array(Image.open(x).convert('RGB')))):
         self.data = data
         if torch.is_tensor(data):
             self.length = data.shape[0]
