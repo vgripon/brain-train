@@ -37,7 +37,7 @@ class MultiLabelBCE(nn.Module):
     def forward(self, x, y, yRotations = None):
         output = self.fc(x)
         score = 0.
-        for b in range(args.batch_size):
+        for b in range(output.shape[0]):
             decision = output[b].argsort(dim=0)[-y[b].sum().int():]
             gt = torch.where(y[b]==1)[0]
             score += sum([t in gt for t in decision])

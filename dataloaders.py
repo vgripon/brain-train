@@ -269,6 +269,7 @@ def audioset(datasetName):
     dataset = all_datasets["audioset_" + datasetName]
     data = dataset["data"]
     targets = dataset["targets"]
+    
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     trans = lambda x : randcrop(x.mean(dim=1)).unsqueeze(0).to(dtype=torch.float)
     target_trans = lambda x: torch.zeros(dataset['num_classes']).scatter_(0,torch.Tensor(x).long(), 1.)
