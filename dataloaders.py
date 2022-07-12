@@ -12,7 +12,7 @@ from PIL import Image
 from utils import *
 ### first define dataholder, which will be used as an argument to dataloaders
 class DataHolder():
-    def __init__(self, data, targets, transforms, target_transforms=lambda x:x, opener=lambda x: Image.fromarray(np.array(Image.open(x).convert('RGB')))):
+    def __init__(self, data, targets, transforms, target_transforms=lambda x:x, opener=lambda x: Image.open(x).convert('RGB')):
         self.data = data
         if torch.is_tensor(data):
             self.length = data.shape[0]
@@ -36,25 +36,25 @@ def dataLoader(dataholder, shuffle):
     return torch.utils.data.DataLoader(dataholder, batch_size = args.batch_size, shuffle = shuffle, num_workers = min(os.cpu_count(), 8))
 
 def cifar10(dataset):
-    pytorchDataset = datasets.CIFAR10(args.dataset_path, train = dataset != "test", download = False)
+    pytorchDataset = datasets.CIFAR10(args.dataset_path, train = dataset != "test", download = 'cifar-10-python.tar.gz' not in os.listdir(args.dataset_path))
     data = torch.tensor(pytorchDataset.data).transpose(1,3).transpose(2,3).float() / 256.
     targets = pytorchDataset.targets
 
     normalization = transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616))
 
-    trans = transforms.Compose([transforms.RandomCrop(32, padding=4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.ToTensor(), normalization])
+    trans = transforms.Compose([transforms.RandomCrop(32, padding=4), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else transforms.Compose([normalization])
 
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset == "train"), "name":"cifar10_" + dataset, "num_classes":10, "name_classes": pytorchDataset.classes}
 
 def cifar100(dataset):
-    pytorchDataset = datasets.CIFAR100(args.dataset_path, train = dataset != "test", download = False)
+    pytorchDataset = datasets.CIFAR100(args.dataset_path, train = dataset != "test", download = 'cifar-100-python.tar.gz' not in os.listdir(args.dataset_path))
     data = torch.tensor(pytorchDataset.data).transpose(1,3).transpose(2,3).float() / 256.
     targets = pytorchDataset.targets
 
     normalization = transforms.Normalize((0.5071, 0.4865, 0.4409), (0.2673, 0.2564, 0.2762))
 
-    trans = transforms.Compose([transforms.RandomCrop(32, padding=4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.ToTensor(), normalization])
+    trans = transforms.Compose([transforms.RandomCrop(32, padding=4), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else transforms.Compose([normalization])
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset == "train"), "name":"cifar100_" + dataset, "num_classes":100, "name_classes": pytorchDataset.classes}
 
@@ -121,24 +121,24 @@ def imagenet(dataset):
     return {"dataloader": dataLoader(pytorchDataset, shuffle = dataset == "train"), "name":"imagenet_" + dataset, "num_classes":1000, "name_classes": pytorchDataset.classes}
 
 def mnist(dataset):
-    pytorchDataset = datasets.MNIST(args.dataset_path, train = dataset != "test", download = False)
+    pytorchDataset = datasets.MNIST(args.dataset_path, train = dataset != "test", download = 'MNIST' not in os.listdir(args.dataset_path))
     data = pytorchDataset.data.clone().unsqueeze(1).float() / 256.
     targets = pytorchDataset.targets
 
     normalization = transforms.Normalize((0.1302,), (0.3069,))
 
-    trans = transforms.Compose([transforms.ToTensor(), normalization])
+    trans = transforms.Compose([normalization])
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset == "train"), "name": "mnist_" + dataset, "num_classes": 10, "name_classes": list(range(10))}
 
 def fashionMnist(dataset):
-    pytorchDataset = datasets.FashionMNIST(args.dataset_path, train = dataset != "test", download = True)
+    pytorchDataset = datasets.FashionMNIST(args.dataset_path, train = dataset != "test", download = 'FashionMNIST' not in os.listdir(args.dataset_path))
     data = pytorchDataset.data.clone().unsqueeze(1).float() / 256.
     targets = pytorchDataset.targets
 
     normalization = transforms.Normalize((0.2849,), (0.3516,))
 
-    trans = transforms.Compose([transforms.RandomCrop(28, padding=4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else  transforms.Compose([transforms.ToTensor(), normalization])
+    trans = transforms.Compose([transforms.RandomCrop(28, padding=4), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else  transforms.Compose([normalization])
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset == "train"), "name": "fashion-mnist_" + dataset, "num_classes": 10, "name_classes": pytorchDataset.classes}
 
