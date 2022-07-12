@@ -108,16 +108,24 @@ class EpisodicGenerator():
 
         return {'choice_classes':choice_classes, 'shots_idx':shots_idx, 'queries_idx':queries_idx}
 
-    def get_features_from_indices(self, features, episode):
+    def get_features_from_indices(self, features, episode, validation=False):
         """
         Get features from a list of all features and from a dictonnary describing an episode
         """
         choice_classes, shots_idx, queries_idx = episode['choice_classes'], episode['shots_idx'], episode['queries_idx']
+        if validation : 
+            validation_idx = episode['validations_idx']
+            val = []
         shots, queries = [], []
         for i, c in enumerate(choice_classes):
             shots.append(features[c]['features'][shots_idx[i]])
             queries.append(features[c]['features'][queries_idx[i]])
-        return shots, queries
+            if validation : 
+                val.append(features[c]['features'][validation_idx[i]])
+        if validation:
+            return shots, queries, val
+        else:
+            return shots, queries
 
     def convert_prob_to_samples(self, prob, q_shot):
         """
