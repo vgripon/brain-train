@@ -36,7 +36,7 @@ def dataLoader(dataholder, shuffle):
     return torch.utils.data.DataLoader(dataholder, batch_size = args.batch_size, shuffle = shuffle, num_workers = min(os.cpu_count(), 8))
 
 def cifar10(dataset):
-    pytorchDataset = datasets.CIFAR10(args.dataset_path, train = dataset != "test", download = False)
+    pytorchDataset = datasets.CIFAR10(args.dataset_path, train = dataset != "test", download = 'cifar-10-python.tar.gz' not in os.listdir(args.dataset_path))
     data = torch.tensor(pytorchDataset.data).transpose(1,3).transpose(2,3).float() / 256.
     targets = pytorchDataset.targets
 
@@ -48,7 +48,7 @@ def cifar10(dataset):
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset == "train"), "name":"cifar10_" + dataset, "num_classes":10, "name_classes": pytorchDataset.classes}
 
 def cifar100(dataset):
-    pytorchDataset = datasets.CIFAR100(args.dataset_path, train = dataset != "test", download = False)
+    pytorchDataset = datasets.CIFAR100(args.dataset_path, train = dataset != "test", download = 'cifar-100-python.tar.gz' not in os.listdir(args.dataset_path))
     data = torch.tensor(pytorchDataset.data).transpose(1,3).transpose(2,3).float() / 256.
     targets = pytorchDataset.targets
 
@@ -121,7 +121,7 @@ def imagenet(dataset):
     return {"dataloader": dataLoader(pytorchDataset, shuffle = dataset == "train"), "name":"imagenet_" + dataset, "num_classes":1000, "name_classes": pytorchDataset.classes}
 
 def mnist(dataset):
-    pytorchDataset = datasets.MNIST(args.dataset_path, train = dataset != "test", download = False)
+    pytorchDataset = datasets.MNIST(args.dataset_path, train = dataset != "test", download = 'MNIST' not in os.listdir(args.dataset_path))
     data = pytorchDataset.data.clone().unsqueeze(1).float() / 256.
     targets = pytorchDataset.targets
 
@@ -132,13 +132,13 @@ def mnist(dataset):
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset == "train"), "name": "mnist_" + dataset, "num_classes": 10, "name_classes": list(range(10))}
 
 def fashionMnist(dataset):
-    pytorchDataset = datasets.FashionMNIST(args.dataset_path, train = dataset != "test", download = True)
+    pytorchDataset = datasets.FashionMNIST(args.dataset_path, train = dataset != "test", download = 'FashionMNIST' not in os.listdir(args.dataset_path))
     data = pytorchDataset.data.clone().unsqueeze(1).float() / 256.
     targets = pytorchDataset.targets
 
     normalization = transforms.Normalize((0.2849,), (0.3516,))
 
-    trans = transforms.Compose([transforms.RandomCrop(28, padding=4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else  transforms.Compose([transforms.ToTensor(), normalization])
+    trans = transforms.Compose([transforms.RandomCrop(28, padding=4), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else  transforms.Compose([normalization])
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset == "train"), "name": "fashion-mnist_" + dataset, "num_classes": 10, "name_classes": pytorchDataset.classes}
 
