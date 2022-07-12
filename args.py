@@ -31,6 +31,11 @@ datasets = {
     "tieredimagenet": ("tieredimagenet_train", "tieredimagenet_validation", "tieredimagenet_test"),
     "cifarfs": ("cifarfs_train", "cifarfs_validation", "cifarfs_test"),
     "metadataset_imagenet": ("metadataset_imagenet_train", "metadataset_imagenet_validation", "metadataset_imagenet_test"),
+    "metadataset_cub": ("metadataset_cub_train", "metadataset_cub_validation", "metadataset_cub_test"),
+    "metadataset_dtd": ("metadataset_dtd_train", "metadataset_dtd_validation", "metadataset_dtd_test"),
+    "metadataset_mscoco": ("", "metadataset_mscoco_validation", "metadataset_mscoco_test"),
+    "metadataset_fungi": ("metadataset_fungi_train", "metadataset_fungi_validation", "metadataset_fungi_test"),
+    "metadataset_aircraft": ("metadataset_aircraft_train", "metadataset_aircraft_validation", "metadataset_aircraft_test"),
 }
 
 parser.add_argument("--dataset-path", type=str, default=os.environ.get("DATASETS"), help="path to dataset files")
