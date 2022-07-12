@@ -288,17 +288,17 @@ if 'omniglot' in available_datasets:
             result['num_superclasses'] = split["superclasses_per_split"][splitName]
             superclass_name = split["superclass_names"][str(superclass_id)]
 
-            superclass_path = args.dataset_path + "omniglot/images_background/"+superclass_name+'/' 
+            superclass_path = "omniglot/images_background/"+superclass_name+'/' 
             if dataset=='test':
-                superclass_path = args.dataset_path + "omniglot/images_evaluation/"+superclass_name+'/'
-            for class_name in os.listdir(superclass_path):
+                superclass_path = "omniglot/images_evaluation/"+superclass_name+'/'
+            for class_name in os.listdir(args.dataset_path+'/'+superclass_path):
                 result['classes_per_superclass'][superclass_id-superclass_count].append(class_count)
                 class_path = superclass_path+class_name+'/'
                 result['num_classes'] +=1
                 result['name_classes'].append(superclass_name+'-'+class_name)
-                result['num_elements_per_class'].append(len(os.listdir(class_path)))
+                result['num_elements_per_class'].append(len(os.listdir(args.dataset_path+'/'+class_path)))
 
-                for filename in os.listdir(class_path):
+                for filename in os.listdir(args.dataset_path+'/'+class_path):
                     result['data'].append(class_path+filename)
                     result['targets'].append(class_count)
                 class_count += 1
@@ -326,7 +326,7 @@ if 'vgg_flower' in available_datasets:
     for fileName in sorted(os.listdir(args.dataset_path + "vgg_flower/" + 'jpg')):
         label = int(labels[int(fileName[7:11])-1])
         dataset = split_rev[label]
-        all_results["metadataset_vgg_flower_"+dataset]['data'].append(fileName)
+        all_results["metadataset_vgg_flower_"+dataset]['data'].append('vgg_flower/jpg/'+fileName)
         all_results["metadataset_vgg_flower_"+dataset]['targets'].append(all_results["metadataset_vgg_flower_"+dataset]['dataset_targets'][label])
 
     for dataset in ['train','validation','test']:
@@ -352,7 +352,7 @@ if 'quickdraw' in available_datasets:
             result['name_classes'].append(class_name)
             for i in range(samples.shape[0]):
                 class_path = all_samples_path+class_name+'/'
-                sample_path = os.path.join(class_path, str(i)+'.JPEG')
+                sample_path = os.path.join('quickdraw/all_samples'+class_name+'/', str(i)+'.JPEG')
                 result['data'].append(sample_path)
                 result['targets'].append(class_count)
             class_count += 1
@@ -376,7 +376,7 @@ if 'GTSRB' in available_datasets:
         result['num_classes'] +=1
         result['num_elements_per_class'].append(len(filenames))
         for filename in filenames:
-            result['data'].append(filename)
+            result['data'].append("GTSRB/Final_Training/Images/"+class_dir+'/'+filename)
             result['targets'].append(class_target)
     all_results['metadataset_traffic_signs_test'] = result
     print('Done for traffic_signs_test with '+str(result['num_classes'])+' classes and '+str(np.sum(np.array(result['num_elements_per_class']))) +' samples')
