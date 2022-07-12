@@ -12,7 +12,7 @@ from PIL import Image
 from utils import *
 ### first define dataholder, which will be used as an argument to dataloaders
 class DataHolder():
-    def __init__(self, data, targets, transforms, target_transforms=lambda x:x, opener=lambda x: transforms.ToTensor()(np.array(Image.open(x).convert('RGB')))):
+    def __init__(self, data, targets, transforms, target_transforms=lambda x:x, opener=lambda x: Image.fromarray(np.array(Image.open(x).convert('RGB')))):
         self.data = data
         if torch.is_tensor(data):
             self.length = data.shape[0]
@@ -42,7 +42,8 @@ def cifar10(dataset):
 
     normalization = transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616))
 
-    trans = torch.nn.Sequential(transforms.RandomCrop(32, padding=4), transforms.RandomHorizontalFlip(), normalization) if dataset == "train" else normalization
+    trans = transforms.Compose([transforms.RandomCrop(32, padding=4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.ToTensor(), normalization])
+
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset == "train"), "name":"cifar10_" + dataset, "num_classes":10, "name_classes": pytorchDataset.classes}
 
@@ -53,7 +54,7 @@ def cifar100(dataset):
 
     normalization = transforms.Normalize((0.5071, 0.4865, 0.4409), (0.2673, 0.2564, 0.2762))
 
-    trans = torch.nn.Sequential(transforms.RandomCrop(32, padding=4), transforms.RandomHorizontalFlip(), normalization) if dataset == "train" else normalization
+    trans = transforms.Compose([transforms.RandomCrop(32, padding=4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.ToTensor(), normalization])
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset == "train"), "name":"cifar100_" + dataset, "num_classes":100, "name_classes": pytorchDataset.classes}
 
@@ -67,7 +68,7 @@ def miniimagenet(datasetName):
 
     normalization = transforms.Normalize([125.3/255, 123.0/255, 113.9/255], [63.0/255, 62.1/255, 66.7/255])
 
-    trans = torch.nn.Sequential(transforms.RandomResizedCrop(84), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), normalization) if datasetName == "train" else torch.nn.Sequential(transforms.Resize(92), transforms.CenterCrop(84), normalization)
+    trans = transforms.Compose([transforms.RandomResizedCrop(84), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if datasetName == "train" else transforms.Compose([transforms.Resize(92), transforms.CenterCrop(84), transforms.ToTensor(), normalization])
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
@@ -81,7 +82,7 @@ def tieredimagenet(datasetName):
 
     normalization = transforms.Normalize([125.3/255, 123.0/255, 113.9/255], [63.0/255, 62.1/255, 66.7/255])
 
-    trans = torch.nn.Sequential(transforms.RandomResizedCrop(84), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), normalization) if datasetName == "train" else torch.nn.Sequential(transforms.Resize(92), transforms.CenterCrop(84), normalization)
+    trans = torch.nn.Sequential(transforms.RandomResizedCrop(84), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization) if datasetName == "train" else transforms.Compose([transforms.Resize(92), transforms.CenterCrop(84), transforms.ToTensor(), normalization])
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
@@ -95,7 +96,7 @@ def cifarfs(datasetName):
 
     normalization = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
 
-    trans = torch.nn.Sequential(transforms.RandomResizedCrop(32), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), normalization) if datasetName == "train" else torch.nn.Sequential(transforms.Resize([int(1.15*32), int(1.15*32)]), transforms.CenterCrop(32), normalization)
+    trans = transforms.Compose([transforms.RandomResizedCrop(32), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if datasetName == "train" else transforms.Compose([transforms.Resize([int(1.15*32), int(1.15*32)]), transforms.CenterCrop(32), transforms.ToTensor(), normalization])
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
@@ -107,7 +108,7 @@ def metadataset_imagenet(datasetName):
     data = dataset["data"]
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), normalization])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def imagenet(dataset):
@@ -126,7 +127,7 @@ def mnist(dataset):
 
     normalization = transforms.Normalize((0.1302,), (0.3069,))
 
-    trans = normalization
+    trans = transforms.Compose([transforms.ToTensor(), normalization])
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset == "train"), "name": "mnist_" + dataset, "num_classes": 10, "name_classes": list(range(10))}
 
@@ -137,7 +138,7 @@ def fashionMnist(dataset):
 
     normalization = transforms.Normalize((0.2849,), (0.3516,))
 
-    trans = torch.nn.Sequential(transforms.RandomCrop(28, padding=4), transforms.RandomHorizontalFlip(), normalization) if dataset == "train" else normalization
+    trans = transforms.Compose([transforms.RandomCrop(28, padding=4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else  transforms.Compose([transforms.ToTensor(), normalization])
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset == "train"), "name": "fashion-mnist_" + dataset, "num_classes": 10, "name_classes": pytorchDataset.classes}
 
@@ -150,7 +151,7 @@ def metadataset_dtd(dataset_type):
     data = dataset["data"]
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), normalization])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'metadataset_dtd', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 
@@ -162,7 +163,7 @@ def metadataset_cub(dataset_type):
     data = dataset["data"]
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224),  normalization])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224),  transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'metadataset_cub', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 
@@ -174,7 +175,7 @@ def metadataset_fungi(dataset_type):
     data = dataset["data"]
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), normalization])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'metadataset_fungi', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def metadataset_aircraft(dataset_type):
@@ -185,7 +186,7 @@ def metadataset_aircraft(dataset_type):
     data = dataset["data"]
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), normalization])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'metadataset_aircraft', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def metadataset_mscoco(dataset_type):
@@ -198,7 +199,7 @@ def metadataset_mscoco(dataset_type):
     data = dataset["data"]
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), normalization])
+    trans = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'metadataset_mscoco', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def metadataset_vggflower(dataset_type):
@@ -270,7 +271,6 @@ def audioset(datasetName):
     data = dataset["data"]
     targets = dataset["targets"]
     
-    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     trans = lambda x : randcrop(x.mean(dim=1)).unsqueeze(0).to(dtype=torch.float)
     target_trans = lambda x: torch.zeros(dataset['num_classes']).scatter_(0,torch.Tensor(x).long(), 1.)
     opener = lambda x: torch.load(x, map_location='cpu')
