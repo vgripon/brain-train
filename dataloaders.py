@@ -12,7 +12,7 @@ from PIL import Image
 from utils import *
 ### first define dataholder, which will be used as an argument to dataloaders
 class DataHolder():
-    def __init__(self, data, targets, transforms, target_transforms=lambda x:x, opener=lambda x: Image.fromarray(np.array(Image.open(x).convert('RGB')))):
+    def __init__(self, data, targets, transforms, target_transforms=lambda x:x, opener=lambda x: Image.open(x).convert('RGB')):
         self.data = data
         if torch.is_tensor(data):
             self.length = data.shape[0]
@@ -42,7 +42,7 @@ def cifar10(dataset):
 
     normalization = transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616))
 
-    trans = transforms.Compose([transforms.RandomCrop(32, padding=4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.ToTensor(), normalization])
+    trans = transforms.Compose([transforms.RandomCrop(32, padding=4), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else transforms.Compose([normalization])
 
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset == "train"), "name":"cifar10_" + dataset, "num_classes":10, "name_classes": pytorchDataset.classes}
@@ -54,7 +54,7 @@ def cifar100(dataset):
 
     normalization = transforms.Normalize((0.5071, 0.4865, 0.4409), (0.2673, 0.2564, 0.2762))
 
-    trans = transforms.Compose([transforms.RandomCrop(32, padding=4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if dataset == "train" else transforms.Compose([transforms.ToTensor(), normalization])
+    trans = transforms.Compose([transforms.RandomCrop(32, padding=4), transforms.RandomHorizontalFlip(), normalization]) if dataset == "train" else transforms.Compose([normalization])
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset == "train"), "name":"cifar100_" + dataset, "num_classes":100, "name_classes": pytorchDataset.classes}
 
@@ -127,7 +127,7 @@ def mnist(dataset):
 
     normalization = transforms.Normalize((0.1302,), (0.3069,))
 
-    trans = transforms.Compose([transforms.ToTensor(), normalization])
+    trans = transforms.Compose([normalization])
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset == "train"), "name": "mnist_" + dataset, "num_classes": 10, "name_classes": list(range(10))}
 
