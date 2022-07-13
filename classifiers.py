@@ -17,14 +17,17 @@ class LR(nn.Module):
         self.fcRotations = nn.Linear(inputDim, 4)
         self.criterion = nn.CrossEntropyLoss() if args.label_smoothing == 0 else LabelSmoothingLoss(numClasses, args.label_smoothing)
 
-    def forward(self, x, y, yRotations = None):
+    def forward(self, x, y, yRotations = None, lbda = None, perm = None):
         output = self.fc(x)
         decision = output.argmax(dim = 1)
         score = (decision - y == 0).float().mean()
         loss = self.criterion(output, y)
+        if lbda is not None:
+            loss = lbda * loss + (1 - lbda) * self.criterion(output, y[perm])
+            score = lbda * score + (1 - lbda) * (decision - y[perm] == 0).float().mean()
         if yRotations is not None:
             outputRotations = self.fcRotations(x)
-            loss = 0.5 * loss + 0.5 * self.criterion(outputRotations, yRotations)
+            loss = 0.5 * loss + 0.5 * (self.criterion(outputRotations, yRotations) if lbda == None else lbda * self.criterion(outputRotations, yRotations) + (1 - lbda) * self.criterion(outputRotations, yRotations[perm]))
         return loss, score
 
 ### MultiLabel BCE
