@@ -172,8 +172,7 @@ class ImageNetGenerator(EpisodicGenerator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # Read ImageNet graph
-
-        split = {'train':'TRAIN', 'test':'TEST', 'validation': 'VALID'}[datasetName.split('_')[-1]]
+        split = {'train':'TRAIN', 'test':'TEST', 'validation': 'VALID'}[self.datasetName.split('_')[-1]]
         with open(os.path.join('datasets', 'ilsvrc_2012_dataset_spec.json'), 'r') as file:
             self.graph = json.load(file)['split_subgraphs'][split]
 
@@ -233,20 +232,10 @@ if __name__=='__main__':
 
     for _ in range(1):
         print(f'\n---------------Generating episodes for {args.dataset}--------------------')
-        if args.dataset != None and args.dataset!='':
-            if 'metadataset_omniglot' in args.dataset:
-                Generator = OmniglotGenerator
-            elif 'metadataset_imagenet' in args.dataset:
-                Generator = ImageNetGenerator
-            else:
-                Generator = EpisodicGenerator
-        else:
-            Generator = EpisodicGenerator
-        if args.test_features != '':
-            num_elements_per_class = [len(feat['features']) for feat in feature]
-        else: 
-            num_elements_per_class = None
-        generator = Generator(datasetName=args.dataset, dataset_path=args.dataset_path, num_elements_per_class=num_elements_per_class)
+        Generator = {'metadataset_omniglot':OmniglotGenerator, 'metadataset_imagenet':ImageNetGenerator}.get(args.dataset.replace('_train', '').replace('_test', '').replace('_validation', '') if args.dataset != None else args.dataset, EpisodicGenerator)
+        print('Generator:', Generator)
+        num_elements_per_class = [len(feat['features']) for feat in feature] if args.test_features != '' else None
+        generator = Generator(datasetName=args.dataset+'_test', dataset_path=args.dataset_path, num_elements_per_class=num_elements_per_class)
         episode = generator.sample_episode(n_queries=args.few_shot_queries, ways=args.few_shot_ways, n_shots=args.few_shot_shots, unbalanced_queries=args.few_shot_unbalanced_queries, verbose=True)
         if args.test_features != '':
             shots, queries = generator.get_features_from_indices(feature, episode)
