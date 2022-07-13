@@ -382,11 +382,11 @@ if 'audioset' in available_datasets:
     ### generate data for quickdraw
     for dataset in ['train', 'test']:
         result = {"data":[], "targets":[], "name":"audioset_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
-        path = os.path.join(args.dataset_path, 'audioset', 'audioset', 'processed', 'data', dataset)
+        path = os.path.join(args.dataset_path, 'audioset', 'processed', dataset)
         class_num_tracker = {}
         num_classes = 0
         for filename in os.listdir(path):
-            result['data'].append(os.path.join('audioset', 'audioset', 'processed', 'data', dataset, filename))
+            result['data'].append(os.path.join('audioset', 'processed', dataset, filename))
             targets = list(map(int, filename.replace('.pt','').split('_')[1:]))
             result['targets'].append(targets)
             for c in targets:

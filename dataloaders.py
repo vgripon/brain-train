@@ -344,7 +344,7 @@ def prepareDataLoader(name):
             "audioset_test":lambda: audioset("test"), 
         }
     for elt in name:
-        assert elt in dataset_options.keys(), 'The chosen dataset is not existing, please provide a valid option'
+        assert elt in dataset_options.keys(), f'The chosen dataset "{elt}" is not existing, please provide a valid option'
         result.append(dataset_options[elt.lower()]())
     return result
     

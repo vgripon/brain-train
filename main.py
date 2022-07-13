@@ -112,15 +112,7 @@ def testFewShot(features, datasets = None):
     for i in range(len(features)):
         accs = []
         feature = features[i]
-        if datasets is not None:
-            if 'metadataset_omniglot' in datasets[i]["name"]:
-                Generator = OmniglotGenerator
-            elif 'metadataset_imagenet' in datasets[i]["name"]:
-                Generator = ImageNetGenerator
-            else:
-                Generator = EpisodicGenerator
-        else:
-            Generator = EpisodicGenerator
+        Generator = {'metadataset_omniglot':OmniglotGenerator, 'metadataset_imagenet':ImageNetGenerator}.get(datasets[i]['name'].replace('_train', '').replace('_test', '').replace('_validation', '') if datasets != None else datasets, EpisodicGenerator)
         generator = Generator(datasetName=None if datasets is None else datasets[i]["name"], num_elements_per_class= [len(feat['features']) for feat in feature], dataset_path=args.dataset_path)
         for run in range(args.few_shot_runs):
             shots = []
@@ -243,6 +235,7 @@ for nRun in range(args.runs):
             lr = lr * args.gamma
         
         continueTest = False
+        meanVector = None
         if trainSet != []:
             trainStats = train(epoch + 1, backbone, criterion, optimizer, scheduler)
             updateCSV(trainStats, epoch = epoch)
@@ -251,8 +244,6 @@ for nRun in range(args.runs):
                     featuresTrain = generateFeatures(backbone, trainSet)
                     meanVector = computeMean(featuresTrain)
                     featuresTrain = process(featuresTrain, meanVector)
-            else:
-                meanVector = None
         if validationSet != [] and epoch >= args.skip_epochs:
             if args.few_shot or args.save_features_prefix != "":
                 featuresValidation = generateFeatures(backbone, validationSet)
