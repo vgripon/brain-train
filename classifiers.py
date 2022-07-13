@@ -35,9 +35,13 @@ class MultiLabelBCE(nn.Module):
     def __init__(self, inputDim, numClasses):
         super(MultiLabelBCE, self).__init__()
         self.fc = nn.Linear(inputDim, numClasses)
-        self.criterion = nn.BCEWithLogitsLoss() 
+        if args.audio:
+            weights = torch.load(args.dataset_path + "audioset/audioset/processed/weight.pt")
+        else:
+            weights = torch.ones(numClasses)
+        self.criterion = nn.BCEWithLogitsLoss(pos_weight = weights)
 
-    def forward(self, x, y, yRotations = None):
+    def forward(self, x, y, yRotations = None, lbda = None, perm = None):
         output = self.fc(x)
         score = 0.
         for b in range(output.shape[0]):
