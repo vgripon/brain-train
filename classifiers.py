@@ -37,6 +37,8 @@ class MultiLabelBCE(nn.Module):
         self.fc = nn.Linear(inputDim, numClasses)
         if args.audio:
             weights = torch.load(args.dataset_path + "audioset/audioset/processed/weight.pt")
+            weights = weights / weights.shape[0]
+            weights = 1 / weights
         else:
             weights = torch.ones(numClasses)
         self.criterion = nn.BCEWithLogitsLoss(pos_weight = weights)
