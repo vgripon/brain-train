@@ -53,6 +53,8 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                             lbda = random.random()
                         else:
                             lbda = np.random.beta(2,2)
+                    else:
+                        lbda, perm = None, None
 
                     if "rotations" in step:
                         bs = dataStep.shape[0] // 4
@@ -67,15 +69,7 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                     else:
                         targetRot = None
 
-                    if "mixup" not in step and "manifold mixup" not in step:
-                        loss, score = criterion[trainingSetIdx](backbone(dataStep), target, yRotations = targetRot if "rotations" in step else None)
-                    else:
-                        features = backbone(dataStep, mixup = "mixup" if "mixup" in step else "manifold mixup", lbda = lbda, perm = perm)
-                        loss, score = criterion[trainingSetIdx](features, target, yRotations = targetRot if "rotations" in step else None, lbda = lbda, perm = perm)
-#                        loss_2, score_2 = criterion[trainingSetIdx](features, target[perm], yRotations = targetRot[perm] if "rotations" in step else None)
-#                        loss = lbda * loss_1 + (1 - lbda) * loss_2
-#                        score = lbda * score_1 + (1 - lbda) * score_2
-
+                    loss, score = criterion[trainingSetIdx](backbone(dataStep), target, yRotations = targetRot if "rotations" in step else None, lbda = lbda, perm = perm)
                     loss.backward()
 
                 losses[trainingSetIdx] += data.shape[0] * loss.item()
@@ -317,3 +311,4 @@ for nRun in range(args.runs):
                     low, up = confInterval(stats[:,dataset,stat])
                     print("\t{:.3f} ±{:.3f} (conf. [{:.3f}, {:.3f}])".format(stats[:,dataset,stat].mean().item(), stats[:,dataset,stat].std().item(), low, up), end = '')
                 print()
+    print()
