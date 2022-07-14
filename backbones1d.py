@@ -83,6 +83,8 @@ class ResNet(nn.Module):
         self.blocks = nn.ModuleList(blocks)
 
     def forward(self, x, mixup = None, lbda = None, perm = None):
+        x = torch.nn.functional.avg_pool1d(x, 2)
+
         if self.poolEntry:
             pass
         mixup_layer = -1
@@ -136,6 +138,7 @@ class ResNet12(nn.Module):
         self.mp = nn.MaxPool1d(4)
 
     def forward(self, x, mixup = None, lbda = None, perm = None):
+        x = torch.nn.functional.avg_pool1d(x, 2)
         if self.poolEntry:
             pass
         mixup_layer = -1

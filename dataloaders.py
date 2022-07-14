@@ -258,11 +258,11 @@ def audioset(datasetName):
             new_tensor[:N] = tensor
             return new_tensor
         
-        if N*2//freq-2>0:
-            i = random.randint(0,N*2//freq-2)
+        if N > freq:
+            i = random.randint(0,N - freq - 1)
         else:
             i = 0
-        return tensor[i*freq//2:(i+2)*freq//2]
+        return tensor[i:i+freq]
 
     f = open(args.dataset_path + "datasets.json")    
     all_datasets = json.loads(f.read())
@@ -271,7 +271,7 @@ def audioset(datasetName):
     data = dataset["data"]
     targets = dataset["targets"]
     
-    trans = lambda x : randcrop(x.mean(dim=1)).unsqueeze(0).to(dtype=torch.float)
+    trans = lambda x : randcrop(x.mean(dim=0)).unsqueeze(0).to(dtype=torch.float)
     target_trans = lambda x: torch.zeros(dataset['num_classes']).scatter_(0,torch.Tensor(x).long(), 1.)
     opener = lambda x: torch.load(x, map_location='cpu')
 
