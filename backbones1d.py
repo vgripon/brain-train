@@ -176,6 +176,7 @@ class ResNet12(nn.Module):
 def prepareBackbone():
     return {
         "resnet18": lambda: (ResNet(BasicBlock, [(1, 1, 1), (1, 2, 1.5), (1, 2, 2), (1, 2, 3), (1, 2, 4), (1, 2, 5), (1, 2, 6), (1, 2, 8)], args.feature_maps), 8 * args.feature_maps),
+        "resnet24": lambda: (ResNet(BasicBlock, [(1, 2, 1.23), (1, 2, 1.52), (1, 2, 1.87), (1, 2, 2.31), (1, 2, 2.85), (1, 2, 3.51), (1, 2, 4.33), (1, 2, 5.34), (1, 2, 6.59), (1, 2, 8.12), (1, 2, 10)], args.feature_maps), 10 * args.feature_maps),
         # "resnet20": lambda: (ResNet(BasicBlock, [(3, 1, 1), (3, 2, 2), (3, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
         # "resnet56": lambda: (ResNet(BasicBlock, [(9, 1, 1), (9, 2, 2), (9, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
         # "resnet110": lambda: (ResNet(BasicBlock, [(18, 1, 1), (18, 2, 2), (18, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
