@@ -251,7 +251,7 @@ def metadataset_traffic_signs(dataset_type):
 
 def audioset(datasetName):
     def randcrop(tensor):
-        freq = 32000
+        freq = 320000
         N = tensor.shape[0]
         if N<freq:
             new_tensor = torch.zeros(freq)
