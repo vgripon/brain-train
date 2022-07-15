@@ -250,8 +250,8 @@ def metadataset_traffic_signs(dataset_type):
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset_type == "train"), "name":'metadataset_traffic_signs', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def audioset(datasetName):
-    def randcrop(tensor):
-        freq = 320000
+    def randcrop(tensor, duration):
+        freq = 32000 * duration
         N = tensor.shape[0]
         if N<freq:
             new_tensor = torch.zeros(freq)
@@ -271,11 +271,12 @@ def audioset(datasetName):
     data = dataset["data"]
     targets = dataset["targets"]
     
-    trans = lambda x : randcrop(x.mean(dim=0)).unsqueeze(0).to(dtype=torch.float)
+    trans = transforms.Compose([lambda x : randcrop(x.mean(dim=0), duration = 2).unsqueeze(0).to(dtype=torch.float), lambda x: x + 0.1 * torch.randn_like(x)])
+    test_trans = lambda x : randcrop(x.mean(dim=0), duration = 10).unsqueeze(0).to(dtype=torch.float)
     target_trans = lambda x: torch.zeros(dataset['num_classes']).scatter_(0,torch.Tensor(x).long(), 1.)
     opener = lambda x: torch.load(x, map_location='cpu')
 
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans, target_transforms=target_trans, opener=opener), shuffle = datasetName == "train"), "name":'audioset'+datasetName, "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans if datasetName == "train" else test_trans, target_transforms=target_trans, opener=opener), shuffle = datasetName == "train"), "name":'audioset'+datasetName, "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 
 def prepareDataLoader(name):
