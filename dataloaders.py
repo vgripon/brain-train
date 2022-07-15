@@ -271,8 +271,8 @@ def audioset(datasetName):
     data = dataset["data"]
     targets = dataset["targets"]
     
-    trans = transforms.Compose([lambda x : randcrop(x.mean(dim=0), duration = 2).unsqueeze(0).to(dtype=torch.float), lambda x: x + 0.1 * torch.randn_like(x)])
-    test_trans = lambda x : randcrop(x.mean(dim=0), duration = 10).unsqueeze(0).to(dtype=torch.float)
+    trans = transforms.Compose([lambda x : randcrop(x.mean(dim=0), duration = 1).unsqueeze(0).to(dtype=torch.float), lambda x: x + 0.1 * torch.randn_like(x), lambda x: -1 * x if random.random() < 0.5 else x])
+    test_trans = lambda x : randcrop(x.mean(dim=0), duration = 1).unsqueeze(0).to(dtype=torch.float)
     target_trans = lambda x: torch.zeros(dataset['num_classes']).scatter_(0,torch.Tensor(x).long(), 1.)
     opener = lambda x: torch.load(x, map_location='cpu')
 
