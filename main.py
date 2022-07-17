@@ -51,10 +51,12 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                         perm = torch.randperm(dataStep.shape[0])
                         if "mixup" in step:
                             lbda = random.random()
+                            mixupType = "mixup"
                         else:
                             lbda = np.random.beta(2,2)
+                            mixupType = "manifold mixup"
                     else:
-                        lbda, perm = None, None
+                        lbda, perm, mixupType = None, None, None
 
                     if "rotations" in step:
                         bs = dataStep.shape[0] // 4
@@ -69,7 +71,7 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                     else:
                         targetRot = None
 
-                    loss, score = criterion[trainingSetIdx](backbone(dataStep), target, yRotations = targetRot if "rotations" in step else None, lbda = lbda, perm = perm)
+                    loss, score = criterion[trainingSetIdx](backbone(dataStep, mixup = mixupType, lbda = lbda, perm = perm), target, yRotations = targetRot if "rotations" in step else None, lbda = lbda, perm = perm)
                     loss.backward()
 
                 losses[trainingSetIdx] += data.shape[0] * loss.item()
