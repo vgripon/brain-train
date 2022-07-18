@@ -62,6 +62,7 @@ class L2(nn.Module):
         self.centroidsRotations = torch.nn.Parameter(torch.zeros(4, inputDim))
         self.criterion = nn.CrossEntropyLoss() if args.label_smoothing == 0 else LabelSmoothingLoss(numClasses, args.label_smoothing)
         self.numClasses = numClasses
+        self.inputDim = inputDim
 
     def forward(self, x, y, yRotations = None, lbda = None, perm = None):
         distances = -1 * torch.pow(torch.norm(x.unsqueeze(1) - self.centroids.unsqueeze(0), dim = 2), 2)
@@ -91,6 +92,25 @@ class LabelSmoothingLoss(nn.Module):
             true_dist.fill_(self.smoothing / (self.cls - 1))
             true_dist.scatter_(1, target.data.unsqueeze(1), 1 - self.smoothing)
         return torch.mean(torch.sum(-true_dist * pred, dim=-1))
+
+class Multihead(L2):
+    def __init__(self, inputDim, numClasses):
+        self.head_size = inputDim // numClasses
+        self.numClasses = numClasses
+        super(Multihead, self).__init__(self.head_size,numClasses-1)
+        self.L2= nn.Sequential(*[L2(self.head_size,numClasses-1).to(args.device) for i in range(numClasses)]) 
+    
+    def forward(self, x, y, yRotations = None, lbda = None, perm = None):
+        loss, score = 0,0
+        for i in range(self.numClasses):
+            x_head = x[y!=i,i*self.head_size:(i+1)*self.head_size]   # #ignore targets corresponding to the head i & select a chunk of features
+            y_head = y[y!=i]                                         #ignore targets corresponding to the head i 
+            y_head[y_head>i] -= 1                                      #realign targets corresponding so as to have the same number of targets.
+            loss_i, score_i = self.L2[i].forward(x_head,y_head, yRotations=yRotations,lbda =lbda,perm=perm)
+            loss += loss_i
+            score += score_i
+        return loss/self.numClasses , score/self.numClasses 
+    
 
 ### NCM
 def ncm(shots, queries):
@@ -165,6 +185,7 @@ def prepareCriterion(outputDim, numClasses):
         "lr": lambda: LR(outputDim, numClasses),
         "l2": lambda: L2(outputDim, numClasses), 
         'multilabelbce': lambda : MultiLabelBCE(outputDim, numClasses), 
+        'multihead' : lambda : Multihead(outputDim,numClasses)
         }[args.classifier.lower()]()
 
 print(" classifiers,", end="")
