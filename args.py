@@ -56,7 +56,8 @@ parser.add_argument("--validation-dataset", type=str, default="", help="validati
 parser.add_argument("--test-dataset", type=str, default="", help="test dataset, overriden by --dataset")
 parser.add_argument("--dataset-size", type=int, default=0, help="defines a maximum of samples considered at each epoch, 0 means it is ignored")
 parser.add_argument("--audio", action="store_true", help="used audio inputs, so switch back to 1d backbones")
-
+parser.add_argument("--wandb", type=str, default='', help="Report to wandb, input is the entity name")
+parser.add_argument("--wandbProjectName", type=str, default='few-shot', help="wandb project name")
 ### backbones parameters
 parser.add_argument("--feature-maps", type=int, default=64, help="initial number of feature maps in first embedding, used as a base downstream convolutions")
 parser.add_argument("--backbone", type=str, default="resnet18", help="backbone architecture")
