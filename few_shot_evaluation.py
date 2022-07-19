@@ -5,6 +5,10 @@ import math
 import numpy as np
 import os 
 
+def get_repository_path():
+    import os
+    return '/'+os.path.join(*os.path.abspath(__file__).split('/')[:-1])
+
 class EpisodicGenerator():
     def __init__(self, datasetName=None, dataset_path=None, max_classes=50, num_elements_per_class=None):
         assert datasetName != None or num_elements_per_class!=None, "datasetName and num_elements_per_class can't both be None"
@@ -173,7 +177,7 @@ class ImageNetGenerator(EpisodicGenerator):
         super().__init__(**kwargs)
         # Read ImageNet graph
         split = {'train':'TRAIN', 'test':'TEST', 'validation': 'VALID'}[self.datasetName.split('_')[-1]]
-        with open(os.path.join('datasets', 'ilsvrc_2012_dataset_spec.json'), 'r') as file:
+        with open(os.path.join(get_repository_path(), 'datasets', 'ilsvrc_2012_dataset_spec.json'), 'r') as file:
             self.graph = json.load(file)['split_subgraphs'][split]
 
         self.graph_map = {node['wn_id']:node['children_ids'] for node in self.graph}
