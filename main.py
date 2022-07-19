@@ -51,10 +51,12 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                         perm = torch.randperm(dataStep.shape[0])
                         if "mixup" in step:
                             lbda = random.random()
+                            mixupType = "mixup"
                         else:
                             lbda = np.random.beta(2,2)
+                            mixupType = "manifold mixup"
                     else:
-                        lbda, perm = None, None
+                        lbda, perm, mixupType = None, None, None
 
                     if "rotations" in step:
                         bs = dataStep.shape[0] // 4
@@ -69,7 +71,7 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                     else:
                         targetRot = None
 
-                    loss, score = criterion[trainingSetIdx](backbone(dataStep), target, yRotations = targetRot if "rotations" in step else None, lbda = lbda, perm = perm)
+                    loss, score = criterion[trainingSetIdx](backbone(dataStep, mixup = mixupType, lbda = lbda, perm = perm), target, yRotations = targetRot if "rotations" in step else None, lbda = lbda, perm = perm)
                     loss.backward()
 
                 losses[trainingSetIdx] += data.shape[0] * loss.item()
@@ -215,11 +217,11 @@ for nRun in range(args.runs):
 
     for epoch in range(args.epochs):
         if epoch == 0 and not args.cosine:
-            optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.weight_decay)
+            optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.wd)
             if not args.cosine:
                 scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer = optimizer, milestones = [n * nSteps for n in args.milestones], gamma = args.gamma)
         if args.cosine and (epoch in args.milestones or epoch == 0):
-            optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.weight_decay)
+            optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.wd)
             if epoch == 0:
                 interval = nSteps * args.milestones[0]
             else:
