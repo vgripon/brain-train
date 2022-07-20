@@ -203,11 +203,11 @@ class ImageNetGenerator(EpisodicGenerator):
         node = self.node_candidates[random.randint(0, len(self.node_candidates)-1)]
 
         leaves_candidates = self.get_spanning_leaves(node)
-        max_classes = min(len(leaves_candidates), 50)
         # Sample a number of ways
-        n_ways = ways if ways!=0 else random.randint(5, max_classes)
+        #n_ways = ways if ways!=0 else random.randint(5, max_classes)
+        n_ways = ways if ways!=0 else min(len(leaves_candidates), 50)
 
-        # get n_ways classes randomly from the subgraph
+        # get n_ways classes randomly from the subgraph if n_ways is fixed or if number of nodes higher than 50.
         choices_idx = torch.randperm(len(leaves_candidates))[:n_ways]
         choices_names = [leaves_candidates[idx] for idx in choices_idx]
         choices = torch.Tensor([self.classIdx[leaf] for leaf in choices_names]).int()
