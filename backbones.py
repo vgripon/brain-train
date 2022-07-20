@@ -79,7 +79,7 @@ class ResNet(nn.Module):
         first = True
         for (nBlocks, stride, multiplier) in blockList:
             for i in range(nBlocks):
-                blocks.append(block(featureMaps * lastMult, featureMaps * multiplier, in_expansion = 1 if first else 4, stride = 1 if i > 0 else stride))
+                blocks.append(block(int(featureMaps * lastMult), int(featureMaps * multiplier), in_expansion = 1 if first else 4, stride = 1 if i > 0 else stride))
                 first = False
                 lastMult = multiplier
         self.blocks = nn.ModuleList(blocks)
@@ -180,7 +180,7 @@ def prepareBackbone():
         "resnet18": lambda: (ResNet(BasicBlock, [(2, 1, 1), (2, 2, 2), (2, 2, 4), (2, 2, 8)], args.feature_maps, large = large), 8 * args.feature_maps),
         "resnet20": lambda: (ResNet(BasicBlock, [(3, 1, 1), (3, 2, 2), (3, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
         "resnet56": lambda: (ResNet(BasicBlock, [(9, 1, 1), (9, 2, 2), (9, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
-        "resnet56flat": lambda: (ResNet(BasicBlock, [(9, 1, 1), (9, 2, 1), (9, 2, 1)], args.feature_maps, large = large), 1 * args.feature_maps),
+        "resnet56flat": lambda: (ResNet(BasicBlock, [(9, 1, 1), (9, 2, 1.41), (9, 2, 2)], args.feature_maps, large = large), 2 * args.feature_maps),
         "resnet110": lambda: (ResNet(BasicBlock, [(18, 1, 1), (18, 2, 2), (18, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
         "resnet50": lambda: (ResNet(BottleneckBlock, [(3, 1, 1), (4, 2, 2), (6, 2, 4), (3, 2, 8)], args.feature_maps, large = large), 8 * 4 * args.feature_maps),
         "resnet12": lambda: (ResNet12(args.feature_maps), 10 * args.feature_maps)
