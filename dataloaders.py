@@ -91,7 +91,7 @@ def tieredimagenet(datasetName):
 
     normalization = transforms.Normalize([125.3/255, 123.0/255, 113.9/255], [63.0/255, 62.1/255, 66.7/255])
 
-    trans = torch.nn.Sequential(transforms.RandomResizedCrop(84), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization) if datasetName == "train" else transforms.Compose([transforms.Resize(92), transforms.CenterCrop(84), transforms.ToTensor(), normalization])
+    trans = transforms.Compose([transforms.RandomResizedCrop(84), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization]) if datasetName == "train" else transforms.Compose([transforms.Resize(92), transforms.CenterCrop(84), transforms.ToTensor(), normalization])
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
