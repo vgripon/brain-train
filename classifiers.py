@@ -6,6 +6,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 
 from args import args
 
@@ -98,18 +99,44 @@ class Multihead(L2):
         self.head_size = inputDim // numClasses
         self.numClasses = numClasses
         super(Multihead, self).__init__(self.head_size,numClasses-1)
-        self.L2= nn.Sequential(*[L2(self.head_size,numClasses-1).to(args.device) for i in range(numClasses)]) 
+        self.L2= nn.Sequential(*[L2(self.head_size,numClasses-1).to(args.device) for i in range(numClasses)])
+        if args.culsters!='':
+            list_l2 = []
+            with open(args.clusters, 'r') as f:
+                self.clusters = [line.rstrip('\n') for line in f]
+            self.head_size = inputDim // len(self.clusters)
+            for i,x in enumerate(self.clusters):
+                self.clusters[i]=eval(x)
+                list_l2.append(L2(self.head_size,len(eval)).to(args.device) for i in range(len(self.clusters)))
+            self.L2= nn.Sequential(*list_l2)
+            self.LUT=[]
+            for i,c in enumerate(self.clusters):
+                    self.LUT.append(np.array(c).argsort())
     
     def forward(self, x, y, yRotations = None, lbda = None, perm = None):
         loss, score = 0,0
-        for i in range(self.numClasses):
-            x_head = x[y!=i,i*self.head_size:(i+1)*self.head_size]   # #ignore targets corresponding to the head i & select a chunk of features
-            y_head = y[y!=i]                                         #ignore targets corresponding to the head i 
-            y_head[y_head>i] -= 1                                      #realign targets corresponding so as to have the same number of targets.
-            loss_i, score_i = self.L2[i].forward(x_head,y_head, yRotations=yRotations,lbda =lbda,perm=perm)
-            loss += loss_i
-            score += score_i
-        return loss/self.numClasses , score/self.numClasses 
+        if args.clusters=='':
+            for i in range(self.numClasses):
+                x_head = x[y!=i,i*self.head_size:(i+1)*self.head_size]   # #ignore targets corresponding to the head i & select a chunk of features
+                y_head = y[y!=i]                                         #ignore targets corresponding to the head i 
+                y_head[y_head>i] -= 1                                      #realign targets corresponding so as to have the same number of targets.
+                loss_i, score_i = self.L2[i].forward(x_head,y_head, yRotations=yRotations,lbda =lbda,perm=perm)
+                loss += loss_i
+                score += score_i
+            return loss/self.numClasses , score/self.numClasses 
+        else:
+            for i,c in enumerate(self.clusters):
+                y_head = []
+                x_head = torch.tensor()
+                for i in range(len(y)):
+                    if y[i] in c:
+                        y_head.append(self.LUT[i][c.index(y[i])])
+                        x_head.append(x[i,i*self.head_size:(i+1)*self.head_size])
+                x_head = torch.stack(x_head)
+                loss_i, score_i = self.L2[i].forward(x_head,y_head, yRotations=yRotations,lbda =lbda,perm=perm)
+                loss += loss_i
+                score += score_i
+            return loss/len() , score/self.numClasses 
     
 
 ### NCM
