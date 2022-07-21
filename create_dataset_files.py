@@ -231,7 +231,7 @@ def get_data_aircraft():
             if images != []:
                 data[subset]['num_elements_per_class'].append(len(images))
                 for index_image , im in enumerate(images):
-                    data[subset]['data'].append('/fgvc-aircraft-2013b/data/images/'+im+'.jpg')
+                    data[subset]['data'].append('/fgvc-aircraft-2013b/data/images_cropped/'+im+'.jpg')
                     data[subset]['targets'].append(index_class)
                 data[subset]['name_classes'].append(cl)
             else:
