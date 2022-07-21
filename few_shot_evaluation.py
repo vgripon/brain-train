@@ -5,6 +5,10 @@ import math
 import numpy as np
 import os 
 
+def get_repository_path():
+    import os
+    return '/'+os.path.join(*os.path.abspath(__file__).split('/')[:-1])
+
 class EpisodicGenerator():
     def __init__(self, datasetName=None, dataset_path=None, max_classes=50, num_elements_per_class=None):
         assert datasetName != None or num_elements_per_class!=None, "datasetName and num_elements_per_class can't both be None"
@@ -173,7 +177,7 @@ class ImageNetGenerator(EpisodicGenerator):
         super().__init__(**kwargs)
         # Read ImageNet graph
         split = {'train':'TRAIN', 'test':'TEST', 'validation': 'VALID'}[self.datasetName.split('_')[-1]]
-        with open(os.path.join('datasets', 'ilsvrc_2012_dataset_spec.json'), 'r') as file:
+        with open(os.path.join(get_repository_path(), 'datasets', 'ilsvrc_2012_dataset_spec.json'), 'r') as file:
             self.graph = json.load(file)['split_subgraphs'][split]
 
         self.graph_map = {node['wn_id']:node['children_ids'] for node in self.graph}
@@ -199,11 +203,11 @@ class ImageNetGenerator(EpisodicGenerator):
         node = self.node_candidates[random.randint(0, len(self.node_candidates)-1)]
 
         leaves_candidates = self.get_spanning_leaves(node)
-        max_classes = min(len(leaves_candidates), 50)
         # Sample a number of ways
-        n_ways = ways if ways!=0 else random.randint(5, max_classes)
+        #n_ways = ways if ways!=0 else random.randint(5, max_classes)
+        n_ways = ways if ways!=0 else min(len(leaves_candidates), 50)
 
-        # get n_ways classes randomly from the subgraph
+        # get n_ways classes randomly from the subgraph if n_ways is fixed or if number of nodes higher than 50.
         choices_idx = torch.randperm(len(leaves_candidates))[:n_ways]
         choices_names = [leaves_candidates[idx] for idx in choices_idx]
         choices = torch.Tensor([self.classIdx[leaf] for leaf in choices_names]).int()

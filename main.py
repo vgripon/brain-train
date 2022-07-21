@@ -172,7 +172,7 @@ def generateFeatures(backbone, datasets):
     return results
 
 if args.test_features != "":
-    features = [torch.load(args.test_features)]
+    features = [torch.load(args.test_features, map_location=args.device)]
     print(testFewShot(features))
     exit()
 
