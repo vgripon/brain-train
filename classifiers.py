@@ -128,15 +128,15 @@ class Multihead(L2):
             for i,c in enumerate(self.clusters):
                 y_head = []
                 x_head = torch.tensor()
-                for i in range(len(y)):
-                    if y[i] in c:
-                        y_head.append(self.LUT[i][c.index(y[i])])
-                        x_head.append(x[i,i*self.head_size:(i+1)*self.head_size])
+                for j in range(len(y)):
+                    if y[j] in c:
+                        y_head.append(self.LUT[i][c.index(y[j])])
+                        x_head.append(x[j,i*self.head_size:(i+1)*self.head_size])
                 x_head = torch.stack(x_head)
                 loss_i, score_i = self.L2[i].forward(x_head,y_head, yRotations=yRotations,lbda =lbda,perm=perm)
                 loss += loss_i
                 score += score_i
-            return loss/len() , score/self.numClasses 
+            return loss/len(self.clusters) , score/len(self.clusters) 
     
 
 ### NCM
