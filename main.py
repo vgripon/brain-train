@@ -2,6 +2,7 @@
 import torch
 import random # for mixup
 import numpy as np # for manifold mixup
+import math
 from colorama import Fore, Back, Style
 
 # Loading other files
@@ -92,7 +93,7 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                     text = " " * (2 + len(trainSet[trainingSetIdx]["name"]) - 21) + text
             optimizer.step()
             scheduler.step()
-            display("\r" + Style.RESET_ALL + "{:4d} {:.2e}".format(epoch, float(scheduler.get_last_lr()[0])) + text, end = '', force = finished == 1)
+            display("\r" + Style.RESET_ALL + "{:4d} {:.2e}".format(epoch, float(scheduler.get_last_lr()[0])) + text, end = '', force = (finished == 1))
         except StopIteration:
             return torch.stack([losses / total_elt, 100 * accuracies / total_elt]).transpose(0,1)
 
@@ -225,8 +226,8 @@ for nRun in range(args.runs):
 
     try:
         nSteps = torch.min(torch.tensor([len(dataset["dataloader"]) for dataset in trainSet])).item()
-        if args.dataset_size > 0 and args.dataset_size // args.batch_size < nSteps:
-            nSteps = args.dataset_size // args.batch_size
+        if args.dataset_size > 0 and math.ceil(args.dataset_size / args.batch_size) < nSteps:
+            nSteps = math.ceil(args.dataset_size / args.batch_size)
     except:
         nSteps = 0
 
@@ -308,7 +309,6 @@ for nRun in range(args.runs):
             for i, dataset in enumerate(testSet):
                 torch.save(featuresTest[i], args.save_features_prefix + dataset["name"] + "_features.pt")
 
-        scheduler.step()
         print(Style.RESET_ALL + " " + timeToStr(time.time() - tick), end = '' if args.silent else '\n')
     if trainSet != []:
         if allRunTrainStats is not None:
