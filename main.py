@@ -48,7 +48,7 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
             optimizer.zero_grad()
             text = ""
             for trainingSetIdx in range(len(iterators)):
-                if args.dataset_size > 0 and total_elt[trainingSetIdx] > args.dataset_size:
+                if args.dataset_size > 0 and total_elt[trainingSetIdx] >= args.dataset_size:
                     raise StopIteration
                 batchIdx, (data, target) = next(iterators[trainingSetIdx])
                 data, target = data.to(args.device), target.to(args.device)
@@ -254,7 +254,7 @@ for nRun in range(args.runs):
             else:
                 index = args.milestones.index(epoch)
                 interval = nSteps * (args.milestones[index + 1] - args.milestones[index])
-            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimizer, T_max = interval)
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimizer, T_max = interval, eta_min = lr * 1e-3)
             lr = lr * args.gamma
         
         continueTest = False
