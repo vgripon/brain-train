@@ -84,8 +84,8 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                 total_elt[trainingSetIdx] += data.shape[0]
                 finished = (batchIdx + 1) / len(trainSet[trainingSetIdx]["dataloader"])
                 text += " " + opener + "{:3d}% {:.2e} {:6.2f}%".format(round(100*finished), losses[trainingSetIdx] / total_elt[trainingSetIdx], 100 * accuracies[trainingSetIdx] / total_elt[trainingSetIdx]) + ender
-                if len(text) < 2 + len(trainSet[trainingSetIdx]["name"]):
-                    text = " " * (2 + len(trainSet[trainingSetIdx]["name"]) - len(text)) + text
+                if 21 < 2 + len(trainSet[trainingSetIdx]["name"]):
+                    text = " " * (2 + len(trainSet[trainingSetIdx]["name"]) - 21) + text
             optimizer.step()
             scheduler.step()
             display("\r" + Style.RESET_ALL + "{:4d} {:.2e}".format(epoch, float(scheduler.get_last_lr()[0])) + text, end = '', force = finished == 1)
