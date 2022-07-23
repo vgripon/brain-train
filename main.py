@@ -2,7 +2,7 @@
 import torch
 import random # for mixup
 import numpy as np # for manifold mixup
-from colorama import Fore, Style
+from colorama import Fore, Back, Style
 
 # Loading other files
 print("Loading local files... ", end ='')
@@ -18,6 +18,10 @@ print(" done.")
 print()
 print(args)
 print()
+
+#for pretty printing
+opener = ""
+ender = ""
 
 ### generate random seeds
 random.seed(args.seed)
@@ -79,10 +83,10 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                 accuracies[trainingSetIdx] += data.shape[0] * score.item()
                 total_elt[trainingSetIdx] += data.shape[0]
                 finished = (batchIdx + 1) / len(trainSet[trainingSetIdx]["dataloader"])
-                text += " {:s} {:3d}% {:.3f} {:3.2f}%".format(trainSet[trainingSetIdx]["name"], round(100*finished), losses[trainingSetIdx] / total_elt[trainingSetIdx], 100 * accuracies[trainingSetIdx] / total_elt[trainingSetIdx])
+                text += " " + opener + "{:3d}% {:.2e} {:6.2f}%".format(round(100*finished), losses[trainingSetIdx] / total_elt[trainingSetIdx], 100 * accuracies[trainingSetIdx] / total_elt[trainingSetIdx]) + ender
             optimizer.step()
             scheduler.step()
-            display("\r{:3d} {:.5f}".format(epoch, float(scheduler.get_last_lr()[0])) + text, end = '', force = finished == 1)
+            display("\r" + Style.RESET_ALL + "{:4d} {:.2e}".format(epoch, float(scheduler.get_last_lr()[0])) + text, end = '', force = finished == 1)
         except StopIteration:
             return torch.stack([losses / total_elt, 100 * accuracies / total_elt]).transpose(0,1)
 
@@ -101,7 +105,7 @@ def test(backbone, datasets, criterion):
                 accuracies += data.shape[0] * score.item()
                 total_elt += data.shape[0]
         results.append((losses / total_elt, 100 * accuracies / total_elt))
-        display(" {:s} {:.3f} {:3.2f}%".format(dataset["name"], losses / total_elt, 100 * accuracies / total_elt), end = '', force = True)
+        display(" " + opener + "{:.2e} {:6.2f}%".format(losses / total_elt, 100 * accuracies / total_elt) + ender, end = '', force = True)
     return torch.tensor(results)
 
 def testFewShot(features, datasets = None):
@@ -217,6 +221,15 @@ for nRun in range(args.runs):
         nSteps = 0
 
     for epoch in range(args.epochs):
+        if epoch % 30 == 0:
+            print(" ep.       lr ".format(), end='')
+            for dataset in trainSet:
+                print(Back.CYAN + "{:>20s} ".format(dataset["name"]) + Style.RESET_ALL, end='')
+            for dataset in validationSet:
+                print(Back.GREEN + "{:>16s} ".format(dataset["name"]) + Style.RESET_ALL, end='')
+            for dataset in testSet:
+                print(Back.RED + "{:>16s} ".format(dataset["name"]) + Style.RESET_ALL, end='')
+            print()
         if epoch == 0 and not args.cosine:
             optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.wd)
             if not args.cosine:
@@ -234,7 +247,7 @@ for nRun in range(args.runs):
         continueTest = False
         meanVector = None
         if trainSet != []:
-            print(Fore.CYAN, end='')
+            opener = Fore.CYAN
             trainStats = train(epoch + 1, backbone, criterion, optimizer, scheduler)
             updateCSV(trainStats, epoch = epoch)
             if (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
@@ -242,9 +255,9 @@ for nRun in range(args.runs):
                     featuresTrain = generateFeatures(backbone, trainSet)
                     meanVector = computeMean(featuresTrain)
                     featuresTrain = process(featuresTrain, meanVector)
-            print(Style.RESET_ALL, end='')
+            ender = Style.RESET_ALL
         if validationSet != [] and epoch >= args.skip_epochs:
-            print(Fore.GREEN, end = '')
+            opener = Fore.GREEN
             if args.few_shot or args.save_features_prefix != "":
                 featuresValidation = generateFeatures(backbone, validationSet)
                 featuresValidation = process(featuresValidation, meanVector)
@@ -256,11 +269,11 @@ for nRun in range(args.runs):
                 validationStats = tempValidationStats
                 best_val = validationStats[:,0].mean().item()
                 continueTest = True
-            print(Style.RESET_ALL, end = '')
+            ender = Style.RESET_ALL
         else:
             continueTest = True
         if testSet != [] and epoch >= args.skip_epochs:
-            print(Fore.RED, end = '')
+            opener = Fore.RED
             if args.few_shot or args.save_features_prefix != "":
                 featuresTest = generateFeatures(backbone, testSet)
                 featuresTest = process(featuresTest, meanVector)
@@ -270,7 +283,7 @@ for nRun in range(args.runs):
             updateCSV(tempTestStats)
             if continueTest:
                 testStats = tempTestStats
-            print(Style.RESET_ALL, end = '')
+            ender = Style.RESET_ALL
         if continueTest and args.save_backbone != "" and epoch >= args.skip_epochs:
             torch.save(backbone.to("cpu").state_dict(), args.save_backbone)
             backbone.to(args.device)
