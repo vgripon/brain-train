@@ -2,6 +2,7 @@
 import torch
 import random # for mixup
 import numpy as np # for manifold mixup
+from colorama import Fore, Style
 
 # Loading other files
 print("Loading local files... ", end ='')
@@ -233,6 +234,7 @@ for nRun in range(args.runs):
         continueTest = False
         meanVector = None
         if trainSet != []:
+            print(Fore.CYAN, end='')
             trainStats = train(epoch + 1, backbone, criterion, optimizer, scheduler)
             updateCSV(trainStats, epoch = epoch)
             if (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
@@ -240,7 +242,9 @@ for nRun in range(args.runs):
                     featuresTrain = generateFeatures(backbone, trainSet)
                     meanVector = computeMean(featuresTrain)
                     featuresTrain = process(featuresTrain, meanVector)
+            print(Style.RESET_ALL, end='')
         if validationSet != [] and epoch >= args.skip_epochs:
+            print(Fore.GREEN, end = '')
             if args.few_shot or args.save_features_prefix != "":
                 featuresValidation = generateFeatures(backbone, validationSet)
                 featuresValidation = process(featuresValidation, meanVector)
@@ -252,9 +256,11 @@ for nRun in range(args.runs):
                 validationStats = tempValidationStats
                 best_val = validationStats[:,0].mean().item()
                 continueTest = True
+            print(Style.RESET_ALL, end = '')
         else:
             continueTest = True
         if testSet != [] and epoch >= args.skip_epochs:
+            print(Fore.RED, end = '')
             if args.few_shot or args.save_features_prefix != "":
                 featuresTest = generateFeatures(backbone, testSet)
                 featuresTest = process(featuresTest, meanVector)
@@ -264,6 +270,7 @@ for nRun in range(args.runs):
             updateCSV(tempTestStats)
             if continueTest:
                 testStats = tempTestStats
+            print(Style.RESET_ALL, end = '')
         if continueTest and args.save_backbone != "" and epoch >= args.skip_epochs:
             torch.save(backbone.to("cpu").state_dict(), args.save_backbone)
             backbone.to(args.device)
