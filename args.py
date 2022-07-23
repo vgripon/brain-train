@@ -15,6 +15,7 @@ parser.add_argument("--freeze-backbone", action="store_true", help="freeze the b
 parser.add_argument("--skip-epochs", type=int, default=0, help="number of epochs for which validation and test are ignored")
 parser.add_argument("--seed", type=int, default=random.randint(0, 1000000000), help="initial random seed")
 parser.add_argument("--deterministic", action="store_true", help="force deterministic mode for cuda")
+parser.add_argument("--silent", action="store_true", help="reduce output verbose")
 
 ### optimizer args
 parser.add_argument("--optimizer", type=str, default="SGD", help="can be SGD or Adam")

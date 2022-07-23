@@ -5,17 +5,21 @@ import numpy as np # for manifold mixup
 from colorama import Fore, Back, Style
 
 # Loading other files
-print("Loading local files... ", end ='')
 from args import args
+if not args.silent:
+    print("Loading local files... ", end ='')
 from utils import *
 from dataloaders import trainSet, validationSet, testSet
 import classifiers
 import backbones
 import backbones1d
 from few_shot_evaluation import EpisodicGenerator, ImageNetGenerator, OmniglotGenerator
-print(" done.")
 
-print()
+if not args.silent:
+    print(" done.")
+    
+    print()
+
 print(args)
 print()
 
@@ -182,7 +186,8 @@ allRunValidationStats = None
 allRunTestStats = None
 createCSV(trainSet, validationSet, testSet)
 for nRun in range(args.runs):
-    print("Preparing backbone... ", end='')
+    if not args.silent:
+        print("Preparing backbone... ", end='')
     if args.audio:
         backbone, outputDim = backbones1d.prepareBackbone()
     else:
@@ -190,26 +195,29 @@ for nRun in range(args.runs):
     if args.load_backbone != "":
         backbone.load_state_dict(torch.load(args.load_backbone))
     backbone = backbone.to(args.device)
-    numParamsBackbone = torch.tensor([m.numel() for m in backbone.parameters()]).sum().item()
-    print(" containing {:,} parameters.".format(numParamsBackbone))
+    if not args.silent:
+        numParamsBackbone = torch.tensor([m.numel() for m in backbone.parameters()]).sum().item()
+        print(" containing {:,} parameters.".format(numParamsBackbone))
 
-    print("Preparing criterion(s) and classifier(s)... ", end='')
+        print("Preparing criterion(s) and classifier(s)... ", end='')
     criterion = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in trainSet]
     numParamsCriterions = 0
     for c in criterion:
         c.to(args.device)
         numParamsCriterions += torch.tensor([m.numel() for m in c.parameters()]).sum().item()
-    print(" total is {:,} parameters.".format(numParamsBackbone + numParamsCriterions))
+    if not args.silent:
+        print(" total is {:,} parameters.".format(numParamsBackbone + numParamsCriterions))
 
-    print("Preparing optimizer... ", end='')
+        print("Preparing optimizer... ", end='')
     if not args.freeze_backbone:
         parameters = list(backbone.parameters())
     else:
         parameters = []
     for c in criterion:
-        parameters += list(c.parameters())    
-    print(" done.")
-    print()
+        parameters += list(c.parameters())
+    if not args.silent:
+        print(" done.")
+        print()
 
     tick = time.time()
     best_val = 1e10 if not args.few_shot else 0
@@ -223,7 +231,9 @@ for nRun in range(args.runs):
         nSteps = 0
 
     for epoch in range(args.epochs):
-        if epoch % 30 == 0 or epoch == args.skip_epochs:
+        if (epoch % 30 == 0 and not args.silent) or epoch == 0 or epoch == args.skip_epochs:
+            if epoch > 0 and args.silent:
+                print()
             print(" ep.       lr ".format(), end='')
             for dataset in trainSet:
                 print(Back.CYAN + " {:>19s} ".format(dataset["name"]) + Style.RESET_ALL, end='')
@@ -299,7 +309,8 @@ for nRun in range(args.runs):
                 torch.save(featuresTest[i], args.save_features_prefix + dataset["name"] + "_features.pt")
 
         scheduler.step()
-        print(Style.RESET_ALL + " " + timeToStr(time.time() - tick))
+        if not args.silent:
+            print(Style.RESET_ALL + " " + timeToStr(time.time() - tick))
     if trainSet != []:
         if allRunTrainStats is not None:
             allRunTrainStats = torch.cat([allRunTrainStats, trainStats.unsqueeze(0)])
