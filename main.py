@@ -309,8 +309,7 @@ for nRun in range(args.runs):
                 torch.save(featuresTest[i], args.save_features_prefix + dataset["name"] + "_features.pt")
 
         scheduler.step()
-        if not args.silent:
-            print(Style.RESET_ALL + " " + timeToStr(time.time() - tick))
+        print(Style.RESET_ALL + " " + timeToStr(time.time() - tick), end = '' if args.silent else '\n')
     if trainSet != []:
         if allRunTrainStats is not None:
             allRunTrainStats = torch.cat([allRunTrainStats, trainStats.unsqueeze(0)])
