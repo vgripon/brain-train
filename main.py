@@ -84,6 +84,8 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                 total_elt[trainingSetIdx] += data.shape[0]
                 finished = (batchIdx + 1) / len(trainSet[trainingSetIdx]["dataloader"])
                 text += " " + opener + "{:3d}% {:.2e} {:6.2f}%".format(round(100*finished), losses[trainingSetIdx] / total_elt[trainingSetIdx], 100 * accuracies[trainingSetIdx] / total_elt[trainingSetIdx]) + ender
+                if len(text) < 2 + len(trainSet[trainingSetIdx]["name"]):
+                    text = " " * (2 + len(trainSet[trainingSetIdx]["name"]) - len(text)) + text
             optimizer.step()
             scheduler.step()
             display("\r" + Style.RESET_ALL + "{:4d} {:.2e}".format(epoch, float(scheduler.get_last_lr()[0])) + text, end = '', force = finished == 1)
@@ -105,7 +107,7 @@ def test(backbone, datasets, criterion):
                 accuracies += data.shape[0] * score.item()
                 total_elt += data.shape[0]
         results.append((losses / total_elt, 100 * accuracies / total_elt))
-        display(" " + opener + "{:.2e} {:6.2f}%".format(losses / total_elt, 100 * accuracies / total_elt) + ender, end = '', force = True)
+        display(" " * (1 + max(0, len(datasets[testSetIdx]["name"]) - 16)) + opener + "{:.2e}  {:6.2f}%".format(losses / total_elt, 100 * accuracies / total_elt) + ender, end = '', force = True)
     return torch.tensor(results)
 
 def testFewShot(features, datasets = None):
@@ -126,7 +128,7 @@ def testFewShot(features, datasets = None):
         results[i, 0] = torch.mean(accs).item()
         results[i, 1] = (up - low) / 2
         if datasets is not None:
-            display(" {:s} {:.2f}% (±{:.2f}%)".format(datasets[i]["name"], results[i, 0], results[i, 1]), end = '', force = True)
+            display(" " * (1 + max(0, len(datasets[i]["name"]) - 16)) + opener + "{:6.2f}% (±{:6.2f})".format(results[i, 0], results[i, 1]) + ender, end = '', force = True)
     return results
 
 def process(featuresSet, mean):
@@ -221,14 +223,15 @@ for nRun in range(args.runs):
         nSteps = 0
 
     for epoch in range(args.epochs):
-        if epoch % 30 == 0:
+        if epoch % 30 == 0 or epoch == args.skip_epochs:
             print(" ep.       lr ".format(), end='')
             for dataset in trainSet:
-                print(Back.CYAN + "{:>20s} ".format(dataset["name"]) + Style.RESET_ALL, end='')
-            for dataset in validationSet:
-                print(Back.GREEN + "{:>16s} ".format(dataset["name"]) + Style.RESET_ALL, end='')
-            for dataset in testSet:
-                print(Back.RED + "{:>16s} ".format(dataset["name"]) + Style.RESET_ALL, end='')
+                print(Back.CYAN + " {:>19s} ".format(dataset["name"]) + Style.RESET_ALL, end='')
+            if epoch >= args.skip_epochs:
+                for dataset in validationSet:
+                    print(Back.GREEN + " {:>16s} ".format(dataset["name"]) + Style.RESET_ALL, end='')
+                for dataset in testSet:
+                    print(Back.RED + " {:>16s} ".format(dataset["name"]) + Style.RESET_ALL, end='')
             print()
         if epoch == 0 and not args.cosine:
             optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.wd)
@@ -296,7 +299,7 @@ for nRun in range(args.runs):
                 torch.save(featuresTest[i], args.save_features_prefix + dataset["name"] + "_features.pt")
 
         scheduler.step()
-        print(" " + timeToStr(time.time() - tick))
+        print(Style.RESET_ALL + " " + timeToStr(time.time() - tick))
     if trainSet != []:
         if allRunTrainStats is not None:
             allRunTrainStats = torch.cat([allRunTrainStats, trainStats.unsqueeze(0)])
