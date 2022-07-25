@@ -15,12 +15,9 @@ import classifiers
 import backbones
 import backbones1d
 from few_shot_evaluation import EpisodicGenerator, ImageNetGenerator, OmniglotGenerator
-<<<<<<< HEAD
 if args.wandb!='':
     import wandb
 print(" done.")
-=======
->>>>>>> main
 
 if not args.silent:
     print(" done.")
@@ -99,13 +96,9 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                     text = " " * (2 + len(trainSet[trainingSetIdx]["name"]) - 21) + text
             optimizer.step()
             scheduler.step()
-<<<<<<< HEAD
             if args.wandb!='':
                 wandb.log({"epoch":epoch, "train_loss": losses / total_elt})
-            display("\r{:3d} {:.5f}".format(epoch, float(scheduler.get_last_lr()[0])) + text, end = '', force = finished == 1)
-=======
             display("\r" + Style.RESET_ALL + "{:4d} {:.2e}".format(epoch, float(scheduler.get_last_lr()[0])) + text, end = '', force = (finished == 1))
->>>>>>> main
         except StopIteration:
             return torch.stack([losses / total_elt, 100 * accuracies / total_elt]).transpose(0,1)
 
@@ -124,13 +117,9 @@ def test(backbone, datasets, criterion):
                 accuracies += data.shape[0] * score.item()
                 total_elt += data.shape[0]
         results.append((losses / total_elt, 100 * accuracies / total_elt))
-<<<<<<< HEAD
         if args.wandb!='':
             wandb.log({ "test_loss_{}".format(dataset["name"]) : losses / total_elt, "test_acc_{}".format(dataset["name"]) : accuracies / total_elt})
-        display(" {:s} {:.3f} {:3.2f}%".format(dataset["name"], losses / total_elt, 100 * accuracies / total_elt), end = '', force = True)
-=======
         display(" " * (1 + max(0, len(datasets[testSetIdx]["name"]) - 16)) + opener + "{:.2e}  {:6.2f}%".format(losses / total_elt, 100 * accuracies / total_elt) + ender, end = '', force = True)
->>>>>>> main
     return torch.tensor(results)
 
 def testFewShot(features, datasets = None):
@@ -205,7 +194,6 @@ allRunValidationStats = None
 allRunTestStats = None
 createCSV(trainSet, validationSet, testSet)
 for nRun in range(args.runs):
-<<<<<<< HEAD
     if args.wandb!='':
         tag = (args.dataset != '')*[args.dataset] + (args.dataset == '')*['cross-domain'] + ['run_'+str(nRun)] * (args.runs != 1)
         run_wandb = wandb.init(reinit = True, project=args.wandbProjectName, 
@@ -213,10 +201,8 @@ for nRun in range(args.runs):
             tags=tag, 
             config=vars(args))
     print("Preparing backbone... ", end='')
-=======
     if not args.silent:
         print("Preparing backbone... ", end='')
->>>>>>> main
     if args.audio:
         backbone, outputDim = backbones1d.prepareBackbone()
     else:
@@ -336,15 +322,10 @@ for nRun in range(args.runs):
                 torch.save(featuresValidation[i], args.save_features_prefix + dataset["name"] + "_features.pt")
             for i, dataset in enumerate(testSet):
                 torch.save(featuresTest[i], args.save_features_prefix + dataset["name"] + "_features.pt")
-<<<<<<< HEAD
         if args.wandb!='':
             wandb.log({'epoch' : epoch, 'test' : tempTestStats[:,0].mean().item(), 'validation' : tempValidationStats[:,0].mean().item(),'best_val': best_val})
         scheduler.step()
         print(" " + timeToStr(time.time() - tick))
-=======
-
-        print(Style.RESET_ALL + " " + timeToStr(time.time() - tick), end = '' if args.silent else '\n')
->>>>>>> main
     if trainSet != []:
         if allRunTrainStats is not None:
             allRunTrainStats = torch.cat([allRunTrainStats, trainStats.unsqueeze(0)])
