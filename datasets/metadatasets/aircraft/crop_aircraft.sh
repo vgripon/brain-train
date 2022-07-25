@@ -26,4 +26,8 @@ fi
 mkdir $dataset_path/fgvc-aircraft-2013b/data/images_cropped/
 echo folder $dataset_path/fgvc-aircraft-2013b/data/images_cropped/ created ! 
 
+<<<<<<< HEAD
 python crop_aircraft.py $dataset_path
+=======
+python crop_aircraft.py $dataset_path
+>>>>>>> main
