@@ -1,8 +1,7 @@
 #!/bin/bash
-echo "RUN THIS SCRIPT TO GET THE CROPPED IMAGES FROM MSCOCO AND THE JSON FILE ASSOCIATED WITH IT (at the image level not the class level) \n It's very long run it only once"
 helpFunction()
 {
-   echo "RUN THIS SCRIPT TO GET THE CROPPED IMAGES FROM MSCOCO AND THE JSON FILE ASSOCIATED WITH IT"
+   echo "RUN THIS SCRIPT TO GET THE CROP IMAGES FROM AIRCRAFT"
    echo "Usage: $0 -a dataset_path "
    echo -e "\t-a dataset_path"
    exit 1 # Exit script after printing help
