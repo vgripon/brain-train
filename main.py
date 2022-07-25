@@ -2,21 +2,31 @@
 import torch
 import random # for mixup
 import numpy as np # for manifold mixup
+import math
+from colorama import Fore, Back, Style
 
 # Loading other files
-print("Loading local files... ", end ='')
 from args import args
+if not args.silent:
+    print("Loading local files... ", end ='')
 from utils import *
 from dataloaders import trainSet, validationSet, testSet
 import classifiers
 import backbones
 import backbones1d
 from few_shot_evaluation import EpisodicGenerator, ImageNetGenerator, OmniglotGenerator
-print(" done.")
 
-print()
+if not args.silent:
+    print(" done.")
+    
+    print()
+
 print(args)
 print()
+
+#for pretty printing
+opener = ""
+ender = ""
 
 ### generate random seeds
 random.seed(args.seed)
@@ -39,7 +49,7 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
             optimizer.zero_grad()
             text = ""
             for trainingSetIdx in range(len(iterators)):
-                if args.dataset_size > 0 and total_elt[trainingSetIdx] > args.dataset_size:
+                if args.dataset_size > 0 and total_elt[trainingSetIdx] >= args.dataset_size:
                     raise StopIteration
                 batchIdx, (data, target) = next(iterators[trainingSetIdx])
                 data, target = data.to(args.device), target.to(args.device)
@@ -78,10 +88,12 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                 accuracies[trainingSetIdx] += data.shape[0] * score.item()
                 total_elt[trainingSetIdx] += data.shape[0]
                 finished = (batchIdx + 1) / len(trainSet[trainingSetIdx]["dataloader"])
-                text += " {:s} {:3d}% {:.3f} {:3.2f}%".format(trainSet[trainingSetIdx]["name"], round(100*finished), losses[trainingSetIdx] / total_elt[trainingSetIdx], 100 * accuracies[trainingSetIdx] / total_elt[trainingSetIdx])
+                text += " " + opener + "{:3d}% {:.2e} {:6.2f}%".format(round(100*finished), losses[trainingSetIdx] / total_elt[trainingSetIdx], 100 * accuracies[trainingSetIdx] / total_elt[trainingSetIdx]) + ender
+                if 21 < 2 + len(trainSet[trainingSetIdx]["name"]):
+                    text = " " * (2 + len(trainSet[trainingSetIdx]["name"]) - 21) + text
             optimizer.step()
             scheduler.step()
-            display("\r{:3d} {:.5f}".format(epoch, float(scheduler.get_last_lr()[0])) + text, end = '', force = finished == 1)
+            display("\r" + Style.RESET_ALL + "{:4d} {:.2e}".format(epoch, float(scheduler.get_last_lr()[0])) + text, end = '', force = (finished == 1))
         except StopIteration:
             return torch.stack([losses / total_elt, 100 * accuracies / total_elt]).transpose(0,1)
 
@@ -100,7 +112,7 @@ def test(backbone, datasets, criterion):
                 accuracies += data.shape[0] * score.item()
                 total_elt += data.shape[0]
         results.append((losses / total_elt, 100 * accuracies / total_elt))
-        display(" {:s} {:.3f} {:3.2f}%".format(dataset["name"], losses / total_elt, 100 * accuracies / total_elt), end = '', force = True)
+        display(" " * (1 + max(0, len(datasets[testSetIdx]["name"]) - 16)) + opener + "{:.2e}  {:6.2f}%".format(losses / total_elt, 100 * accuracies / total_elt) + ender, end = '', force = True)
     return torch.tensor(results)
 
 def testFewShot(features, datasets = None):
@@ -121,7 +133,7 @@ def testFewShot(features, datasets = None):
         results[i, 0] = torch.mean(accs).item()
         results[i, 1] = (up - low) / 2
         if datasets is not None:
-            display(" {:s} {:.2f}% (±{:.2f}%)".format(datasets[i]["name"], results[i, 0], results[i, 1]), end = '', force = True)
+            display(" " * (1 + max(0, len(datasets[i]["name"]) - 16)) + opener + "{:6.2f}% (±{:6.2f})".format(results[i, 0], results[i, 1]) + ender, end = '', force = True)
     return results
 
 def process(featuresSet, mean):
@@ -175,7 +187,8 @@ allRunValidationStats = None
 allRunTestStats = None
 createCSV(trainSet, validationSet, testSet)
 for nRun in range(args.runs):
-    print("Preparing backbone... ", end='')
+    if not args.silent:
+        print("Preparing backbone... ", end='')
     if args.audio:
         backbone, outputDim = backbones1d.prepareBackbone()
     else:
@@ -183,26 +196,29 @@ for nRun in range(args.runs):
     if args.load_backbone != "":
         backbone.load_state_dict(torch.load(args.load_backbone))
     backbone = backbone.to(args.device)
-    numParamsBackbone = torch.tensor([m.numel() for m in backbone.parameters()]).sum().item()
-    print(" containing {:,} parameters.".format(numParamsBackbone))
+    if not args.silent:
+        numParamsBackbone = torch.tensor([m.numel() for m in backbone.parameters()]).sum().item()
+        print(" containing {:,} parameters.".format(numParamsBackbone))
 
-    print("Preparing criterion(s) and classifier(s)... ", end='')
+        print("Preparing criterion(s) and classifier(s)... ", end='')
     criterion = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in trainSet]
     numParamsCriterions = 0
     for c in criterion:
         c.to(args.device)
         numParamsCriterions += torch.tensor([m.numel() for m in c.parameters()]).sum().item()
-    print(" total is {:,} parameters.".format(numParamsBackbone + numParamsCriterions))
+    if not args.silent:
+        print(" total is {:,} parameters.".format(numParamsBackbone + numParamsCriterions))
 
-    print("Preparing optimizer... ", end='')
+        print("Preparing optimizer... ", end='')
     if not args.freeze_backbone:
         parameters = list(backbone.parameters())
     else:
         parameters = []
     for c in criterion:
-        parameters += list(c.parameters())    
-    print(" done.")
-    print()
+        parameters += list(c.parameters())
+    if not args.silent:
+        print(" done.")
+        print()
 
     tick = time.time()
     best_val = 1e10 if not args.few_shot else 0
@@ -210,12 +226,24 @@ for nRun in range(args.runs):
 
     try:
         nSteps = torch.min(torch.tensor([len(dataset["dataloader"]) for dataset in trainSet])).item()
-        if args.dataset_size > 0 and args.dataset_size // args.batch_size < nSteps:
-            nSteps = args.dataset_size // args.batch_size
+        if args.dataset_size > 0 and math.ceil(args.dataset_size / args.batch_size) < nSteps:
+            nSteps = math.ceil(args.dataset_size / args.batch_size)
     except:
         nSteps = 0
 
     for epoch in range(args.epochs):
+        if (epoch % 30 == 0 and not args.silent) or epoch == 0 or epoch == args.skip_epochs:
+            if epoch > 0 and args.silent:
+                print()
+            print(" ep.       lr ".format(), end='')
+            for dataset in trainSet:
+                print(Back.CYAN + " {:>19s} ".format(dataset["name"]) + Style.RESET_ALL, end='')
+            if epoch >= args.skip_epochs:
+                for dataset in validationSet:
+                    print(Back.GREEN + " {:>16s} ".format(dataset["name"]) + Style.RESET_ALL, end='')
+                for dataset in testSet:
+                    print(Back.RED + " {:>16s} ".format(dataset["name"]) + Style.RESET_ALL, end='')
+            print()
         if epoch == 0 and not args.cosine:
             optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.wd)
             if not args.cosine:
@@ -227,12 +255,13 @@ for nRun in range(args.runs):
             else:
                 index = args.milestones.index(epoch)
                 interval = nSteps * (args.milestones[index + 1] - args.milestones[index])
-            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimizer, T_max = interval)
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimizer, T_max = interval, eta_min = lr * 1e-3)
             lr = lr * args.gamma
         
         continueTest = False
         meanVector = None
         if trainSet != []:
+            opener = Fore.CYAN
             trainStats = train(epoch + 1, backbone, criterion, optimizer, scheduler)
             updateCSV(trainStats, epoch = epoch)
             if (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
@@ -240,7 +269,9 @@ for nRun in range(args.runs):
                     featuresTrain = generateFeatures(backbone, trainSet)
                     meanVector = computeMean(featuresTrain)
                     featuresTrain = process(featuresTrain, meanVector)
+            ender = Style.RESET_ALL
         if validationSet != [] and epoch >= args.skip_epochs:
+            opener = Fore.GREEN
             if args.few_shot or args.save_features_prefix != "":
                 featuresValidation = generateFeatures(backbone, validationSet)
                 featuresValidation = process(featuresValidation, meanVector)
@@ -252,9 +283,11 @@ for nRun in range(args.runs):
                 validationStats = tempValidationStats
                 best_val = validationStats[:,0].mean().item()
                 continueTest = True
+            ender = Style.RESET_ALL
         else:
             continueTest = True
         if testSet != [] and epoch >= args.skip_epochs:
+            opener = Fore.RED
             if args.few_shot or args.save_features_prefix != "":
                 featuresTest = generateFeatures(backbone, testSet)
                 featuresTest = process(featuresTest, meanVector)
@@ -264,6 +297,7 @@ for nRun in range(args.runs):
             updateCSV(tempTestStats)
             if continueTest:
                 testStats = tempTestStats
+            ender = Style.RESET_ALL
         if continueTest and args.save_backbone != "" and epoch >= args.skip_epochs:
             torch.save(backbone.to("cpu").state_dict(), args.save_backbone)
             backbone.to(args.device)
@@ -275,8 +309,7 @@ for nRun in range(args.runs):
             for i, dataset in enumerate(testSet):
                 torch.save(featuresTest[i], args.save_features_prefix + dataset["name"] + "_features.pt")
 
-        scheduler.step()
-        print(" " + timeToStr(time.time() - tick))
+        print(Style.RESET_ALL + " " + timeToStr(time.time() - tick), end = '' if args.silent else '\n')
     if trainSet != []:
         if allRunTrainStats is not None:
             allRunTrainStats = torch.cat([allRunTrainStats, trainStats.unsqueeze(0)])
