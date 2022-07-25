@@ -16,6 +16,9 @@ import backbones
 import backbones1d
 from few_shot_evaluation import EpisodicGenerator, ImageNetGenerator, OmniglotGenerator
 
+if args.wandb!='':
+    import wandb
+
 if not args.silent:
     print(" done.")
     
@@ -93,6 +96,8 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                     text = " " * (2 + len(trainSet[trainingSetIdx]["name"]) - 21) + text
             optimizer.step()
             scheduler.step()
+            if args.wandb!='':
+                wandb.log({"epoch":epoch, "train_loss": losses / total_elt})
             display("\r" + Style.RESET_ALL + "{:4d} {:.2e}".format(epoch, float(scheduler.get_last_lr()[0])) + text, end = '', force = (finished == 1))
         except StopIteration:
             return torch.stack([losses / total_elt, 100 * accuracies / total_elt]).transpose(0,1)
@@ -112,6 +117,8 @@ def test(backbone, datasets, criterion):
                 accuracies += data.shape[0] * score.item()
                 total_elt += data.shape[0]
         results.append((losses / total_elt, 100 * accuracies / total_elt))
+        if args.wandb!='':
+            wandb.log({ "test_loss_{}".format(dataset["name"]) : losses / total_elt, "test_acc_{}".format(dataset["name"]) : accuracies / total_elt})
         display(" " * (1 + max(0, len(datasets[testSetIdx]["name"]) - 16)) + opener + "{:.2e}  {:6.2f}%".format(losses / total_elt, 100 * accuracies / total_elt) + ender, end = '', force = True)
     return torch.tensor(results)
 
@@ -187,6 +194,12 @@ allRunValidationStats = None
 allRunTestStats = None
 createCSV(trainSet, validationSet, testSet)
 for nRun in range(args.runs):
+    if args.wandb!='':
+        tag = (args.dataset != '')*[args.dataset] + (args.dataset == '')*['cross-domain'] + ['run_'+str(nRun)] * (args.runs != 1)
+        run_wandb = wandb.init(reinit = True, project=args.wandbProjectName, 
+            entity=args.wandb, 
+            tags=tag, 
+            config=vars(args))
     if not args.silent:
         print("Preparing backbone... ", end='')
     if args.audio:
@@ -308,7 +321,8 @@ for nRun in range(args.runs):
                 torch.save(featuresValidation[i], args.save_features_prefix + dataset["name"] + "_features.pt")
             for i, dataset in enumerate(testSet):
                 torch.save(featuresTest[i], args.save_features_prefix + dataset["name"] + "_features.pt")
-
+        if args.wandb!='':
+            wandb.log({'epoch' : epoch, 'test' : tempTestStats[:,0].mean().item(), 'validation' : tempValidationStats[:,0].mean().item(),'best_val': best_val})
         print(Style.RESET_ALL + " " + timeToStr(time.time() - tick), end = '' if args.silent else '\n')
     if trainSet != []:
         if allRunTrainStats is not None:
@@ -338,3 +352,5 @@ for nRun in range(args.runs):
                     print("\t{:.3f} ±{:.3f} (conf. [{:.3f}, {:.3f}])".format(stats[:,dataset,stat].mean().item(), stats[:,dataset,stat].std().item(), low, up), end = '')
                 print()
     print()
+    if args.wandb!='':
+        run_wandb.finish()
