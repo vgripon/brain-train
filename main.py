@@ -162,7 +162,7 @@ def computeMean(featuresSet):
             avg += torch.cat([features[i]["features"] for i in range(len(features))]).mean(dim = 0)
     return avg / len(featuresSet)
 
-def generateFeatures(backbone, datasets):
+def generateFeatures(backbone, datasets, n_aug=args.sample_aug):
     """
     Generate features for all datasets
     Inputs:
@@ -176,12 +176,20 @@ def generateFeatures(backbone, datasets):
     for testSetIdx, dataset in enumerate(datasets):
         allFeatures = [{"name_class": name_class, "features": []} for name_class in dataset["name_classes"]]
         with torch.no_grad():
-            for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
-                data, target = data.to(args.device), target.to(args.device)
-                features = backbone(data).to("cpu")
-                for i in range(features.shape[0]):
-                    allFeatures[target[i]]["features"].append(features[i])
-        results.append([{"name_class": allFeatures[i]["name_class"], "features": torch.stack(allFeatures[i]["features"])} for i in range(len(allFeatures))])
+            for augs in range(n_aug):
+                features = [{"name_class": name_class, "features": []} for name_class in dataset["name_classes"]]
+                for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
+                    data, target = data.to(args.device), target.to(args.device)
+                    feats = backbone(data).to("cpu")
+                    for i in range(feats.shape[0]):
+                        features[target[i]]["features"].append(feats[i])
+                for c in range(len(allFeatures)):
+                    if augs == 0:
+                        allFeatures[c]["features"] = torch.stack(features[c]["features"])/n_aug
+                    else:
+                        allFeatures[c]["features"] += torch.stack(features[c]["features"])/n_aug
+
+        results.append([{"name_class": allFeatures[i]["name_class"], "features": allFeatures[i]["features"]} for i in range(len(allFeatures))])
     return results
 
 if args.test_features != "":
@@ -257,11 +265,11 @@ for nRun in range(args.runs):
                 for dataset in testSet:
                     print(Back.RED + " {:>16s} ".format(dataset["name"]) + Style.RESET_ALL, end='')
             print()
-        if epoch == 0 and not args.cosine:
+        if epoch == 0 and not args.cosine and len(parameters)>0:
             optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.wd)
             if not args.cosine:
                 scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer = optimizer, milestones = [n * nSteps for n in args.milestones], gamma = args.gamma)
-        if args.cosine and (epoch in args.milestones or epoch == 0):
+        if args.cosine and (epoch in args.milestones or epoch == 0) and len(parameters)>0:
             optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.wd)
             if epoch == 0:
                 interval = nSteps * args.milestones[0]
@@ -273,10 +281,12 @@ for nRun in range(args.runs):
         
         continueTest = False
         meanVector = None
+        trainStats = None
         if trainSet != []:
             opener = Fore.CYAN
-            trainStats = train(epoch + 1, backbone, criterion, optimizer, scheduler)
-            updateCSV(trainStats, epoch = epoch)
+            if not args.freeze_backbone:
+                trainStats = train(epoch + 1, backbone, criterion, optimizer, scheduler)
+                updateCSV(trainStats, epoch = epoch)
             if (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
                 if epoch >= args.skip_epochs:
                     featuresTrain = generateFeatures(backbone, trainSet)
@@ -324,7 +334,7 @@ for nRun in range(args.runs):
         if args.wandb!='':
             wandb.log({'epoch' : epoch, 'test' : tempTestStats[:,0].mean().item(), 'validation' : tempValidationStats[:,0].mean().item(),'best_val': best_val})
         print(Style.RESET_ALL + " " + timeToStr(time.time() - tick), end = '' if args.silent else '\n')
-    if trainSet != []:
+    if trainSet != [] and trainStats is not None:
         if allRunTrainStats is not None:
             allRunTrainStats = torch.cat([allRunTrainStats, trainStats.unsqueeze(0)])
         else:
@@ -345,12 +355,13 @@ for nRun in range(args.runs):
     for phase, nameSet, stats in [("Train", trainSet, allRunTrainStats), ("Validation", validationSet, allRunValidationStats),  ("Test", testSet, allRunTestStats)]:
         print(phase)
         if nameSet != []:
-            for dataset in range(stats.shape[1]):
-                print("\tDataset " + nameSet[dataset]["name"])
-                for stat in range(stats.shape[2]):
-                    low, up = confInterval(stats[:,dataset,stat])
-                    print("\t{:.3f} ±{:.3f} (conf. [{:.3f}, {:.3f}])".format(stats[:,dataset,stat].mean().item(), stats[:,dataset,stat].std().item(), low, up), end = '')
-                print()
+            if stats is not None:
+                for dataset in range(stats.shape[1]):
+                    print("\tDataset " + nameSet[dataset]["name"])
+                    for stat in range(stats.shape[2]):
+                        low, up = confInterval(stats[:,dataset,stat])
+                        print("\t{:.3f} ±{:.3f} (conf. [{:.3f}, {:.3f}])".format(stats[:,dataset,stat].mean().item(), stats[:,dataset,stat].std().item(), low, up), end = '')
+                    print()
     print()
     if args.wandb!='':
         run_wandb.finish()
