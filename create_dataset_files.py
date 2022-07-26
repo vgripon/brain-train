@@ -401,6 +401,59 @@ if 'audioset' in available_datasets:
         print("Done for audioset_" + dataset + " with " + str(result['num_classes']) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
 
 
+def get_data_source_metaalbum(labels, path, source):
+    L_classes =[]
+    for x in labels['CATEGORY']:
+        cl= os.path.join(path ,str(x))
+        if cl[10:] not in L_classes:
+            L_classes.append(cl[10:])
+    train_dic = {'data': [], 'targets' : [] , 'name': 'metaalbum_'+source,'name_classes' : L_classes,'num_elements_per_class':[0]*len(L_classes), 'num_classes': len(L_classes)}
+    for i in range(len(labels['FILE_NAME'])):
+        train_dic['data'].append(path+labels['FILE_NAME'][i])
+        class_id = L_classes.index(os.path.join(path , str(labels['CATEGORY'][i]))[10:]) ### PB conflict with others here
+        train_dic['targets'].append(class_id)
+        train_dic['num_elements_per_class'][class_id]+=1
+    data = {'TRAIN':train_dic}   
+    return data
+
+def get_labels(SET):
+    l = os.listdir(os.path.join(dataset_path , SET))
+    labels =[]
+    for source in l:
+        if os.path.isdir(os.path.join(dataset_path, SET, source)):
+            labels.append([pd.read_csv(os.path.join(dataset_path , SET, source  ,'labels.csv')), source])
+    return labels
+
+def get_data_metaalbum(SET):
+    labels = get_labels(SET)
+    l_data = []
+    sources =[]
+    for x in labels:
+        data = get_data_source_metaalbum(labels = x[0],path = os.path.join('MetaAlbum' , SET) , source =x[1], SET=SET ) 
+        l_data.append(data)
+        sources.append(x[1])
+    return l_data, sources
+
+def merge_data(list_data):
+    train_dic = {'data': [], 'targets' : [] , 'name': 'metaalbum','name_classes' : [],'num_elements_per_class':[], 'num_classes': 0}
+    for i,data in enumerate(list_data):
+        train_dic['data']+=data['TRAIN']['data']
+        train_dic['targets']+=list(np.array(data['TRAIN']['targets'])+train_dic['num_classes'])
+        train_dic['name_classes']+=data['TRAIN']['name_classes']
+        train_dic['num_elements_per_class']+=data['TRAIN']['num_elements_per_class']
+        train_dic['num_classes']+=data['TRAIN']['num_classes']
+    return {'TRAIN': train_dic}
+
+if 'MetaAlbum' in available_datasets:
+    for set_size in ['Set0_Micro', 'Set0_Mini', 'Set0_Extended']:
+        data, sources = get_data_metaalbum(set_size)
+        for i,source in enumerate(sources):
+            all_results['meta_album_'+source] = data[i]
+        all_results['meta_album_'+set_size] = merge_data(data)
+        print("Done for metaalbum_train" + set_size+ " with " + str(result['num_classes']) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
+
+
+
 f = open(args.dataset_path + "datasets.json", "w")
 f.write(json.dumps(all_results))
 f.close()
