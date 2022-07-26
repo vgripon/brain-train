@@ -10,6 +10,7 @@ class EpisodicGenerator():
         assert datasetName != None or num_elements_per_class!=None, "datasetName and num_elements_per_class can't both be None"
         
         all_datasets = {}
+        print(all_datasets.keys())
         if dataset_path != '' and dataset_path != None:
             json_path = os.path.join(dataset_path, 'datasets.json')
             if os.path.exists(json_path):
@@ -216,10 +217,10 @@ class OmniglotGenerator(EpisodicGenerator):
         super().__init__(**kwargs)
 
     def select_classes(self, ways):
-        superclass_id = torch.randint(self.dataset['num_superclasses'],(1,1)).reshape(-1)
+        superclass_id = str(torch.randint(self.dataset['num_superclasses'],(1,1)).reshape(-1).item())
         classes_ids = self.dataset['classes_per_superclass'][superclass_id]
         num_sampled_classes = torch.randint(5,min(len(classes_ids),50),(1,1)).reshape(-1)
-        return classes_ids[torch.randperm(len(classes_ids))[:num_sampled_classes]]
+        return torch.tensor(classes_ids)[torch.randperm(len(classes_ids))[:num_sampled_classes].tolist()]
 if __name__=='__main__':
     from args import args
 

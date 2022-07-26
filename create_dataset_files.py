@@ -283,7 +283,7 @@ if 'omniglot' in available_datasets:
     superclass_count = 0
     for splitName,dataset in [("TRAIN","train"),("VALID","validation"),("TEST","test")]:
         class_count = 0
-        result = {"data":[], "targets":[], "name":"omniglot_" + dataset, "num_classes":0, "name_classes":[], "num_superclasses":0, "classes_per_superclass":defaultdict(list), "num_elements_per_class": []}
+        result = {"data":[], "targets":[], "name":"metadataset_omniglot_" + dataset, "num_classes":0, "name_classes":[], "num_superclasses":0, "classes_per_superclass":defaultdict(list), "num_elements_per_class": []}
         for superclass_id in range(superclass_count,superclass_count+split["superclasses_per_split"][splitName]):
             result['num_superclasses'] = split["superclasses_per_split"][splitName]
             superclass_name = split["superclass_names"][str(superclass_id)]
@@ -315,7 +315,7 @@ if 'vgg_flower' in available_datasets:
             jsonFile.close()
     split_rev = defaultdict(str)
     for dataset,splitName in [("train","train"),("validation","valid"),("test","test")]:
-        all_results["metadataset_vgg_flower_"+dataset] = {"data":[], "targets":[], "name":"vgg_flower_" + dataset, "num_classes":0, "name_classes":[], "dataset_targets":defaultdict(int), "num_elements_per_class":[]}
+        all_results["metadataset_vgg_flower_"+dataset] = {"data":[], "targets":[], "name":"metadatset_vgg_flower_" + dataset, "num_classes":0, "name_classes":[], "dataset_targets":defaultdict(int), "num_elements_per_class":[]}
         for class_name in split[splitName]:
             split_rev[int(class_name[:3])] = dataset
             all_results["metadataset_vgg_flower_"+dataset]['dataset_targets'][int(class_name[:3])] = all_results["metadataset_vgg_flower_"+dataset]['num_classes']
@@ -336,7 +336,7 @@ if 'vgg_flower' in available_datasets:
         print("Done for Vgg Flower " + dataset + " with " + str(all_results["metadataset_vgg_flower_"+dataset]['num_classes']) + " classes ")
 
 ### generate data for quickdraw
-if 'quickdraw' in available_datasets:
+if 'quickdraws' in available_datasets:
     all_samples_path = args.dataset_path + "quickdraw/"+'all_samples/'
     with open("./datasets/metadatasets/quickdraw/"+"quickdraw_splits.json") as jsonFile:
             split = json.load(jsonFile)
@@ -344,7 +344,7 @@ if 'quickdraw' in available_datasets:
     for dataset,splitName in [("train","train"),("validation","valid"),("test","test")]:
         class_count = 0
         directories = os.listdir(args.dataset_path + "quickdraw/")
-        result = {"data":[], "targets":[], "name":"quickdraw_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
+        result = {"data":[], "targets":[], "name":"metadataset_quickdraw_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
         for class_name in split[splitName]:
             samples = np.load(args.dataset_path + "quickdraw/"+class_name +'.npy')
             result['num_elements_per_class'].append(samples.shape[0])
@@ -368,7 +368,7 @@ if 'GTSRB' in available_datasets:
             jsonFile.close()
     dataset = 'test'
     directories = sorted(os.listdir(args.dataset_path + "GTSRB/Final_Training/Images/"))
-    result = {"data":[], "targets":[], "name":"traffic_signs_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
+    result = {"data":[], "targets":[], "name":"metadatset_traffic_signs_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
     for class_dir in directories:
         filenames = os.listdir(args.dataset_path + "GTSRB/Final_Training/Images/"+class_dir)
         class_target = int(class_dir)
