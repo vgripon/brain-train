@@ -162,7 +162,7 @@ def computeMean(featuresSet):
             avg += torch.cat([features[i]["features"] for i in range(len(features))]).mean(dim = 0)
     return avg / len(featuresSet)
 
-def generateFeatures(backbone, datasets, n_aug=args.sample_aug):
+def generateFeatures(backbone, datasets, sample_aug=args.sample_aug):
     """
     Generate features for all datasets
     Inputs:
@@ -174,9 +174,11 @@ def generateFeatures(backbone, datasets, n_aug=args.sample_aug):
     backbone.eval()
     results = []
     for testSetIdx, dataset in enumerate(datasets):
+        n_aug = 1 if 'train' in dataset['name'] else sample_aug
         allFeatures = [{"name_class": name_class, "features": []} for name_class in dataset["name_classes"]]
         with torch.no_grad():
             for augs in range(n_aug):
+                print(f'{dataset["name"]}:{augs}/{n_aug}', end='\r')
                 features = [{"name_class": name_class, "features": []} for name_class in dataset["name_classes"]]
                 for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
                     data, target = data.to(args.device), target.to(args.device)

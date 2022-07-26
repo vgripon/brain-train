@@ -291,7 +291,7 @@ def metadataset_mscoco(datasetName):
             trans = transforms.Compose([transforms.Resize(126), transforms.CenterCrop(126), transforms.ToTensor(), normalization])
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization])
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":'metadataset_mscoco', "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def metadataset_vggflower(datasetName):
     f = open(args.dataset_path + "datasets.json")    
