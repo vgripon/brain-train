@@ -223,6 +223,18 @@ class OmniglotGenerator(EpisodicGenerator):
         classes_ids = self.dataset['classes_per_superclass'][superclass_id]
         num_sampled_classes = torch.randint(5,min(len(classes_ids),50),(1,1)).reshape(-1)
         return classes_ids[torch.randperm(len(classes_ids))[:num_sampled_classes]]
+
+class MetaAlbumsGenerator(EpisodicGenerator):
+    """
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def select_classes(self, ways):
+        superclass_id = torch.randint(self.dataset['num_superclasses'],(1,1)).reshape(-1)
+        classes_ids = self.dataset['classes_per_superclass'][superclass_id]
+        num_sampled_classes = torch.randint(5,min(len(classes_ids),50),(1,1)).reshape(-1)
+        return classes_ids[torch.randperm(len(classes_ids))[:num_sampled_classes]]
 if __name__=='__main__':
     from args import args
 
