@@ -395,9 +395,7 @@ def audioset(datasetName):
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans if datasetName == "train" else test_trans, target_transforms=target_trans, opener=opener), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
-
-
-def metaalbum(source):
+def metaalbum(source, is_train=False):
     f = open(args.dataset_path + "datasets.json")    
     all_datasets = json.loads(f.read())
     f.close()
@@ -405,18 +403,16 @@ def metaalbum(source):
     data = dataset["data"]
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    # A modifier!!! Temporaire!!
-    datasetName = 'train'
-    if datasetName == 'train':
+    if is_train:
         trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([transforms.Resize(126), transforms.CenterCrop(126), transforms.ToTensor(), normalization])
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization])
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = True), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = is_train), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
-def prepareDataLoader(name):
+def prepareDataLoader(name, is_train=False):
     if isinstance(name, str):
         name = [name]
     result = []
@@ -480,9 +476,9 @@ def prepareDataLoader(name):
             "metadataset_traffic_signs_test": lambda: metadataset_traffic_signs("test"),
             "audioset_train":lambda: audioset("train"),
             "audioset_test":lambda: audioset("test"), 
-            "metaalbum_micro":lambda: metaalbum("Set0_Micro", ""),
-            "metaalbum_mini":lambda: metaalbum("Set0_Mini", ""),
-            "metaalbum_extended":lambda: metaalbum("Set0_Extended", ""),
+            "metaalbum_micro":lambda: metaalbum("Micro", is_train=is_train),
+            "metaalbum_mini":lambda: metaalbum("Mini", is_train=is_train),
+            "metaalbum_extended":lambda: metaalbum("Extended", is_train=is_train),
         }
     for elt in name:
         assert elt in dataset_options.keys(), f'The chosen dataset "{elt}" is not existing, please provide a valid option'
@@ -492,27 +488,27 @@ def prepareDataLoader(name):
 if args.training_dataset != "":
     try:
         eval(args.training_dataset)
-        trainSet = prepareDataLoader(eval(args.training_dataset))
+        trainSet = prepareDataLoader(eval(args.training_dataset), is_train=True)
     except NameError:
-        trainSet = prepareDataLoader(args.training_dataset)
+        trainSet = prepareDataLoader(args.training_dataset, is_train=True)
 else:
     trainSet = []
 
 if args.validation_dataset != "":
     try:
         eval(args.validation_dataset)
-        validationSet = prepareDataLoader(eval(args.validation_dataset))
+        validationSet = prepareDataLoader(eval(args.validation_dataset), is_train=False)
     except NameError:
-        validationSet = prepareDataLoader(args.validation_dataset)
+        validationSet = prepareDataLoader(args.validation_dataset, is_train=False)
 else:
     validationSet = []
 
 if args.test_dataset != "":
     try:
         eval(args.test_dataset)
-        testSet = prepareDataLoader(eval(args.test_dataset))
+        testSet = prepareDataLoader(eval(args.test_dataset), is_train=False)
     except NameError:
-        testSet = prepareDataLoader(args.test_dataset)
+        testSet = prepareDataLoader(args.test_dataset, is_train=False)
 else:
     testSet = []
     

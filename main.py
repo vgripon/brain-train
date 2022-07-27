@@ -178,7 +178,6 @@ def generateFeatures(backbone, datasets, sample_aug=args.sample_aug):
         allFeatures = [{"name_class": name_class, "features": []} for name_class in dataset["name_classes"]]
         with torch.no_grad():
             for augs in range(n_aug):
-                print(f'{dataset["name"]}:{augs}/{n_aug}', end='\r')
                 features = [{"name_class": name_class, "features": []} for name_class in dataset["name_classes"]]
                 for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
                     data, target = data.to(args.device), target.to(args.device)
