@@ -412,10 +412,10 @@ def get_data_source_metaalbum(labels, path, source, SET):
         cl= os.path.join(path ,str(x))
         if cl[10:] not in L_classes:
             L_classes.append(cl[10:])
-    train_dic = {'data': [], 'targets' : [] , 'name': 'metaalbum_'+SET+source,'name_classes' : L_classes,'num_elements_per_class':[0]*len(L_classes), 'num_classes': len(L_classes)}
+    train_dic = {'data': [], 'targets' : [] , 'name': 'metaalbum_'+source,'name_classes' : L_classes,'num_elements_per_class':[0]*len(L_classes), 'num_classes': len(L_classes)}
     for i in range(len(labels['FILE_NAME'])):
-        train_dic['data'].append(os.path.join(path,labels['FILE_NAME'][i]))
-        class_id = L_classes.index(os.path.join(path , str(labels['CATEGORY'][i]))[10:]) ### PB conflict with others here
+        train_dic['data'].append(os.path.join(path, source, 'images', labels['FILE_NAME'][i]))
+        class_id = L_classes.index(os.path.join(path, str(labels['CATEGORY'][i]))[10:]) ### PB conflict with others here
         train_dic['targets'].append(class_id)
         train_dic['num_elements_per_class'][class_id]+=1
     return train_dic
@@ -425,7 +425,7 @@ def get_labels(SET):
     labels =[]
     for source in l:
         if os.path.isdir(os.path.join(args.dataset_path,'MetaAlbum' ,SET, source)):
-            labels.append([pd.read_csv(os.path.join(args.dataset_path ,'MetaAlbum', SET, source  ,'labels.csv')), source])
+            labels.append([pd.read_csv(os.path.join(args.dataset_path ,'MetaAlbum', SET, source ,'labels.csv')), source])
     return labels
 
 def get_data_metaalbum(SET):
@@ -433,7 +433,7 @@ def get_data_metaalbum(SET):
     l_data = []
     sources =[]
     for x in labels:
-        data = get_data_source_metaalbum(labels = x[0],path = os.path.join('MetaAlbum' , SET) , source =x[1], SET=SET ) 
+        data = get_data_source_metaalbum(labels = x[0],path = os.path.join('MetaAlbum' , SET,) , source =x[1], SET=SET ) 
         l_data.append(data)
         sources.append(x[1])
     return l_data, sources
