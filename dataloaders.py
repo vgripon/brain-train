@@ -189,7 +189,7 @@ def fashionMnist(datasetName):
 
     normalization = transforms.Normalize((0.2849,), (0.3516,))
 
-    if dataset == 'train':
+    if datasetName == 'train':
         trans = transforms.Compose([transforms.RandomCrop(28, padding=4), transforms.RandomHorizontalFlip(), normalization])
     else:
         if args.sample_aug == 1:
@@ -388,6 +388,24 @@ def audioset(datasetName):
     return {"dataloader": dataLoader(DataHolder(data, targets, trans if datasetName == "train" else test_trans, target_transforms=target_trans, opener=opener), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 
+
+def metaalbum(set,source):
+    f = open(args.dataset_path + "datasets.json")    
+    all_datasets = json.loads(f.read())
+    f.close()
+    dataset = all_datasets["meta_album_"+set+source]['TRAIN']
+    data = dataset["data"]
+    targets = dataset["targets"]
+    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    if dataset == 'train':
+        trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
+    else:
+        if args.sample_aug == 1:
+            trans = transforms.Compose([transforms.Resize(126), transforms.CenterCrop(126), transforms.ToTensor(), normalization])
+        else:
+            trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization])
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = True), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+
 def prepareDataLoader(name):
     if isinstance(name, str):
         name = [name]
@@ -452,6 +470,9 @@ def prepareDataLoader(name):
             "metadataset_traffic_signs_test": lambda: metadataset_traffic_signs("test"),
             "audioset_train":lambda: audioset("train"),
             "audioset_test":lambda: audioset("test"), 
+            "metaalbum_micro":lambda: metaalbum("Set0_Micro", ""),
+            "metaalbum_mini":lambda: metaalbum("Set0_Mini", ""),
+            "metaalbum_extended":lambda: metaalbum("Set0_Extended", ""),
         }
     for elt in name:
         assert elt in dataset_options.keys(), f'The chosen dataset "{elt}" is not existing, please provide a valid option'
