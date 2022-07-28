@@ -108,7 +108,7 @@ if isinstance(eval(args.milestones), int):
     if eval(args.milestones) <= 0:
         args.milestones = []
     else:
-        args.milestones = [eval(args.milestones) * i for i in range(1, args.epochs // eval(args.milestones))]
+        args.milestones = [eval(args.milestones) * i for i in range(1, 1 + args.epochs // eval(args.milestones))]
 else:
     args.milestones = eval(args.milestones)
 if args.epochs not in args.milestones and args.milestones != []:
