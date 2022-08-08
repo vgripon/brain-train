@@ -425,7 +425,6 @@ f.close()
 key = "metadataset_imagenet_clustertrain"
 for x in all_datasets.keys():
     if key in x:
-        print(x)
         nb_cluster = int(x[len(key):])+1
 print('-------->There are ' +str(nb_cluster)+ ' clusters<---------')
 
