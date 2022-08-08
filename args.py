@@ -64,7 +64,7 @@ parser.add_argument("--feature-maps", type=int, default=64, help="initial number
 parser.add_argument("--backbone", type=str, default="resnet18", help="backbone architecture")
 parser.add_argument("--feature-processing", type=str, default="", help="feature processing before few-shot classifiers, can contain M (remove mean of feature vectors), and E (unit sphere projection of feature vectors)")
 parser.add_argument("--leaky", action="store_true", help="use leaky relu instead of relu for intermediate activations")
-
+parser.add_argument("--subdomain", type=str, default='', help="npy file with index clusters of classes in imagenet")
 ### criterion
 parser.add_argument("--classifier", type=str, default="lr", help="define which classifier is used on top of selected backbone, can be any of lr for logistic regression, or L2 for euclidean distance regression, or multilabelBCE for multi label classification")
 

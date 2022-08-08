@@ -106,37 +106,57 @@ try:
 except:
     pass
 ### generate data for imagenet metadatasets
-try:
-    if 'imagenet' in available_datasets:
-        # Parse Graph 
-        class_folders = {k:[p['wn_id'] for p in graph['split_subgraphs'][k] if len(p['children_ids']) == 0] for k in ['TRAIN', 'TEST', 'VALID']} # Existing classes    
-        # Get duplicates from other datasets which should be removed from ImageNet
-        duplicates = []
-        duplicate_files =  ['ImageNet_CUBirds_duplicates.txt', 'ImageNet_Caltech101_duplicates.txt', 'ImageNet_Caltech256_duplicates.txt']
-        for file in duplicate_files:
-            with open(os.path.join('datasets', 'metadatasets', 'ilsvrc_2012', file), 'r') as f:
-                duplicates_tmp = f.read().split('\n')
-            duplicates += [p.split('#')[0].replace(' ','') for p in duplicates_tmp if len(p)>0 and p[0] not in ['#']] # parse the duplicates files
-        # check which file exists:
-        path = os.path.join('imagenet', 'ILSVRC2012_img_train' if os.path.exists(os.path.join(args.dataset_path, 'imagenet', 'ILSVRC2012_img_train')) else 'train')
-        for dataset, folderName in [('train', 'TRAIN'), ('test', 'TEST'), ('validation','VALID')]:
-            result = {"data":[], "targets":[], "name":"metadataset_imagenet_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class":[], "classIdx":{}}
-            for i, classIdx in enumerate(class_folders[folderName]):
-                num_elements_per_class = 0
-                for fileName in os.listdir(os.path.join(args.dataset_path, path, classIdx)):
-                    if os.path.join(classIdx, fileName) not in duplicates:
-                        result["data"].append(os.path.join(path, classIdx, fileName))
-                        result["targets"].append(i)
-                        num_elements_per_class +=1
-                result["name_classes"].append(imagenet_class_names[classIdx])
-                result["classIdx"][classIdx] = i
-                result["num_elements_per_class"].append(num_elements_per_class)
+#try:
+if 'imagenet' in available_datasets:
+    # Parse Graph 
+    class_folders = {k:[p['wn_id'] for p in graph['split_subgraphs'][k] if len(p['children_ids']) == 0] for k in ['TRAIN', 'TEST', 'VALID']} # Existing classes    
+    # Get duplicates from other datasets which should be removed from ImageNet
+    duplicates = []
+    duplicate_files =  ['ImageNet_CUBirds_duplicates.txt', 'ImageNet_Caltech101_duplicates.txt', 'ImageNet_Caltech256_duplicates.txt']
+    for file in duplicate_files:
+        with open(os.path.join('datasets', 'metadatasets', 'ilsvrc_2012', file), 'r') as f:
+            duplicates_tmp = f.read().split('\n')
+        duplicates += [p.split('#')[0].replace(' ','') for p in duplicates_tmp if len(p)>0 and p[0] not in ['#']] # parse the duplicates files
+    # check which file exists:
+    path = os.path.join('imagenet', 'ILSVRC2012_img_train' if os.path.exists(os.path.join(args.dataset_path, 'imagenet', 'ILSVRC2012_img_train')) else 'train')
+    if args.subdomain!='':
+        clusters = np.load(args.subdomain)
+        nb_clusters = clusters.max()+1
+        L=[]
+        for k in range(nb_clusters):
+            L.append({"data":[], "targets":[], "name":"metadataset_imagenet_"+str(k) + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class":[], "classIdx":{}})
+    for dataset, folderName in [('train', 'TRAIN'), ('test', 'TEST'), ('validation','VALID')]:
+        result = {"data":[], "targets":[], "name":"metadataset_imagenet_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class":[], "classIdx":{}}
+        for i, classIdx in enumerate(class_folders[folderName]):
+            num_elements_per_class = 0
+            for fileName in os.listdir(os.path.join(args.dataset_path, path, classIdx)):
+                if os.path.join(classIdx, fileName) not in duplicates:
+                    if args.subdomain!='':
+                        L[clusters[i]]["data"].append(os.path.join(path, classIdx, fileName))
+                        L[clusters[i]]["targets"].append(L[clusters[i]]["num_classes"])
+                    result["data"].append(os.path.join(path, classIdx, fileName))
+                    result["targets"].append(i)
+                    num_elements_per_class +=1
+            if args.subdomain!='' and dataset=='train':
+                L[clusters[i]]["name_classes"].append(imagenet_class_names[classIdx])
+                L[clusters[i]]["classIdx"][classIdx] = i
+                L[clusters[i]]["num_elements_per_class"].append(num_elements_per_class)
+            result["name_classes"].append(imagenet_class_names[classIdx])
+            result["classIdx"][classIdx] = i
+            result["num_elements_per_class"].append(num_elements_per_class)
+            if args.subdomain!='' and dataset=='train':
+                L[clusters[i]]["num_classes"]+=1
+        result["num_classes"] = i + 1   
+        if args.subdomain!='' and dataset=='train':
+                for k in range(nb_clusters):
+                    all_results["metadataset_imagenet_cluster"+ dataset+str(k)] = L[k]
+                    print("Done for metadataset_imagenet_cluster"+ dataset+str(k) + " with " + L[k]['num_classes'] + " classes and " + str(len(L[k]["data"])) +" samples (" + str(len(L[k]['targets'])) + ")" )
 
-            result["num_classes"] = i + 1   
-            all_results["metadataset_imagenet_" + dataset] = result
-            print("Done for metadataset_imagenet_" + dataset + " with " + str(i+1) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
-except:
-    pass
+        all_results["metadataset_imagenet_" + dataset] = result
+        print("Done for metadataset_imagenet_" + dataset + " with " + str(i+1) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
+#except Exception as e: print(e)
+
+
 def split_fn(json_path):
     with open(json_path) as jsonFile:
         split = json.load(jsonFile)
@@ -460,6 +480,6 @@ if 'MetaAlbum' in available_datasets:
 
 
 
-f = open(args.dataset_path + "datasets.json", "w")
+f = open(args.dataset_path + "datasets_subdomain.json", "w")
 f.write(json.dumps(all_results))
 f.close()

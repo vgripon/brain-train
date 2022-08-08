@@ -139,10 +139,13 @@ def cifarfs(datasetName):
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def metadataset_imagenet(datasetName):
-    f = open(args.dataset_path + "datasets.json")    
+    f = open(args.dataset_path + "datasets_subdomain.json")    
     all_datasets = json.loads(f.read())
     f.close()
-    dataset = all_datasets["metadataset_imagenet_" + datasetName]
+    try:
+        dataset = all_datasets["metadataset_imagenet_" + datasetName]
+    except:
+        dataset = all_datasets["metadataset_imagenet_clustertrain" + datasetName]
     data = dataset["data"]
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -413,6 +416,19 @@ def metaalbum(source, is_train=False):
             trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = is_train), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
+def subdomain(k):
+    return lambda : metadataset_imagenet(str(k))
+
+f = open(args.dataset_path + "datasets_subdomain.json")    
+all_datasets = json.loads(f.read())
+f.close()
+key = "metadataset_imagenet_clustertrain"
+for x in all_datasets.keys():
+    if key in x:
+        print(x)
+        nb_cluster = int(x[len(key):])+1
+print('-------->There are ' +str(nb_cluster)+ ' clusters<---------')
+
 def prepareDataLoader(name, is_train=False):
     if isinstance(name, str):
         name = [name]
@@ -485,11 +501,17 @@ def prepareDataLoader(name, is_train=False):
     for album in ['BCT', 'BRD', 'CRS', 'FLW', 'MD_MIX', 'PLK', 'PLT_VIL', 'RESISC', 'SPT', 'TEX']:
         for setting in ['Micro', 'Macro', 'Extended']:
             dataset_options[f'metaalbum_{album.lower()}_{setting.lower()}'] = lambda: metaalbum(f'{album}_{setting}', is_train=is_train)    
-                 
+
+    for h in range(nb_cluster):
+        dataset_options["metadataset_imagenet_cluster_train_"+str(h)] = subdomain(h)
     for elt in name:
         assert elt.lower() in dataset_options.keys(), f'The chosen dataset "{elt}" is not existing, please provide a valid option: \n {list(dataset_options.keys())}'
         result.append(dataset_options[elt.lower()]())
+        print(elt.lower())
     return result
+
+    
+
     
 if args.training_dataset != "":
     try:
