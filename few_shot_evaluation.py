@@ -5,6 +5,10 @@ import math
 import numpy as np
 import os 
 
+def get_repository_path():
+    import os
+    return '/'+os.path.join(*os.path.abspath(__file__).split('/')[:-1])
+
 class EpisodicGenerator():
     def __init__(self, datasetName=None, dataset_path=None, max_classes=50, num_elements_per_class=None):
         assert datasetName != None or num_elements_per_class!=None, "datasetName and num_elements_per_class can't both be None"
@@ -173,9 +177,8 @@ class ImageNetGenerator(EpisodicGenerator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # Read ImageNet graph
-
-        split = {'train':'TRAIN', 'test':'TEST', 'validation': 'VALID'}[datasetName.split('_')[-1]]
-        with open(os.path.join('datasets', 'ilsvrc_2012_dataset_spec.json'), 'r') as file:
+        split = {'train':'TRAIN', 'test':'TEST', 'validation': 'VALID'}[self.datasetName.split('_')[-1]]
+        with open(os.path.join(get_repository_path(), 'datasets', 'ilsvrc_2012_dataset_spec.json'), 'r') as file:
             self.graph = json.load(file)['split_subgraphs'][split]
 
         self.graph_map = {node['wn_id']:node['children_ids'] for node in self.graph}
@@ -201,11 +204,11 @@ class ImageNetGenerator(EpisodicGenerator):
         node = self.node_candidates[random.randint(0, len(self.node_candidates)-1)]
 
         leaves_candidates = self.get_spanning_leaves(node)
-        max_classes = min(len(leaves_candidates), 50)
         # Sample a number of ways
-        n_ways = ways if ways!=0 else random.randint(5, max_classes)
+        #n_ways = ways if ways!=0 else random.randint(5, max_classes)
+        n_ways = ways if ways!=0 else min(len(leaves_candidates), 50)
 
-        # get n_ways classes randomly from the subgraph
+        # get n_ways classes randomly from the subgraph if n_ways is fixed or if number of nodes higher than 50.
         choices_idx = torch.randperm(len(leaves_candidates))[:n_ways]
         choices_names = [leaves_candidates[idx] for idx in choices_idx]
         choices = torch.Tensor([self.classIdx[leaf] for leaf in choices_names]).int()
@@ -220,7 +223,23 @@ class OmniglotGenerator(EpisodicGenerator):
         superclass_id = str(torch.randint(self.dataset['num_superclasses'],(1,1)).reshape(-1).item())
         classes_ids = self.dataset['classes_per_superclass'][superclass_id]
         num_sampled_classes = torch.randint(5,min(len(classes_ids),50),(1,1)).reshape(-1)
+<<<<<<< HEAD
         return torch.tensor(classes_ids)[torch.randperm(len(classes_ids))[:num_sampled_classes].tolist()]
+=======
+        return classes_ids[torch.randperm(len(classes_ids))[:num_sampled_classes]]
+
+class MetaAlbumsGenerator(EpisodicGenerator):
+    """
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def select_classes(self, ways):
+        superclass_id = torch.randint(self.dataset['num_superclasses'],(1,1)).reshape(-1)
+        classes_ids = self.dataset['classes_per_superclass'][superclass_id]
+        num_sampled_classes = torch.randint(5,min(len(classes_ids),50),(1,1)).reshape(-1)
+        return classes_ids[torch.randperm(len(classes_ids))[:num_sampled_classes]]
+>>>>>>> accd4215d4b972155eedd8cbe605b8374afe24df
 if __name__=='__main__':
     from args import args
 
@@ -234,20 +253,10 @@ if __name__=='__main__':
 
     for _ in range(1):
         print(f'\n---------------Generating episodes for {args.dataset}--------------------')
-        if args.dataset != None and args.dataset!='':
-            if 'metadataset_omniglot' in args.dataset:
-                Generator = OmniglotGenerator
-            elif 'metadataset_imagenet' in args.dataset:
-                Generator = ImageNetGenerator
-            else:
-                Generator = EpisodicGenerator
-        else:
-            Generator = EpisodicGenerator
-        if args.test_features != '':
-            num_elements_per_class = [len(feat['features']) for feat in feature]
-        else: 
-            num_elements_per_class = None
-        generator = Generator(datasetName=args.dataset, dataset_path=args.dataset_path, num_elements_per_class=num_elements_per_class)
+        Generator = {'metadataset_omniglot':OmniglotGenerator, 'metadataset_imagenet':ImageNetGenerator}.get(args.dataset.replace('_train', '').replace('_test', '').replace('_validation', '') if args.dataset != None else args.dataset, EpisodicGenerator)
+        print('Generator:', Generator)
+        num_elements_per_class = [len(feat['features']) for feat in feature] if args.test_features != '' else None
+        generator = Generator(datasetName=args.dataset+'_test', dataset_path=args.dataset_path, num_elements_per_class=num_elements_per_class)
         episode = generator.sample_episode(n_queries=args.few_shot_queries, ways=args.few_shot_ways, n_shots=args.few_shot_shots, unbalanced_queries=args.few_shot_unbalanced_queries, verbose=True)
         if args.test_features != '':
             shots, queries = generator.get_features_from_indices(feature, episode)

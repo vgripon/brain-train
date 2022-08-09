@@ -15,6 +15,7 @@ parser.add_argument("--freeze-backbone", action="store_true", help="freeze the b
 parser.add_argument("--skip-epochs", type=int, default=0, help="number of epochs for which validation and test are ignored")
 parser.add_argument("--seed", type=int, default=random.randint(0, 1000000000), help="initial random seed")
 parser.add_argument("--deterministic", action="store_true", help="force deterministic mode for cuda")
+parser.add_argument("--silent", action="store_true", help="reduce output verbose")
 
 ### optimizer args
 parser.add_argument("--optimizer", type=str, default="SGD", help="can be SGD or Adam")
@@ -56,11 +57,13 @@ parser.add_argument("--validation-dataset", type=str, default="", help="validati
 parser.add_argument("--test-dataset", type=str, default="", help="test dataset, overriden by --dataset")
 parser.add_argument("--dataset-size", type=int, default=0, help="defines a maximum of samples considered at each epoch, 0 means it is ignored")
 parser.add_argument("--audio", action="store_true", help="used audio inputs, so switch back to 1d backbones")
-
+parser.add_argument("--wandb", type=str, default='', help="Report to wandb, input is the entity name")
+parser.add_argument("--wandbProjectName", type=str, default='few-shot', help="wandb project name")
 ### backbones parameters
 parser.add_argument("--feature-maps", type=int, default=64, help="initial number of feature maps in first embedding, used as a base downstream convolutions")
 parser.add_argument("--backbone", type=str, default="resnet18", help="backbone architecture")
 parser.add_argument("--feature-processing", type=str, default="", help="feature processing before few-shot classifiers, can contain M (remove mean of feature vectors), and E (unit sphere projection of feature vectors)")
+parser.add_argument("--leaky", action="store_true", help="use leaky relu instead of relu for intermediate activations")
 
 ### criterion
 parser.add_argument("--classifier", type=str, default="lr", help="define which classifier is used on top of selected backbone, can be any of lr for logistic regression, or L2 for euclidean distance regression, or multilabelBCE for multi label classification")
@@ -79,6 +82,7 @@ parser.add_argument("--few-shot-shots", type=int, default=1, help="number of sho
 parser.add_argument("--few-shot-queries", type=int, default=15, help="number of query vectors per class in generated few shot tasks")
 parser.add_argument("--few-shot-unbalanced-queries", action="store_true", help="use unbalanced number of queries per class. The number of queries per class is sampled using a dirichlet distribution between 1 and the query set for all classes")
 parser.add_argument("--few-shot-classifier", type=str, default="ncm", help="classifier for few-shot runs, can be ncm or knn where k is an integer")
+parser.add_argument("--sample-aug", type=int, default=1, help="number of versions of support/query samples (using random crop) 1 means no augmentation")
 parser.add_argument("--test-features", type=str, default="", help="test few-shot runs on saved features")
 
 args = parser.parse_args()
@@ -101,10 +105,13 @@ if args.wd < 0:
     args.wd = 5e-4 if args.optimizer.lower() == "sgd" else 0
 
 if isinstance(eval(args.milestones), int):
-    args.milestones = [eval(args.milestones) * i for i in range(1, args.epochs // eval(args.milestones))]
+    if eval(args.milestones) <= 0:
+        args.milestones = []
+    else:
+        args.milestones = [eval(args.milestones) * i for i in range(1, 1 + args.epochs // eval(args.milestones))]
 else:
     args.milestones = eval(args.milestones)
-if args.epochs not in args.milestones:
+if args.epochs not in args.milestones and args.milestones != []:
     args.milestones.append(args.epochs)
 
 print(" args,", end = '')

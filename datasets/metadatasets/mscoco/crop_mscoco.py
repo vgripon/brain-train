@@ -2,7 +2,7 @@ import sys
 dataset_path = str(sys.argv[1])
 print('AS SUCH THE CROPPING WILL BE UNEFFECTIVE (READ BELOW) \n this may take between one and two hours')
 print('As a security the names of files were changed \n -----> IF you really intend to crop the MSCOCO folder (2h) you should : <----')
-print('1) replace "cropped" by "cropped_imgs" at line 27 and 28 in RUN_ONLY_ONCE.sh and at line 84 of crop_mscoco.py')
+print('1) replace "cropped" by "cropped_imgs" at line 27 and 28 in RUN_ONLY_ONCE.sh and at line 86 of crop_mscoco.py')
 print('2) replace "cropped_mscoco_test.json" by "cropped_mscoco.json" at line 103 of crop_mscoco.py')
 print('3) run RUN_ONLY_ONCE.sh completely (quite long)')
 import numpy as np
@@ -22,14 +22,13 @@ def split_fn(json_path):
     return split
 
 def generate_mscoco_examples(metadata, paths, box_scale_ratio=1.2):
-    subset_data = {'data': [], 'targets' : [] , 'name_classes' : []}
+    subset_data = {'data': [], 'targets' : [] , 'name_classes' : [], 'num_classes': [], 'num_elements_per_class' : []}
     """Generates MSCOCO examples."""
     if box_scale_ratio < 1.0:
         raise ValueError('Box scale ratio must be greater or equal to 1.0.')
 
-    image_dir = dataset_path+'metadatasets/mscoco/train2017/'
-    print('here', image_dir)
-    annotations = split_fn(dataset_path+'metadatasets/mscoco/instances_train2017.json')
+    image_dir = dataset_path+'/mscoco/train2017/'
+    annotations = split_fn(dataset_path+'/mscoco/instances_train2017.json')
 
     class_name_to_category_id = {
         category['name']: category['id']
@@ -47,7 +46,9 @@ def generate_mscoco_examples(metadata, paths, box_scale_ratio=1.2):
             label_to_annotations[coco_id_to_label[category_id]].append(annotation)
 
     print('number of classes', len(metadata['class_names']))
+    subset_data['num_classes'] = len(metadata['class_names'])
     for label, class_name in enumerate(tqdm(metadata['class_names'])):
+        subset_data['num_elements_per_class'].append(len(label_to_annotations[label]))
         for annotation in label_to_annotations[label]:
             image_path = image_dir + f"{annotation['image_id']:012d}.jpg"
 
@@ -81,12 +82,12 @@ def generate_mscoco_examples(metadata, paths, box_scale_ratio=1.2):
             crop_width, crop_height = image.size
             if crop_width <= 0 or crop_height <= 0:
                 raise ValueError('crops are not valid.')
-            filename = "metadatasets/mscoco/cropped/"+ f"{annotation['image_id']:012d}.jpg"
+            filename = "mscoco/cropped/"+ f"{annotation['image_id']:012d}.jpg"
             image.save(dataset_path+filename, "JPEG")
             subset_data['data'].append(filename)
             subset_data['targets'].append(label)
         subset_data['name_classes'].append(class_name)
-    subset_data['num_classes'] = label+1
+    
     return subset_data
       
 metadata = {}
@@ -100,5 +101,5 @@ for index_subset, subset in enumerate(split.keys()):
         print(subset, 'sucesss')
     except Exception as e: print(e, subset, 'if the subet is "train" is empty it is normal this subset is not used in metadataset-mscoco')
         
-with open(dataset_path+'metadatasets/mscoco/cropped_mscoco_test.json', 'w') as fp:
+with open(dataset_path+'mscoco/cropped_mscoco_test.json', 'w') as fp:
     json.dump(data, fp)

@@ -2,21 +2,34 @@
 import torch
 import random # for mixup
 import numpy as np # for manifold mixup
+import math
+from colorama import Fore, Back, Style
 
 # Loading other files
-print("Loading local files... ", end ='')
 from args import args
+if not args.silent:
+    print("Loading local files... ", end ='')
 from utils import *
 from dataloaders import trainSet, validationSet, testSet
 import classifiers
 import backbones
 import backbones1d
 from few_shot_evaluation import EpisodicGenerator, ImageNetGenerator, OmniglotGenerator
-print(" done.")
 
-print()
+if args.wandb!='':
+    import wandb
+
+if not args.silent:
+    print(" done.")
+    
+    print()
+
 print(args)
 print()
+
+#for pretty printing
+opener = ""
+ender = ""
 
 ### generate random seeds
 random.seed(args.seed)
@@ -39,7 +52,7 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
             optimizer.zero_grad()
             text = ""
             for trainingSetIdx in range(len(iterators)):
-                if args.dataset_size > 0 and total_elt[trainingSetIdx] > args.dataset_size:
+                if args.dataset_size > 0 and total_elt[trainingSetIdx] >= args.dataset_size:
                     raise StopIteration
                 batchIdx, (data, target) = next(iterators[trainingSetIdx])
                 data, target = data.to(args.device), target.to(args.device)
@@ -51,8 +64,12 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                         perm = torch.randperm(dataStep.shape[0])
                         if "mixup" in step:
                             lbda = random.random()
+                            mixupType = "mixup"
                         else:
                             lbda = np.random.beta(2,2)
+                            mixupType = "manifold mixup"
+                    else:
+                        lbda, perm, mixupType = None, None, None
 
                     if "rotations" in step:
                         bs = dataStep.shape[0] // 4
@@ -67,25 +84,21 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                     else:
                         targetRot = None
 
-                    if "mixup" not in step and "manifold mixup" not in step:
-                        loss, score = criterion[trainingSetIdx](backbone(dataStep), target, yRotations = targetRot if "rotations" in step else None)
-                    else:                        
-                        features = backbone(dataStep, mixup = "mixup" if "mixup" in step else "manifold mixup", lbda = lbda, perm = perm)
-                        loss_1, score_1 = criterion[trainingSetIdx](features, target, yRotations = targetRot if "rotations" in step else None)
-                        loss_2, score_2 = criterion[trainingSetIdx](features, target[perm], yRotations = targetRot[perm] if "rotations" in step else None)
-                        loss = lbda * loss_1 + (1 - lbda) * loss_2
-                        score = lbda * score_1 + (1 - lbda) * score_2
-
+                    loss, score = criterion[trainingSetIdx](backbone(dataStep, mixup = mixupType, lbda = lbda, perm = perm), target, yRotations = targetRot if "rotations" in step else None, lbda = lbda, perm = perm)
                     loss.backward()
 
                 losses[trainingSetIdx] += data.shape[0] * loss.item()
                 accuracies[trainingSetIdx] += data.shape[0] * score.item()
                 total_elt[trainingSetIdx] += data.shape[0]
                 finished = (batchIdx + 1) / len(trainSet[trainingSetIdx]["dataloader"])
-                text += " {:s} {:3d}% {:.3f} {:3.2f}%".format(trainSet[trainingSetIdx]["name"], round(100*finished), losses[trainingSetIdx] / total_elt[trainingSetIdx], 100 * accuracies[trainingSetIdx] / total_elt[trainingSetIdx])
+                text += " " + opener + "{:3d}% {:.2e} {:6.2f}%".format(round(100*finished), losses[trainingSetIdx] / total_elt[trainingSetIdx], 100 * accuracies[trainingSetIdx] / total_elt[trainingSetIdx]) + ender
+                if 21 < 2 + len(trainSet[trainingSetIdx]["name"]):
+                    text = " " * (2 + len(trainSet[trainingSetIdx]["name"]) - 21) + text
             optimizer.step()
             scheduler.step()
-            display("\r{:3d} {:.5f}".format(epoch, float(scheduler.get_last_lr()[0])) + text, end = '', force = finished == 1)
+            if args.wandb!='':
+                wandb.log({"epoch":epoch, "train_loss": losses / total_elt})
+            display("\r" + Style.RESET_ALL + "{:4d} {:.2e}".format(epoch, float(scheduler.get_last_lr()[0])) + text, end = '', force = (finished == 1))
         except StopIteration:
             return torch.stack([losses / total_elt, 100 * accuracies / total_elt]).transpose(0,1)
 
@@ -104,7 +117,9 @@ def test(backbone, datasets, criterion):
                 accuracies += data.shape[0] * score.item()
                 total_elt += data.shape[0]
         results.append((losses / total_elt, 100 * accuracies / total_elt))
-        display(" {:s} {:.3f} {:3.2f}%".format(dataset["name"], losses / total_elt, 100 * accuracies / total_elt), end = '', force = True)
+        if args.wandb!='':
+            wandb.log({ "test_loss_{}".format(dataset["name"]) : losses / total_elt, "test_acc_{}".format(dataset["name"]) : accuracies / total_elt})
+        display(" " * (1 + max(0, len(datasets[testSetIdx]["name"]) - 16)) + opener + "{:.2e}  {:6.2f}%".format(losses / total_elt, 100 * accuracies / total_elt) + ender, end = '', force = True)
     return torch.tensor(results)
 
 def testFewShot(features, datasets = None):
@@ -112,15 +127,7 @@ def testFewShot(features, datasets = None):
     for i in range(len(features)):
         accs = []
         feature = features[i]
-        if datasets is not None:
-            if 'metadataset_omniglot' in datasets[i]["name"]:
-                Generator = OmniglotGenerator
-            elif 'metadataset_imagenet' in datasets[i]["name"]:
-                Generator = ImageNetGenerator
-            else:
-                Generator = EpisodicGenerator
-        else:
-            Generator = EpisodicGenerator
+        Generator = {'metadataset_omniglot':OmniglotGenerator, 'metadataset_imagenet':ImageNetGenerator}.get(datasets[i]['name'].replace('_train', '').replace('_test', '').replace('_validation', '') if datasets != None else datasets, EpisodicGenerator)
         generator = Generator(datasetName=None if datasets is None else datasets[i]["name"], num_elements_per_class= [len(feat['features']) for feat in feature], dataset_path=args.dataset_path)
         for run in range(args.few_shot_runs):
             shots = []
@@ -133,7 +140,7 @@ def testFewShot(features, datasets = None):
         results[i, 0] = torch.mean(accs).item()
         results[i, 1] = (up - low) / 2
         if datasets is not None:
-            display(" {:s} {:.2f}% (±{:.2f}%)".format(datasets[i]["name"], results[i, 0], results[i, 1]), end = '', force = True)
+            display(" " * (1 + max(0, len(datasets[i]["name"]) - 16)) + opener + "{:6.2f}% (±{:6.2f})".format(results[i, 0], results[i, 1]) + ender, end = '', force = True)
     return results
 
 def process(featuresSet, mean):
@@ -155,7 +162,7 @@ def computeMean(featuresSet):
             avg += torch.cat([features[i]["features"] for i in range(len(features))]).mean(dim = 0)
     return avg / len(featuresSet)
 
-def generateFeatures(backbone, datasets):
+def generateFeatures(backbone, datasets, sample_aug=args.sample_aug):
     """
     Generate features for all datasets
     Inputs:
@@ -167,18 +174,27 @@ def generateFeatures(backbone, datasets):
     backbone.eval()
     results = []
     for testSetIdx, dataset in enumerate(datasets):
+        n_aug = 1 if 'train' in dataset['name'] else sample_aug
         allFeatures = [{"name_class": name_class, "features": []} for name_class in dataset["name_classes"]]
         with torch.no_grad():
-            for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
-                data, target = data.to(args.device), target.to(args.device)
-                features = backbone(data).to("cpu")
-                for i in range(features.shape[0]):
-                    allFeatures[target[i]]["features"].append(features[i])
-        results.append([{"name_class": allFeatures[i]["name_class"], "features": torch.stack(allFeatures[i]["features"])} for i in range(len(allFeatures))])
+            for augs in range(n_aug):
+                features = [{"name_class": name_class, "features": []} for name_class in dataset["name_classes"]]
+                for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
+                    data, target = data.to(args.device), target.to(args.device)
+                    feats = backbone(data).to("cpu")
+                    for i in range(feats.shape[0]):
+                        features[target[i]]["features"].append(feats[i])
+                for c in range(len(allFeatures)):
+                    if augs == 0:
+                        allFeatures[c]["features"] = torch.stack(features[c]["features"])/n_aug
+                    else:
+                        allFeatures[c]["features"] += torch.stack(features[c]["features"])/n_aug
+
+        results.append([{"name_class": allFeatures[i]["name_class"], "features": allFeatures[i]["features"]} for i in range(len(allFeatures))])
     return results
 
 if args.test_features != "":
-    features = [torch.load(args.test_features)]
+    features = [torch.load(args.test_features, map_location=args.device)]
     print(testFewShot(features))
     exit()
 
@@ -187,7 +203,14 @@ allRunValidationStats = None
 allRunTestStats = None
 createCSV(trainSet, validationSet, testSet)
 for nRun in range(args.runs):
-    print("Preparing backbone... ", end='')
+    if args.wandb!='':
+        tag = (args.dataset != '')*[args.dataset] + (args.dataset == '')*['cross-domain'] + ['run_'+str(nRun)] * (args.runs != 1)
+        run_wandb = wandb.init(reinit = True, project=args.wandbProjectName, 
+            entity=args.wandb, 
+            tags=tag, 
+            config=vars(args))
+    if not args.silent:
+        print("Preparing backbone... ", end='')
     if args.audio:
         backbone, outputDim = backbones1d.prepareBackbone()
     else:
@@ -195,26 +218,29 @@ for nRun in range(args.runs):
     if args.load_backbone != "":
         backbone.load_state_dict(torch.load(args.load_backbone))
     backbone = backbone.to(args.device)
-    numParamsBackbone = torch.tensor([m.numel() for m in backbone.parameters()]).sum().item()
-    print(" containing {:,} parameters.".format(numParamsBackbone))
+    if not args.silent:
+        numParamsBackbone = torch.tensor([m.numel() for m in backbone.parameters()]).sum().item()
+        print(" containing {:,} parameters.".format(numParamsBackbone))
 
-    print("Preparing criterion(s) and classifier(s)... ", end='')
+        print("Preparing criterion(s) and classifier(s)... ", end='')
     criterion = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in trainSet]
     numParamsCriterions = 0
     for c in criterion:
         c.to(args.device)
         numParamsCriterions += torch.tensor([m.numel() for m in c.parameters()]).sum().item()
-    print(" total is {:,} parameters.".format(numParamsBackbone + numParamsCriterions))
+    if not args.silent:
+        print(" total is {:,} parameters.".format(numParamsBackbone + numParamsCriterions))
 
-    print("Preparing optimizer... ", end='')
+        print("Preparing optimizer... ", end='')
     if not args.freeze_backbone:
         parameters = list(backbone.parameters())
     else:
         parameters = []
     for c in criterion:
-        parameters += list(c.parameters())    
-    print(" done.")
-    print()
+        parameters += list(c.parameters())
+    if not args.silent:
+        print(" done.")
+        print()
 
     tick = time.time()
     best_val = 1e10 if not args.few_shot else 0
@@ -222,38 +248,54 @@ for nRun in range(args.runs):
 
     try:
         nSteps = torch.min(torch.tensor([len(dataset["dataloader"]) for dataset in trainSet])).item()
-        if args.dataset_size > 0 and args.dataset_size // args.batch_size < nSteps:
-            nSteps = args.dataset_size // args.batch_size
+        if args.dataset_size > 0 and math.ceil(args.dataset_size / args.batch_size) < nSteps:
+            nSteps = math.ceil(args.dataset_size / args.batch_size)
     except:
         nSteps = 0
 
     for epoch in range(args.epochs):
-        if epoch == 0 and not args.cosine:
-            optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.weight_decay)
+        if (epoch % 30 == 0 and not args.silent) or epoch == 0 or epoch == args.skip_epochs:
+            if epoch > 0 and args.silent:
+                print()
+            print(" ep.       lr ".format(), end='')
+            for dataset in trainSet:
+                print(Back.CYAN + " {:>19s} ".format(dataset["name"]) + Style.RESET_ALL, end='')
+            if epoch >= args.skip_epochs:
+                for dataset in validationSet:
+                    print(Back.GREEN + " {:>16s} ".format(dataset["name"]) + Style.RESET_ALL, end='')
+                for dataset in testSet:
+                    print(Back.RED + " {:>16s} ".format(dataset["name"]) + Style.RESET_ALL, end='')
+            print()
+        if epoch == 0 and not args.cosine and len(parameters)>0:
+            optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.wd)
             if not args.cosine:
                 scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer = optimizer, milestones = [n * nSteps for n in args.milestones], gamma = args.gamma)
-        if args.cosine and (epoch in args.milestones or epoch == 0):
-            optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.weight_decay)
+        if args.cosine and (epoch in args.milestones or epoch == 0) and len(parameters)>0:
+            optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.wd)
             if epoch == 0:
                 interval = nSteps * args.milestones[0]
             else:
                 index = args.milestones.index(epoch)
                 interval = nSteps * (args.milestones[index + 1] - args.milestones[index])
-            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimizer, T_max = interval)
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimizer, T_max = interval, eta_min = lr * 1e-3)
             lr = lr * args.gamma
         
         continueTest = False
+        meanVector = None
+        trainStats = None
         if trainSet != []:
-            trainStats = train(epoch + 1, backbone, criterion, optimizer, scheduler)
-            updateCSV(trainStats, epoch = epoch)
+            opener = Fore.CYAN
+            if not args.freeze_backbone:
+                trainStats = train(epoch + 1, backbone, criterion, optimizer, scheduler)
+                updateCSV(trainStats, epoch = epoch)
             if (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
                 if epoch >= args.skip_epochs:
                     featuresTrain = generateFeatures(backbone, trainSet)
                     meanVector = computeMean(featuresTrain)
                     featuresTrain = process(featuresTrain, meanVector)
-            else:
-                meanVector = None
+            ender = Style.RESET_ALL
         if validationSet != [] and epoch >= args.skip_epochs:
+            opener = Fore.GREEN
             if args.few_shot or args.save_features_prefix != "":
                 featuresValidation = generateFeatures(backbone, validationSet)
                 featuresValidation = process(featuresValidation, meanVector)
@@ -265,9 +307,11 @@ for nRun in range(args.runs):
                 validationStats = tempValidationStats
                 best_val = validationStats[:,0].mean().item()
                 continueTest = True
+            ender = Style.RESET_ALL
         else:
             continueTest = True
         if testSet != [] and epoch >= args.skip_epochs:
+            opener = Fore.RED
             if args.few_shot or args.save_features_prefix != "":
                 featuresTest = generateFeatures(backbone, testSet)
                 featuresTest = process(featuresTest, meanVector)
@@ -277,6 +321,7 @@ for nRun in range(args.runs):
             updateCSV(tempTestStats)
             if continueTest:
                 testStats = tempTestStats
+            ender = Style.RESET_ALL
         if continueTest and args.save_backbone != "" and epoch >= args.skip_epochs:
             torch.save(backbone.to("cpu").state_dict(), args.save_backbone)
             backbone.to(args.device)
@@ -287,10 +332,10 @@ for nRun in range(args.runs):
                 torch.save(featuresValidation[i], args.save_features_prefix + dataset["name"] + "_features.pt")
             for i, dataset in enumerate(testSet):
                 torch.save(featuresTest[i], args.save_features_prefix + dataset["name"] + "_features.pt")
-
-        scheduler.step()
-        print(" " + timeToStr(time.time() - tick))
-    if trainSet != []:
+        if args.wandb!='':
+            wandb.log({'epoch' : epoch, 'test' : tempTestStats[:,0].mean().item(), 'validation' : tempValidationStats[:,0].mean().item(),'best_val': best_val})
+        print(Style.RESET_ALL + " " + timeToStr(time.time() - tick), end = '' if args.silent else '\n')
+    if trainSet != [] and trainStats is not None:
         if allRunTrainStats is not None:
             allRunTrainStats = torch.cat([allRunTrainStats, trainStats.unsqueeze(0)])
         else:
@@ -311,9 +356,13 @@ for nRun in range(args.runs):
     for phase, nameSet, stats in [("Train", trainSet, allRunTrainStats), ("Validation", validationSet, allRunValidationStats),  ("Test", testSet, allRunTestStats)]:
         print(phase)
         if nameSet != []:
-            for dataset in range(stats.shape[1]):
-                print("\tDataset " + nameSet[dataset]["name"])
-                for stat in range(stats.shape[2]):
-                    low, up = confInterval(stats[:,dataset,stat])
-                    print("\t{:.3f} ±{:.3f} (conf. [{:.3f}, {:.3f}])".format(stats[:,dataset,stat].mean().item(), stats[:,dataset,stat].std().item(), low, up), end = '')
-                print()
+            if stats is not None:
+                for dataset in range(stats.shape[1]):
+                    print("\tDataset " + nameSet[dataset]["name"])
+                    for stat in range(stats.shape[2]):
+                        low, up = confInterval(stats[:,dataset,stat])
+                        print("\t{:.3f} ±{:.3f} (conf. [{:.3f}, {:.3f}])".format(stats[:,dataset,stat].mean().item(), stats[:,dataset,stat].std().item(), low, up), end = '')
+                    print()
+    print()
+    if args.wandb!='':
+        run_wandb.finish()

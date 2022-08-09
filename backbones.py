@@ -4,7 +4,7 @@ from args import args
 import random # for manifold mixup
 
 class ConvBN2d(nn.Module):
-    def __init__(self, in_f, out_f, kernel_size = 3, stride = 1, padding = 1, groups = 1, outRelu = False, leaky = False):
+    def __init__(self, in_f, out_f, kernel_size = 3, stride = 1, padding = 1, groups = 1, outRelu = False, leaky = args.leaky):
         super(ConvBN2d, self).__init__()
         self.conv = nn.Conv2d(in_f, out_f, kernel_size = kernel_size, stride = stride, padding = padding, groups = groups, bias = False)
         self.bn = nn.BatchNorm2d(out_f)
@@ -43,7 +43,10 @@ class BasicBlock(nn.Module):
             z += x
         if lbda is not None:
             z = lbda * z + (1 - lbda) * z[perm]
-        z = torch.relu(z)
+        if args.leaky:
+            z = torch.nn.functional.leaky_relu(z, negative_slope = 0.1)
+        else:
+            z = torch.relu(z)
         return z
 
 class BottleneckBlock(nn.Module):
@@ -64,7 +67,10 @@ class BottleneckBlock(nn.Module):
             out += x
         if lbda is not None:
             out = lbda * out + (1 - lbda) * out[perm]
-        return torch.relu(out)
+        if args.leaky:
+            return torch.nn.functional.leaky_relu(out, negative_slope = 0.1)
+        else:
+            return torch.relu(out)
 
 
 class ResNet(nn.Module):
@@ -79,7 +85,7 @@ class ResNet(nn.Module):
         first = True
         for (nBlocks, stride, multiplier) in blockList:
             for i in range(nBlocks):
-                blocks.append(block(featureMaps * lastMult, featureMaps * multiplier, in_expansion = 1 if first else 4, stride = 1 if i > 0 else stride))
+                blocks.append(block(int(featureMaps * lastMult), int(featureMaps * multiplier), in_expansion = 1 if first else 4, stride = 1 if i > 0 else stride))
                 first = False
                 lastMult = multiplier
         self.blocks = nn.ModuleList(blocks)
@@ -125,8 +131,11 @@ class BasicBlockRN12(nn.Module):
         y += self.sc(x)
         if lbda is not None:
             y = lbda * y + (1 - lbda) * y[perm]
-        return torch.nn.functional.leaky_relu(y, negative_slope = 0.1)
-        
+        if args.leaky:
+            return torch.nn.functional.leaky_relu(y, negative_slope = 0.1)
+        else:
+            return torch.relu(y)
+
 class ResNet12(nn.Module):
     def __init__(self, featureMaps):
         super(ResNet12, self).__init__()
@@ -180,6 +189,7 @@ def prepareBackbone():
         "resnet18": lambda: (ResNet(BasicBlock, [(2, 1, 1), (2, 2, 2), (2, 2, 4), (2, 2, 8)], args.feature_maps, large = large), 8 * args.feature_maps),
         "resnet20": lambda: (ResNet(BasicBlock, [(3, 1, 1), (3, 2, 2), (3, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
         "resnet56": lambda: (ResNet(BasicBlock, [(9, 1, 1), (9, 2, 2), (9, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
+        "resnet56flat": lambda: (ResNet(BasicBlock, [(9, 1, 1), (9, 2, 1.41), (9, 2, 2)], args.feature_maps, large = large), 2 * args.feature_maps),
         "resnet110": lambda: (ResNet(BasicBlock, [(18, 1, 1), (18, 2, 2), (18, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
         "resnet50": lambda: (ResNet(BottleneckBlock, [(3, 1, 1), (4, 2, 2), (6, 2, 4), (3, 2, 8)], args.feature_maps, large = large), 8 * 4 * args.feature_maps),
         "resnet12": lambda: (ResNet12(args.feature_maps), 10 * args.feature_maps)

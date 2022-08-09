@@ -17,14 +17,17 @@ class LR(nn.Module):
         self.fcRotations = nn.Linear(inputDim, 4)
         self.criterion = nn.CrossEntropyLoss() if args.label_smoothing == 0 else LabelSmoothingLoss(numClasses, args.label_smoothing)
 
-    def forward(self, x, y, yRotations = None):
+    def forward(self, x, y, yRotations = None, lbda = None, perm = None):
         output = self.fc(x)
         decision = output.argmax(dim = 1)
         score = (decision - y == 0).float().mean()
         loss = self.criterion(output, y)
+        if lbda is not None:
+            loss = lbda * loss + (1 - lbda) * self.criterion(output, y[perm])
+            score = lbda * score + (1 - lbda) * (decision - y[perm] == 0).float().mean()
         if yRotations is not None:
             outputRotations = self.fcRotations(x)
-            loss = 0.5 * loss + 0.5 * self.criterion(outputRotations, yRotations)
+            loss = 0.5 * loss + 0.5 * (self.criterion(outputRotations, yRotations) if lbda == None else (lbda * self.criterion(outputRotations, yRotations) + (1 - lbda) * self.criterion(outputRotations, yRotations[perm])))
         return loss, score
 
 ### MultiLabel BCE
@@ -32,17 +35,22 @@ class MultiLabelBCE(nn.Module):
     def __init__(self, inputDim, numClasses):
         super(MultiLabelBCE, self).__init__()
         self.fc = nn.Linear(inputDim, numClasses)
-        self.criterion = nn.BCEWithLogitsLoss() 
+        if args.audio:
+            weights = torch.load(args.dataset_path + "audioset/audioset/processed/weight.pt")
+            weights = (1 - weights) / weights
+        else:
+            weights = torch.ones(numClasses)
+        self.criterion = nn.BCEWithLogitsLoss(pos_weight = weights)
 
-    def forward(self, x, y, yRotations = None):
+    def forward(self, x, y, yRotations = None, lbda = None, perm = None):
         output = self.fc(x)
         score = 0.
         for b in range(output.shape[0]):
             decision = output[b].argsort(dim=0)[-y[b].sum().int():]
             gt = torch.where(y[b]==1)[0]
-            score += sum([t in gt for t in decision])
-        score /= y.sum()
-        loss = self.criterion(output, y)
+            score += sum([t in gt for t in decision]) / y[b].sum()
+        score /= y.shape[0]
+        loss = self.criterion(output, y) if lbda == None else (lbda * self.criterion(output, y) + (1 - lbda) * self.criterion(output, y[perm]))
         return loss, score
 
 
@@ -55,14 +63,17 @@ class L2(nn.Module):
         self.criterion = nn.CrossEntropyLoss() if args.label_smoothing == 0 else LabelSmoothingLoss(numClasses, args.label_smoothing)
         self.numClasses = numClasses
 
-    def forward(self, x, y, yRotations = None):
+    def forward(self, x, y, yRotations = None, lbda = None, perm = None):
         distances = -1 * torch.pow(torch.norm(x.unsqueeze(1) - self.centroids.unsqueeze(0), dim = 2), 2)
         decisions = distances.argmax(dim = 1)
         score = (decisions - y == 0).float().mean()
         loss = self.criterion(distances, y)
+        if lbda is not None:
+            loss = lbda * loss + (1 - lbda) * self.criterion(distances, y[perm])
+            score = lbda * score + (1 - lbda) * (decisions - y[perm] == 0).float().mean()
         if yRotations is not None:
             distancesRotations = -1 * torch.pow(torch.norm(x.unsqueeze(1) - self.centroidsRotations.unsqueeze(0), dim = 2),2)
-            loss = 0.5 * loss + 0.5 * self.criterion(distancesRotations, yRotations)
+            loss = 0.5 * loss + 0.5 * (self.criterion(distancesRotations, yRotations) if lbda == None else (lbda * self.criterion(distancesRotations, yRotations) + (1 - lbda) * self.criterion(distancesRotations, yRotations[perm])))
         return loss, score
 
 class LabelSmoothingLoss(nn.Module):
