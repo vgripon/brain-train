@@ -346,7 +346,7 @@ if 'quickdraw' in available_datasets:
     for dataset,splitName in [("train","train"),("validation","valid"),("test","test")]:
         class_count = 0
         directories = os.listdir(args.dataset_path + "quickdraw/")
-        result = {"data":[], "targets":[], "name":"metadatasets_quickdraw_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
+        result = {"data":[], "targets":[], "name":"metadataset_quickdraw_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
         for class_name in split[splitName]:
             samples = np.load(args.dataset_path + "quickdraw/"+class_name +'.npy')
             result['num_elements_per_class'].append(samples.shape[0])
