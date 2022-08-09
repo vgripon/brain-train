@@ -119,19 +119,20 @@ if 'imagenet' in available_datasets:
         duplicates += [p.split('#')[0].replace(' ','') for p in duplicates_tmp if len(p)>0 and p[0] not in ['#']] # parse the duplicates files
     # check which file exists:
     path = os.path.join('imagenet', 'ILSVRC2012_img_train' if os.path.exists(os.path.join(args.dataset_path, 'imagenet', 'ILSVRC2012_img_train')) else 'train')
+    print('where are u defined', dataset)
     if args.subdomain!='':
         clusters = np.load(args.subdomain)
         nb_clusters = clusters.max()+1
         L=[]
         for k in range(nb_clusters):
-            L.append({"data":[], "targets":[], "name":"metadataset_imagenet_"+str(k) + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class":[], "classIdx":{}})
+            L.append({"data":[], "targets":[], "name":"metadataset_imagenet_"+str(k) +'train', "num_classes":0, "name_classes":[], "num_elements_per_class":[], "classIdx":{}})
     for dataset, folderName in [('train', 'TRAIN'), ('test', 'TEST'), ('validation','VALID')]:
         result = {"data":[], "targets":[], "name":"metadataset_imagenet_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class":[], "classIdx":{}}
         for i, classIdx in enumerate(class_folders[folderName]):
             num_elements_per_class = 0
             for fileName in os.listdir(os.path.join(args.dataset_path, path, classIdx)):
                 if os.path.join(classIdx, fileName) not in duplicates:
-                    if args.subdomain!='':
+                    if args.subdomain!='' and dataset=='train':
                         L[clusters[i]]["data"].append(os.path.join(path, classIdx, fileName))
                         L[clusters[i]]["targets"].append(L[clusters[i]]["num_classes"])
                     result["data"].append(os.path.join(path, classIdx, fileName))

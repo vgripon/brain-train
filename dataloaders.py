@@ -146,10 +146,12 @@ def metadataset_imagenet(datasetName):
         dataset = all_datasets["metadataset_imagenet_" + datasetName]
     except:
         dataset = all_datasets["metadataset_imagenet_clustertrain" + datasetName]
+        is_cluster = True
     data = dataset["data"]
     targets = dataset["targets"]
+    print(dataset['name'])
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    if datasetName == 'train':
+    if datasetName == 'train' or is_cluster:
         trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
     else:
         if args.sample_aug == 1:
@@ -157,7 +159,7 @@ def metadataset_imagenet(datasetName):
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization])
 
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = ((datasetName == "train") or is_cluster)), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def imagenet(datasetName):
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -506,7 +508,6 @@ def prepareDataLoader(name, is_train=False):
     for elt in name:
         assert elt.lower() in dataset_options.keys(), f'The chosen dataset "{elt}" is not existing, please provide a valid option: \n {list(dataset_options.keys())}'
         result.append(dataset_options[elt.lower()]())
-        print(elt.lower())
     return result
 
     
