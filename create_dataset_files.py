@@ -317,11 +317,7 @@ if 'vgg_flower' in available_datasets:
             jsonFile.close()
     split_rev = defaultdict(str)
     for dataset,splitName in [("train","train"),("validation","valid"),("test","test")]:
-<<<<<<< HEAD
-        all_results["metadataset_vgg_flower_"+dataset] = {"data":[], "targets":[], "name":"metadatset_vgg_flower_" + dataset, "num_classes":0, "name_classes":[], "dataset_targets":defaultdict(int), "num_elements_per_class":[]}
-=======
         all_results["metadataset_vgg_flower_"+dataset] = {"data":[], "targets":[], "name":"metadataset_vgg_flower_" + dataset, "num_classes":0, "name_classes":[], "dataset_targets":defaultdict(int), "num_elements_per_class":[]}
->>>>>>> accd4215d4b972155eedd8cbe605b8374afe24df
         for class_name in split[splitName]:
             split_rev[int(class_name[:3])] = dataset
             all_results["metadataset_vgg_flower_"+dataset]['dataset_targets'][int(class_name[:3])] = all_results["metadataset_vgg_flower_"+dataset]['num_classes']
@@ -350,11 +346,7 @@ if 'quickdraw' in available_datasets:
     for dataset,splitName in [("train","train"),("validation","valid"),("test","test")]:
         class_count = 0
         directories = os.listdir(args.dataset_path + "quickdraw/")
-<<<<<<< HEAD
         result = {"data":[], "targets":[], "name":"metadataset_quickdraw_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
-=======
-        result = {"data":[], "targets":[], "name":"metadatasets_quickdraw_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
->>>>>>> accd4215d4b972155eedd8cbe605b8374afe24df
         for class_name in split[splitName]:
             samples = np.load(args.dataset_path + "quickdraw/"+class_name +'.npy')
             result['num_elements_per_class'].append(samples.shape[0])
@@ -378,11 +370,7 @@ if 'GTSRB' in available_datasets:
             jsonFile.close()
     dataset = 'test'
     directories = sorted(os.listdir(args.dataset_path + "GTSRB/Final_Training/Images/"))
-<<<<<<< HEAD
-    result = {"data":[], "targets":[], "name":"metadatset_traffic_signs_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
-=======
     result = {"data":[], "targets":[], "name":"metadataset_traffic_signs_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
->>>>>>> accd4215d4b972155eedd8cbe605b8374afe24df
     for class_dir in directories:
         filenames = os.listdir(args.dataset_path + "GTSRB/Final_Training/Images/"+class_dir)
         class_target = int(class_dir)

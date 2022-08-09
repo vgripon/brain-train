@@ -223,11 +223,8 @@ class OmniglotGenerator(EpisodicGenerator):
         superclass_id = str(torch.randint(self.dataset['num_superclasses'],(1,1)).reshape(-1).item())
         classes_ids = self.dataset['classes_per_superclass'][superclass_id]
         num_sampled_classes = torch.randint(5,min(len(classes_ids),50),(1,1)).reshape(-1)
-<<<<<<< HEAD
+        
         return torch.tensor(classes_ids)[torch.randperm(len(classes_ids))[:num_sampled_classes].tolist()]
-=======
-        return classes_ids[torch.randperm(len(classes_ids))[:num_sampled_classes]]
-
 class MetaAlbumsGenerator(EpisodicGenerator):
     """
     """
@@ -239,7 +236,6 @@ class MetaAlbumsGenerator(EpisodicGenerator):
         classes_ids = self.dataset['classes_per_superclass'][superclass_id]
         num_sampled_classes = torch.randint(5,min(len(classes_ids),50),(1,1)).reshape(-1)
         return classes_ids[torch.randperm(len(classes_ids))[:num_sampled_classes]]
->>>>>>> accd4215d4b972155eedd8cbe605b8374afe24df
 if __name__=='__main__':
     from args import args
 
