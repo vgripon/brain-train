@@ -421,7 +421,9 @@ def get_data_source_metaalbum(labels, path, source, SET):
     return train_dic
 
 def get_labels(SET):
-    l = os.listdir(os.path.join(args.dataset_path, 'MetaAlbum', SET))
+    #l = os.listdir(os.path.join(args.dataset_path, 'MetaAlbum', SET))
+    l = ['BCT', 'BRD', 'CRS', 'FLW', 'MD_MIX', 'PLK', 'PLT_VIL', 'RESISC', 'SPT', 'TEX']
+    l = list(map(lambda x: f'{x}_{SET.split("_")[-1]}', l))
     labels =[]
     for source in l:
         if os.path.isdir(os.path.join(args.dataset_path,'MetaAlbum' ,SET, source)):

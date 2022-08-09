@@ -482,8 +482,8 @@ def prepareDataLoader(name, is_train=False):
             "metaalbum_extended":lambda: metaalbum("Extended", is_train=is_train),
         }
     # Meta albums
-    for album in ['BCT', 'BRD', 'CRS', 'FLW', 'MD_MIX', 'PLK', 'PLT_VIL', 'RESISC', 'SPT', 'TEX']:
-        for setting in ['Micro', 'Macro', 'Extended']:
+    for setting in ['Micro', 'Macro', 'Extended']:
+        for album in ['BCT', 'BRD', 'CRS', 'FLW', 'MD_MIX', 'PLK', 'PLT_VIL', 'RESISC', 'SPT', 'TEX']:
             dataset_options[f'metaalbum_{album.lower()}_{setting.lower()}'] = lambda: metaalbum(f'{album}_{setting}', is_train=is_train)    
                  
     for elt in name:

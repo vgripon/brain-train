@@ -333,7 +333,14 @@ for nRun in range(args.runs):
             for i, dataset in enumerate(testSet):
                 torch.save(featuresTest[i], args.save_features_prefix + dataset["name"] + "_features.pt")
         if args.wandb!='':
-            wandb.log({'epoch' : epoch, 'test' : tempTestStats[:,0].mean().item(), 'validation' : tempValidationStats[:,0].mean().item(),'best_val': best_val})
+            log = {'epoch' : epoch}
+            if epoch >= args.skip_epochs:
+                if validationSet!=[]:
+                    log['validation'] = tempValidationStats[:,0].mean().item()
+                    log['best_val'] = best_val
+                if testSet!=[]:
+                    log['test'] = tempTestStats[:,0].mean().item()
+            wandb.log(log)
         print(Style.RESET_ALL + " " + timeToStr(time.time() - tick), end = '' if args.silent else '\n')
     if trainSet != [] and trainStats is not None:
         if allRunTrainStats is not None:
