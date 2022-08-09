@@ -150,7 +150,7 @@ if 'imagenet' in available_datasets:
         if args.subdomain!='' and dataset=='train':
                 for k in range(nb_clusters):
                     all_results["metadataset_imagenet_cluster"+ dataset+str(k)] = L[k]
-                    print("Done for metadataset_imagenet_cluster"+ dataset+str(k) + " with " + L[k]['num_classes'] + " classes and " + str(len(L[k]["data"])) +" samples (" + str(len(L[k]['targets'])) + ")" )
+                    print("Done for metadataset_imagenet_cluster"+ dataset+str(k) + " with " + str(L[k]['num_classes']) + " classes and " + str(len(L[k]["data"])) +" samples (" + str(len(L[k]['targets'])) + ")" )
 
         all_results["metadataset_imagenet_" + dataset] = result
         print("Done for metadataset_imagenet_" + dataset + " with " + str(i+1) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
