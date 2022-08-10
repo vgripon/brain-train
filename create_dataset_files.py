@@ -414,10 +414,11 @@ def get_data_source_metaalbum(labels, path, source, SET):
             L_classes.append(cl[10:])
     train_dic = {'data': [], 'targets' : [] , 'name': 'metaalbum_'+source,'name_classes' : L_classes,'num_elements_per_class':[0]*len(L_classes), 'num_classes': len(L_classes)}
     for i in range(len(labels['FILE_NAME'])):
-        train_dic['data'].append(os.path.join(path, source, 'images', labels['FILE_NAME'][i]))
-        class_id = L_classes.index(os.path.join(path, str(labels['CATEGORY'][i]))[10:]) ### PB conflict with others here
-        train_dic['targets'].append(class_id)
-        train_dic['num_elements_per_class'][class_id]+=1
+        if 'DS_Store' not in labels['FILE_NAME'][i]:
+            train_dic['data'].append(os.path.join(path, source, 'images', labels['FILE_NAME'][i]))
+            class_id = L_classes.index(os.path.join(path, str(labels['CATEGORY'][i]))[10:]) ### PB conflict with others here
+            train_dic['targets'].append(class_id)
+            train_dic['num_elements_per_class'][class_id]+=1
     return train_dic
 
 def get_labels(SET):
