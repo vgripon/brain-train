@@ -297,7 +297,7 @@ def metadataset_vggflower(datasetName):
     f = open(args.dataset_path + "datasets.json")    
     all_datasets = json.loads(f.read())
     f.close()
-    dataset = all_datasets["metadataset_vggflower_" + datasetName]
+    dataset = all_datasets["metadataset_vgg_flower_" + datasetName]
     data = dataset["data"]
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -470,9 +470,9 @@ def prepareDataLoader(name, is_train=False):
             "metadataset_quickdraw_train": lambda: metadataset_quickdraw("train"),
             "metadataset_quickdraw_validation": lambda: metadataset_quickdraw("validation"),
             "metadataset_quickdraw_test": lambda: metadataset_quickdraw("test"),
-            "metadataset_vggflower_train": lambda: metadataset_vggflower("train"),
-            "metadataset_vggflower_validation": lambda: metadataset_vggflower("validation"),
-            "metadataset_vggflower_test": lambda: metadataset_vggflower("test"),
+            "metadataset_vgg_flower_train": lambda: metadataset_vggflower("train"),
+            "metadataset_vgg_flower_validation": lambda: metadataset_vggflower("validation"),
+            "metadataset_vgg_flower_test": lambda: metadataset_vggflower("test"),
             "metadataset_traffic_signs_train": lambda: metadataset_traffic_signs("train"),
             "metadataset_traffic_signs_validation": lambda: metadataset_traffic_signs("validation"),
             "metadataset_traffic_signs_test": lambda: metadataset_traffic_signs("test"),
