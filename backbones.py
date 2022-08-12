@@ -76,10 +76,12 @@ class BottleneckBlock(nn.Module):
 class ResNet(nn.Module):
     def __init__(self, block, blockList, featureMaps, large = False):
         super(ResNet, self).__init__()
+        self.large = large
         if not large:
             self.embed = ConvBN2d(3, featureMaps, outRelu = True)
         else:
             self.embed = ConvBN2d(3, featureMaps, kernel_size=7, stride=2, padding=3, outRelu = True)
+            self.mp = nn.MaxPool2d(kernel_size = 3, stride = 2, padding = 1)
         blocks = []
         lastMult = 1
         first = True
@@ -106,6 +108,9 @@ class ResNet(nn.Module):
             y = self.embed(x, lbda, perm)
         else:
             y = self.embed(x)
+
+        if self.large:
+            y = self.mp(y)
 
         for i, block in enumerate(self.blocks):
             if mixup_layer == i + 2:
