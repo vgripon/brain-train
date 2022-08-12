@@ -271,6 +271,7 @@ for dataset in ['train', 'test', 'validation']:
         all_results["metadataset_aircraft_" + dataset] = results_aircraft[dataset]
         print("Done for metadataset_aircraft_" + dataset + " with " + str(results_aircraft[dataset]['num_classes']) + " classes and " + str(len(results_aircraft[dataset]["data"])) + " samples (" + str(len(results_aircraft[dataset]["targets"])) + ")")
     if 'mscoco' in available_datasets and dataset != 'train':
+        results_mscoco[dataset]['name'] = 'metadataset_mscoco_' + dataset
         all_results["metadataset_mscoco_" + dataset] = results_mscoco[dataset]
         print("Done for metadataset_mscoco_" + dataset + " with " + str(results_mscoco[dataset]['num_classes']) + " classes and " + str(len(results_mscoco[dataset]["data"])) + " samples (" + str(len(results_mscoco[dataset]["targets"])) + ")")
 
