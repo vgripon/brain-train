@@ -14,23 +14,25 @@ class EpisodicGenerator():
         assert datasetName != None or num_elements_per_class!=None, "datasetName and num_elements_per_class can't both be None"
         
         all_datasets = {}
-        print(all_datasets.keys())
-        if dataset_path != '' and dataset_path != None:
-            json_path = os.path.join(dataset_path, 'datasets.json')
+        self.dataset_path = dataset_path
+        if self.dataset_path != '' and self.dataset_path != None:
+            json_path = os.path.join(self.dataset_path, 'datasets.json')
+
             if os.path.exists(json_path):
                 f = open(json_path)    
                 all_datasets = json.loads(f.read())
                 f.close()
 
         self.datasetName = datasetName
+        self.dataset = None
         if datasetName != None and datasetName in all_datasets.keys():
             self.dataset = all_datasets[datasetName]
-        if num_elements_per_class == None:
+        if num_elements_per_class == None and self.dataset!=None:
             self.num_elements_per_class = self.dataset["num_elements_per_class"]
         else:
             self.num_elements_per_class = num_elements_per_class
-        self.max_classes = min(len(self.num_elements_per_class), 50)
-        
+        if self.num_elements_per_class != None:
+            self.max_classes = min(len(self.num_elements_per_class), 50)
                 
     def select_classes(self, ways):
         # number of ways for this episode
@@ -230,12 +232,115 @@ class MetaAlbumsGenerator(EpisodicGenerator):
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        all_datasets = {}
+        if self.dataset_path != '' and self.dataset_path != None:
+            json_path = os.path.join(self.dataset_path, 'datasets.json')
+            if os.path.exists(json_path):
+                f = open(json_path)    
+                all_datasets = json.loads(f.read())
+                f.close()
+        if self.datasetName in ['metaalbum_Micro', 'metaalbum_Mini', 'metaalbum_Extended']:
+            if self.datasetName == 'metaalbum_Extended':
+                self.albums = ['BCT', 'BRD', 'CRS', 'FLW', 'PLK', 'PLT_VIL', 'RESISC', 'SPT', 'TEX']
+            else:
+                self.albums = ['BCT', 'BRD', 'CRS', 'FLW', 'MD_MIX', 'PLK', 'PLT_VIL', 'RESISC', 'SPT', 'TEX']
+            self.metaalbum = True
+            self.dataset = {}
+            setting = self.datasetName.split('_')[-1]
+            for album in self.albums:
+                datasetName = f'metaalbum_{album}_{setting}'
+                if datasetName in all_datasets.keys():
+                    self.dataset[datasetName] = all_datasets[datasetName]
+        else:
+            self.metaalbum = False
+        self.max_classes = 20
+    def select_classes(self, ways, album=None):
+        # Only one dataset, no need to sample from metaalbum
+        if self.metaalbum:
+            if album == None:
+                album_id = random.randint(0, len(self.albums)-1) # sample an album
+                album = self.albums[album_id]
+            num_elements_per_class = self.dataset[f'metaalbum_{album}_{self.datasetName.split("_")[-1]}']['num_elements_per_class']
+        else:
+            num_elements_per_class = self.dataset['num_elements_per_class']
+        # number of ways for this episode
+        n_ways = ways if ways!=0 else random.randint(2, self.max_classes)
 
-    def select_classes(self, ways):
-        superclass_id = torch.randint(self.dataset['num_superclasses'],(1,1)).reshape(-1)
-        classes_ids = self.dataset['classes_per_superclass'][superclass_id]
-        num_sampled_classes = torch.randint(5,min(len(classes_ids),50),(1,1)).reshape(-1)
-        return classes_ids[torch.randperm(len(classes_ids))[:num_sampled_classes]]
+        # get n_ways classes randomly
+        choices = torch.randperm(len(num_elements_per_class))[:n_ways]
+        return choices, album 
+ 
+    def get_query_size(self, choice_classes, n_queries):
+        query_size = n_queries if n_queries != 0 else 16
+        return query_size
+
+    def get_number_of_shots(self, choice_classes, n_shots):
+        n_shots = n_shots if n_shots!=0 else random.randint(1, 20)
+        n_shots_per_class = [n_shots]*len(choice_classes)
+        return n_shots_per_class
+
+    def get_number_of_queries(self, choice_classes, query_size, unbalanced_queries):
+        if unbalanced_queries:
+            alpha = np.full(len(choice_classes), 2)
+            prob_dist = np.random.dirichlet(alpha)
+            while prob_dist.min()*query_size*len(choice_classes)<1: # if there is a class with less than one query resample
+                prob_dist = np.random.dirichlet(alpha)
+            n_queries_per_class = self.convert_prob_to_samples(prob=prob_dist, q_shot=query_size*len(choice_classes))
+        else:
+            n_queries_per_class = [query_size]*len(choice_classes)
+        return n_queries_per_class
+
+    def sample_episode(self, ways=0, n_shots=0, n_queries=0, unbalanced_queries=False, verbose=False, album=None):
+        """
+        Sample an episode
+        """
+        # get n_ways classes randomly
+        choice_classes, album = self.select_classes(ways=ways, album=album)
+        
+        query_size = self.get_query_size(choice_classes, n_queries)
+
+        n_shots_per_class = self.get_number_of_shots(choice_classes, n_shots)
+        n_queries_per_class = self.get_number_of_queries(choice_classes, query_size, unbalanced_queries)
+
+        if album == None:
+            num_elements_per_class = self.num_elements_per_class
+        else:
+            num_elements_per_class = self.dataset[f'metaalbum_{album}_{self.datasetName.split("_")[-1]}']['num_elements_per_class']
+
+        shots_idx, queries_idx = self.sample_indices([num_elements_per_class[c] for c in choice_classes], n_shots_per_class, n_queries_per_class)
+
+        if verbose:
+            print(f'chosen album: {album}')
+            print(f'chosen class: {choice_classes}')
+            print(f'n_ways={len(choice_classes)}, q={query_size}, S={support_size}, n_shots_per_class={n_shots_per_class}')
+            print(f'queries per class:{n_queries_per_class}')
+            print(f'shots_idx: {shots_idx}')
+            print(f'queries_idx: {queries_idx}')
+
+        return {'album':album, 'choice_classes':choice_classes, 'shots_idx':shots_idx, 'queries_idx':queries_idx}
+
+        
+    def get_features_from_indices(self, features, episode, validation=False):
+        """
+        Get features from a list of all features and from a dictonnary describing an episode
+        """
+        album, choice_classes, shots_idx, queries_idx = episode['album'], episode['choice_classes'], episode['shots_idx'], episode['queries_idx']
+        if album != None:
+            album_id = self.albums.index(album)
+            features = features[start:end]
+        if validation : 
+            validation_idx = episode['validations_idx']
+            val = []
+        shots, queries = [], []
+        for i, c in enumerate(choice_classes):
+            shots.append(features[c]['features'][shots_idx[i]])
+            queries.append(features[c]['features'][queries_idx[i]])
+            if validation : 
+                val.append(features[c]['features'][validation_idx[i]])
+        if validation:
+            return shots, queries, val
+        else:
+            return shots, queries
 if __name__=='__main__':
     from args import args
 
