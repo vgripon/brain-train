@@ -290,7 +290,7 @@ for nRun in range(args.runs):
                 updateCSV(trainStats, epoch = epoch)
             if (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
                 if epoch >= args.skip_epochs:
-                    print('Generating Train Features')
+                    #print('Generating Train Features')
                     featuresTrain = generateFeatures(backbone, trainSet)
                     meanVector = computeMean(featuresTrain)
                     featuresTrain = process(featuresTrain, meanVector)
@@ -298,7 +298,7 @@ for nRun in range(args.runs):
         if validationSet != [] and epoch >= args.skip_epochs:
             opener = Fore.GREEN
             if args.few_shot or args.save_features_prefix != "":
-                print('Generating Validation Features')
+                #print('Generating Validation Features')
                 featuresValidation = generateFeatures(backbone, validationSet)
                 featuresValidation = process(featuresValidation, meanVector)
                 tempValidationStats = testFewShot(featuresValidation, validationSet)
@@ -315,7 +315,7 @@ for nRun in range(args.runs):
         if testSet != [] and epoch >= args.skip_epochs:
             opener = Fore.RED
             if args.few_shot or args.save_features_prefix != "":
-                print('Generating Test Features')
+                #print('Generating Test Features')
                 featuresTest = generateFeatures(backbone, testSet)
                 featuresTest = process(featuresTest, meanVector)
                 tempTestStats = testFewShot(featuresTest, testSet)
