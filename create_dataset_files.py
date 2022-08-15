@@ -379,8 +379,9 @@ if 'GTSRB' in available_datasets:
         result['num_classes'] +=1
         result['num_elements_per_class'].append(len(filenames))
         for filename in filenames:
-            result['data'].append("GTSRB/Final_Training/Images/"+class_dir+'/'+filename)
-            result['targets'].append(class_target)
+            if filename.endswith('.ppm'):
+                result['data'].append("GTSRB/Final_Training/Images/"+class_dir+'/'+filename)
+                result['targets'].append(class_target)
     all_results['metadataset_traffic_signs_'+dataset] = result
     print('Done for metadataset_traffic_signs_' + dataset +'with '+str(result['num_classes'])+' classes and '+str(np.sum(np.array(result['num_elements_per_class']))) +' samples')
 
