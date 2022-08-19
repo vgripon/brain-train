@@ -297,7 +297,7 @@ def metadataset_vggflower(datasetName):
     f = open(args.dataset_path + "datasets.json")    
     all_datasets = json.loads(f.read())
     f.close()
-    dataset = all_datasets["metadataset_vggflower_" + datasetName]
+    dataset = all_datasets["metadataset_vgg_flower_" + datasetName]
     data = dataset["data"]
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -434,14 +434,15 @@ def metaalbum(source, is_train=False):
     data = dataset["data"]
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    image_size = 224 if args.backbone == "resnet50" else 126
     if is_train:
         trans = transforms.Compose([
-            transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
+            transforms.RandomResizedCrop(image_size), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
     else:
         if args.sample_aug == 1:
-            trans = transforms.Compose([transforms.Resize(126), transforms.CenterCrop(126), transforms.ToTensor(), normalization])
+            trans = transforms.Compose([transforms.Resize(image_size), transforms.CenterCrop(image_size), transforms.ToTensor(), normalization])
         else:
-            trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization])
+            trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = is_train), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def prepareDataLoader(name, is_train=False):
@@ -500,9 +501,9 @@ def prepareDataLoader(name, is_train=False):
             "metadataset_quickdraw_train": lambda: metadataset_quickdraw("train"),
             "metadataset_quickdraw_validation": lambda: metadataset_quickdraw("validation"),
             "metadataset_quickdraw_test": lambda: metadataset_quickdraw("test"),
-            "metadataset_vggflower_train": lambda: metadataset_vggflower("train"),
-            "metadataset_vggflower_validation": lambda: metadataset_vggflower("validation"),
-            "metadataset_vggflower_test": lambda: metadataset_vggflower("test"),
+            "metadataset_vgg_flower_train": lambda: metadataset_vggflower("train"),
+            "metadataset_vgg_flower_validation": lambda: metadataset_vggflower("validation"),
+            "metadataset_vgg_flower_test": lambda: metadataset_vggflower("test"),
             "metadataset_traffic_signs_train": lambda: metadataset_traffic_signs("train"),
             "metadataset_traffic_signs_validation": lambda: metadataset_traffic_signs("validation"),
             "metadataset_traffic_signs_test": lambda: metadataset_traffic_signs("test"),
@@ -516,8 +517,8 @@ def prepareDataLoader(name, is_train=False):
             "metaalbum_extended":lambda: metaalbum("Extended", is_train=is_train),
         }
     # Meta albums
-    for album in ['BCT', 'BRD', 'CRS', 'FLW', 'MD_MIX', 'PLK', 'PLT_VIL', 'RESISC', 'SPT', 'TEX']:
-        for setting in ['Micro', 'Macro', 'Extended']:
+    for setting in ['Micro', 'Macro', 'Extended']:
+        for album in ['BCT', 'BRD', 'CRS', 'FLW', 'MD_MIX', 'PLK', 'PLT_VIL', 'RESISC', 'SPT', 'TEX']:
             dataset_options[f'metaalbum_{album.lower()}_{setting.lower()}'] = lambda: metaalbum(f'{album}_{setting}', is_train=is_train)    
                  
     for elt in name:

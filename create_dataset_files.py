@@ -271,6 +271,7 @@ for dataset in ['train', 'test', 'validation']:
         all_results["metadataset_aircraft_" + dataset] = results_aircraft[dataset]
         print("Done for metadataset_aircraft_" + dataset + " with " + str(results_aircraft[dataset]['num_classes']) + " classes and " + str(len(results_aircraft[dataset]["data"])) + " samples (" + str(len(results_aircraft[dataset]["targets"])) + ")")
     if 'mscoco' in available_datasets and dataset != 'train':
+        results_mscoco[dataset]['name'] = 'metadataset_mscoco_' + dataset
         all_results["metadataset_mscoco_" + dataset] = results_mscoco[dataset]
         print("Done for metadataset_mscoco_" + dataset + " with " + str(results_mscoco[dataset]['num_classes']) + " classes and " + str(len(results_mscoco[dataset]["data"])) + " samples (" + str(len(results_mscoco[dataset]["targets"])) + ")")
 
@@ -346,7 +347,7 @@ if 'quickdraw' in available_datasets:
     for dataset,splitName in [("train","train"),("validation","valid"),("test","test")]:
         class_count = 0
         directories = os.listdir(args.dataset_path + "quickdraw/")
-        result = {"data":[], "targets":[], "name":"metadatasets_quickdraw_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
+        result = {"data":[], "targets":[], "name":"metadataset_quickdraw_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
         for class_name in split[splitName]:
             samples = np.load(args.dataset_path + "quickdraw/"+class_name +'.npy')
             result['num_elements_per_class'].append(samples.shape[0])
@@ -378,8 +379,9 @@ if 'GTSRB' in available_datasets:
         result['num_classes'] +=1
         result['num_elements_per_class'].append(len(filenames))
         for filename in filenames:
-            result['data'].append("GTSRB/Final_Training/Images/"+class_dir+'/'+filename)
-            result['targets'].append(class_target)
+            if filename.endswith('.ppm'):
+                result['data'].append("GTSRB/Final_Training/Images/"+class_dir+'/'+filename)
+                result['targets'].append(class_target)
     all_results['metadataset_traffic_signs_'+dataset] = result
     print('Done for metadataset_traffic_signs_' + dataset +'with '+str(result['num_classes'])+' classes and '+str(np.sum(np.array(result['num_elements_per_class']))) +' samples')
 
@@ -441,14 +443,17 @@ def get_data_source_metaalbum(labels, path, source, SET):
             L_classes.append(cl[10:])
     train_dic = {'data': [], 'targets' : [] , 'name': 'metaalbum_'+source,'name_classes' : L_classes,'num_elements_per_class':[0]*len(L_classes), 'num_classes': len(L_classes)}
     for i in range(len(labels['FILE_NAME'])):
-        train_dic['data'].append(os.path.join(path, source, 'images', labels['FILE_NAME'][i]))
-        class_id = L_classes.index(os.path.join(path, str(labels['CATEGORY'][i]))[10:]) ### PB conflict with others here
-        train_dic['targets'].append(class_id)
-        train_dic['num_elements_per_class'][class_id]+=1
+        if 'DS_Store' not in labels['FILE_NAME'][i]:
+            train_dic['data'].append(os.path.join(path, source, 'images', labels['FILE_NAME'][i]))
+            class_id = L_classes.index(os.path.join(path, str(labels['CATEGORY'][i]))[10:]) ### PB conflict with others here
+            train_dic['targets'].append(class_id)
+            train_dic['num_elements_per_class'][class_id]+=1
     return train_dic
 
 def get_labels(SET):
-    l = os.listdir(os.path.join(args.dataset_path, 'MetaAlbum', SET))
+    #l = os.listdir(os.path.join(args.dataset_path, 'MetaAlbum', SET))
+    l = ['BCT', 'BRD', 'CRS', 'FLW', 'MD_MIX', 'PLK', 'PLT_VIL', 'RESISC', 'SPT', 'TEX']
+    l = list(map(lambda x: f'{x}_{SET.split("_")[-1]}', l))
     labels =[]
     for source in l:
         if os.path.isdir(os.path.join(args.dataset_path,'MetaAlbum' ,SET, source)):
