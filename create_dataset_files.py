@@ -425,7 +425,9 @@ if 'ESC-50' in available_datasets:
             result['num_classes'] += 1
             result['num_elements_per_class'].append(len(subDf))
             for curfile in subDf['filename']:
-                result['data'].append(curfile)
+                name,ext = os.path.splitext(curfile)
+                filepath = os.path.join(args.dataset_path,'ESC-50','audio','resampled',f"{name}.pt")
+                result['data'].append(filepath)
                 result['targets'].append(i)
             result['name_classes'].append(subDf['category'].iloc[0])
         all_results["esc50fs_" + dataset] = result
