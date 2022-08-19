@@ -405,6 +405,31 @@ if 'audioset' in available_datasets:
         all_results["audioset_" + dataset] = result
         print("Done for audioset_" + dataset + " with " + str(result['num_classes']) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
 
+if 'ESC-50' in available_datasets:
+    # Note that we use ESC-50 with the few shot learning setup as defined in the MetaAudio paper https://arxiv.org/abs/2204.02121 , so the datasets will be named esc50fs_train val and test
+    # We use here the baseline split from MetaAudio https://github.com/CHeggan/MetaAudio-A-Few-Shot-Audio-Classification-Benchmark/
+    # Read the metadata for the original dataset 
+    df_meta = pd.read_csv(os.path.join(args.dataset_path,'ESC-50','meta','esc50.csv'))
+    class_splits = np.load(os.path.join(args.dataset_path,'ESC-50','ESC_paper_splits.npy'), allow_pickle=True)
+    train_classes, val_classes, test_classes = class_splits
+    df_allsplits = dict()
+    df_allsplits['train'] = pd.concat([df_meta[df_meta['category']==curcat] for curcat in train_classes])
+    df_allsplits['val'] = pd.concat([df_meta[df_meta['category']==curcat] for curcat in val_classes])
+    df_allsplits['test'] = pd.concat([df_meta[df_meta['category']==curcat] for curcat in test_classes])
+
+    for dataset in ['train', 'val','test']:
+        result = {"data":[], "targets":[], "name":"esc50fs_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
+        curtargets = np.unique(df_allsplits[dataset]['target'])
+        for i,targ in enumerate(curtargets):
+            subDf = df_allsplits[dataset][df_allsplits[dataset]['target']==targ]
+            result['num_classes'] += 1
+            result['num_elements_per_class'].append(len(subDf))
+            for curfile in subDf['filename']:
+                result['data'].append(curfile)
+                result['targets'].append(i)
+            result['name_classes'].append(subDf['category'].iloc[0])
+        all_results["esc50fs_" + dataset] = result
+        print("Done for esc50fs_" + dataset + " with " + str(result['num_classes']) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
 
 def get_data_source_metaalbum(labels, path, source, SET):
     L_classes =[]
