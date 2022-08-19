@@ -408,7 +408,7 @@ def esc50(datasetName):
             i = random.randint(0,N - nsamples - 1)
         else:
             i = 0
-        return tensor[i:i+freq]
+        return tensor[i:i+nsamples]
 
     f = open(args.dataset_path + "datasets.json")
     all_datasets = json.loads(f.read())
