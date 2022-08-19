@@ -414,10 +414,10 @@ if 'ESC-50' in available_datasets:
     train_classes, val_classes, test_classes = class_splits
     df_allsplits = dict()
     df_allsplits['train'] = pd.concat([df_meta[df_meta['category']==curcat] for curcat in train_classes])
-    df_allsplits['val'] = pd.concat([df_meta[df_meta['category']==curcat] for curcat in val_classes])
+    df_allsplits['validation'] = pd.concat([df_meta[df_meta['category']==curcat] for curcat in val_classes])
     df_allsplits['test'] = pd.concat([df_meta[df_meta['category']==curcat] for curcat in test_classes])
 
-    for dataset in ['train', 'val','test']:
+    for dataset in ['train', 'validation','test']:
         result = {"data":[], "targets":[], "name":"esc50fs_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
         curtargets = np.unique(df_allsplits[dataset]['target'])
         for i,targ in enumerate(curtargets):
@@ -426,7 +426,7 @@ if 'ESC-50' in available_datasets:
             result['num_elements_per_class'].append(len(subDf))
             for curfile in subDf['filename']:
                 name,ext = os.path.splitext(curfile)
-                filepath = os.path.join(args.dataset_path,'ESC-50','audio','resampled',f"{name}.pt")
+                filepath = os.path.join('ESC-50','audio','resampled',f"{name}.pt")
                 result['data'].append(filepath)
                 result['targets'].append(i)
             result['name_classes'].append(subDf['category'].iloc[0])
