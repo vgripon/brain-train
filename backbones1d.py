@@ -10,7 +10,7 @@ import torchaudio.transforms as T
 N_FFT = 1024
 N_MELS = 64
 
-melspec = T.MelSpectrogram(n_fft=N_FFT, n_mels=N_MELS)
+melspec = T.MelSpectrogram(n_fft=N_FFT, n_mels=N_MELS,sample_rate = 32000)
 
 class ConvBN1d(nn.Module):
     def __init__(self, in_f, out_f, kernel_size = 9, stride = 1, padding = 4, groups = 1, outRelu = False, leaky = False):
