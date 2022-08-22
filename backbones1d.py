@@ -5,13 +5,6 @@ from args import args
 import random # for manifold mixup
 import torchaudio.transforms as T
 
-#### Mel Spectrogram
-
-N_FFT = 1024
-N_MELS = 64
-
-melspec = T.MelSpectrogram(n_fft=N_FFT, n_mels=N_MELS,sample_rate = 32000)
-
 class ConvBN1d(nn.Module):
     def __init__(self, in_f, out_f, kernel_size = 9, stride = 1, padding = 4, groups = 1, outRelu = False, leaky = False):
         super(ConvBN1d, self).__init__()
@@ -205,7 +198,8 @@ class ProtNet_att(nn.Module):
         self.model_name = 'ProtNet_att'
 
         ## Mel Spectrogram extraction and normalization 
-        self.melspec = melspec
+        self.melspec = T.MelSpectrogram(win_length=4096,n_fft=4096,hop_length=497*2, n_mels=128,sample_rate = 32000) 
+
         self.normalize = nn.BatchNorm2d(1)
 
         ks = nfeat
@@ -260,7 +254,7 @@ class CNN3(nn.Module):
         self.model_name = 'CNN3'
 
         ## Mel Spectrogram extraction and normalization 
-        self.melspec = melspec
+        self.melspec = self.melspec = T.MelSpectrogram(win_length=4096,n_fft=4096,hop_length=497*2, n_mels=128,sample_rate = 32000)
         self.normalize = nn.BatchNorm2d(1)
 
         ks = nfeat
