@@ -417,7 +417,8 @@ def esc50(datasetName):
     data = dataset["data"]
     targets = dataset["targets"]
     
-    trans = transforms.Compose([lambda x : randcrop(x, duration = 1).unsqueeze(0), lambda x: x + 0.1 * torch.randn_like(x), lambda x: -1 * x if random.random() < 0.5 else x])
+    #trans = transforms.Compose([lambda x : randcrop(x, duration = 3).unsqueeze(0), lambda x: x + 0.1 * torch.randn_like(x), lambda x: -1 * x if random.random() < 0.5 else x])
+    trans = lambda x : x.unsqueeze(0)
     test_trans = lambda x : x.unsqueeze(0)
     opener = lambda x: torch.load(x, map_location='cpu')
 
