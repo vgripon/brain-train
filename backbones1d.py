@@ -229,11 +229,11 @@ class ProtNet_att(nn.Module):
         G1 = self.G1(zx)  # (130, 128, 32, 40)
         G2 = self.G2(G1)  # (130, 256, 8, 10)
         G3 = self.G3(G2)  # (130, 384, 8, 10)
-        #torch.mean(G3,dim=(2,3),keepdim=False)
+
         att = self.nn_att(G3, self.att)
         embed = G3.view(G3.size(0), G3.size(1), -1) * att # (130, 384, 80)
         embed = embed.sum(-1)  # (130, 384)
-        ### This should correspond to (batch,embedding size) -> output for few shot 
+        
         return embed
 
     def forward_protonet(self, x, xavg, xstd, n=5, m=5):
@@ -254,6 +254,28 @@ class ProtNet_att(nn.Module):
         sim = -torch.pow(query - support, 2).sum(-1)  # (5, 5)
         return sim
 
+class CNN3(nn.Module):
+    def __init__(self,nfeat=128):
+        super(CNN3, self).__init__()
+        self.model_name = 'CNN3'
+
+        ## Mel Spectrogram extraction and normalization 
+        self.melspec = melspec
+        self.normalize = nn.BatchNorm2d(1)
+
+        ks = nfeat
+        self.G1 = GLU(   1, ks*1)
+        self.G2 = GLU(ks*1, ks*2)
+        self.G3 = GLU(ks*2, ks*3, (1,1))
+        
+    def forward(self, x,mixup = None,lbda = None, perm = None):
+        with torch.no_grad():
+            zx = self.normalize(self.melspec(x)) # (130, 1, 128, 160)
+        G1 = self.G1(zx)  # (130, 128, 32, 40)
+        G2 = self.G2(G1)  # (130, 256, 8, 10)
+        G3 = self.G3(G2)  # (130, 384, 8, 10)
+        return torch.mean(G3,dim=(2,3),keepdim=False)
+
 def prepareBackbone():
     return {
         "resnet18": lambda: (ResNet(BasicBlock, [(1, 1, 1), (1, 2, 1.5), (1, 2, 2), (1, 2, 3), (1, 2, 4), (1, 2, 5), (1, 2, 6), (1, 2, 8)], args.feature_maps), 8 * args.feature_maps),
@@ -263,6 +285,7 @@ def prepareBackbone():
         # "resnet110": lambda: (ResNet(BasicBlock, [(18, 1, 1), (18, 2, 2), (18, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
         # "resnet50": lambda: (ResNet(BottleneckBlock, [(3, 1, 1), (4, 2, 2), (6, 2, 4), (3, 2, 8)], args.feature_maps, large = large), 8 * 4 * args.feature_maps),
         "resnet12": lambda: (ResNet12(args.feature_maps), 10 * args.feature_maps),
+        "cnn3": lambda: (CNN3(args.feature_maps), 3*args.feature_maps),
         "cnn-protnet": lambda: (ProtNet_att(args.feature_maps), 3*args.feature_maps)
         }[args.backbone.lower()]()
 
