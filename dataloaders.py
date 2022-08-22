@@ -395,6 +395,38 @@ def audioset(datasetName):
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans if datasetName == "train" else test_trans, target_transforms=target_trans, opener=opener), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
+def esc50(datasetName):
+    def randcrop(tensor, duration,sr=44100):
+        nsamples = sr * duration
+        N = tensor.shape[0]
+        if N<nsamples:
+            new_tensor = torch.zeros(nsamples)
+            new_tensor[:N] = tensor
+            return new_tensor
+        
+        if N > nsamples:
+            i = random.randint(0,N - nsamples - 1)
+        else:
+            i = 0
+        return tensor[i:i+nsamples]
+
+    f = open(args.dataset_path + "datasets.json")
+    all_datasets = json.loads(f.read())
+    f.close()
+    dataset = all_datasets["esc50fs_" + datasetName]
+    data = dataset["data"]
+    targets = dataset["targets"]
+    
+    #trans = transforms.Compose([lambda x : randcrop(x, duration = 3).unsqueeze(0), lambda x: x + 0.1 * torch.randn_like(x), lambda x: -1 * x if random.random() < 0.5 else x])
+    trans = lambda x : x.unsqueeze(0)
+    test_trans = lambda x : x.unsqueeze(0)
+    opener = lambda x: torch.load(x, map_location='cpu')
+
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans if datasetName == "train" else test_trans, opener=opener), shuffle = datasetName == "train"), 
+    "name":dataset['name'], 
+    "num_classes":dataset["num_classes"], 
+    "name_classes": dataset["name_classes"]}
+
 def metaalbum(source, is_train=False):
     f = open(args.dataset_path + "datasets.json")    
     all_datasets = json.loads(f.read())
@@ -478,6 +510,9 @@ def prepareDataLoader(name, is_train=False):
             "metadataset_traffic_signs_test": lambda: metadataset_traffic_signs("test"),
             "audioset_train":lambda: audioset("train"),
             "audioset_test":lambda: audioset("test"), 
+            "esc50fs_train":lambda: esc50("train"),
+            "esc50fs_val":lambda: esc50("validation"),
+            "esc50fs_test":lambda: esc50("test"),
             "metaalbum_micro":lambda: metaalbum("Micro", is_train=is_train),
             "metaalbum_mini":lambda: metaalbum("Mini", is_train=is_train),
             "metaalbum_extended":lambda: metaalbum("Extended", is_train=is_train),
