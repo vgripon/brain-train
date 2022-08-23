@@ -45,6 +45,7 @@ datasets = {
     "metadataset_quickdraw":("metadataset_quickdraw_train", "metadataset_quickdraw_validation", "metadataset_quickdraw_test"),
     "metadataset_omniglot":("metadataset_omniglot_train", "metadataset_omniglot_validation", "metadataset_omniglot_test"),
     "metadataset_traffic_signs":("metadataset_traffic_signs_test"),
+    "esc50fs": ("esc50fs_train", "esc50fs_val", "esc50fs_test"),
     "audioset": ("audioset_train", "", "audioset_test"),
 }
 

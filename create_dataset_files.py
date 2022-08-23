@@ -292,6 +292,7 @@ for dataset in ['train', 'test', 'validation']:
         all_results["metadataset_aircraft_" + dataset] = results_aircraft[dataset]
         print("Done for metadataset_aircraft_" + dataset + " with " + str(results_aircraft[dataset]['num_classes']) + " classes and " + str(len(results_aircraft[dataset]["data"])) + " samples (" + str(len(results_aircraft[dataset]["targets"])) + ")")
     if 'mscoco' in available_datasets and dataset != 'train':
+        results_mscoco[dataset]['name'] = 'metadataset_mscoco_' + dataset
         all_results["metadataset_mscoco_" + dataset] = results_mscoco[dataset]
         print("Done for metadataset_mscoco_" + dataset + " with " + str(results_mscoco[dataset]['num_classes']) + " classes and " + str(len(results_mscoco[dataset]["data"])) + " samples (" + str(len(results_mscoco[dataset]["targets"])) + ")")
 
@@ -367,7 +368,7 @@ if 'quickdraw' in available_datasets:
     for dataset,splitName in [("train","train"),("validation","valid"),("test","test")]:
         class_count = 0
         directories = os.listdir(args.dataset_path + "quickdraw/")
-        result = {"data":[], "targets":[], "name":"metadatasets_quickdraw_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
+        result = {"data":[], "targets":[], "name":"metadataset_quickdraw_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
         for class_name in split[splitName]:
             samples = np.load(args.dataset_path + "quickdraw/"+class_name +'.npy')
             result['num_elements_per_class'].append(samples.shape[0])
@@ -399,8 +400,9 @@ if 'GTSRB' in available_datasets:
         result['num_classes'] +=1
         result['num_elements_per_class'].append(len(filenames))
         for filename in filenames:
-            result['data'].append("GTSRB/Final_Training/Images/"+class_dir+'/'+filename)
-            result['targets'].append(class_target)
+            if filename.endswith('.ppm'):
+                result['data'].append("GTSRB/Final_Training/Images/"+class_dir+'/'+filename)
+                result['targets'].append(class_target)
     all_results['metadataset_traffic_signs_'+dataset] = result
     print('Done for metadataset_traffic_signs_' + dataset +'with '+str(result['num_classes'])+' classes and '+str(np.sum(np.array(result['num_elements_per_class']))) +' samples')
 
@@ -426,6 +428,33 @@ if 'audioset' in available_datasets:
         all_results["audioset_" + dataset] = result
         print("Done for audioset_" + dataset + " with " + str(result['num_classes']) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
 
+if 'ESC-50' in available_datasets:
+    # Note that we use ESC-50 with the few shot learning setup as defined in the MetaAudio paper https://arxiv.org/abs/2204.02121 , so the datasets will be named esc50fs_train val and test
+    # We use here the baseline split from MetaAudio https://github.com/CHeggan/MetaAudio-A-Few-Shot-Audio-Classification-Benchmark/
+    # Read the metadata for the original dataset 
+    df_meta = pd.read_csv(os.path.join(args.dataset_path,'ESC-50','meta','esc50.csv'))
+    class_splits = np.load(os.path.join(args.dataset_path,'ESC-50','ESC_paper_splits.npy'), allow_pickle=True)
+    train_classes, val_classes, test_classes = class_splits
+    df_allsplits = dict()
+    df_allsplits['train'] = pd.concat([df_meta[df_meta['category']==curcat] for curcat in train_classes])
+    df_allsplits['validation'] = pd.concat([df_meta[df_meta['category']==curcat] for curcat in val_classes])
+    df_allsplits['test'] = pd.concat([df_meta[df_meta['category']==curcat] for curcat in test_classes])
+
+    for dataset in ['train', 'validation','test']:
+        result = {"data":[], "targets":[], "name":"esc50fs_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
+        curtargets = np.unique(df_allsplits[dataset]['target'])
+        for i,targ in enumerate(curtargets):
+            subDf = df_allsplits[dataset][df_allsplits[dataset]['target']==targ]
+            result['num_classes'] += 1
+            result['num_elements_per_class'].append(len(subDf))
+            for curfile in subDf['filename']:
+                name,ext = os.path.splitext(curfile)
+                filepath = os.path.join('ESC-50','audio','resampled',f"{name}.pt")
+                result['data'].append(filepath)
+                result['targets'].append(i)
+            result['name_classes'].append(subDf['category'].iloc[0])
+        all_results["esc50fs_" + dataset] = result
+        print("Done for esc50fs_" + dataset + " with " + str(result['num_classes']) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
 
 def get_data_source_metaalbum(labels, path, source, SET):
     L_classes =[]
@@ -435,14 +464,17 @@ def get_data_source_metaalbum(labels, path, source, SET):
             L_classes.append(cl[10:])
     train_dic = {'data': [], 'targets' : [] , 'name': 'metaalbum_'+source,'name_classes' : L_classes,'num_elements_per_class':[0]*len(L_classes), 'num_classes': len(L_classes)}
     for i in range(len(labels['FILE_NAME'])):
-        train_dic['data'].append(os.path.join(path, source, 'images', labels['FILE_NAME'][i]))
-        class_id = L_classes.index(os.path.join(path, str(labels['CATEGORY'][i]))[10:]) ### PB conflict with others here
-        train_dic['targets'].append(class_id)
-        train_dic['num_elements_per_class'][class_id]+=1
+        if 'DS_Store' not in labels['FILE_NAME'][i]:
+            train_dic['data'].append(os.path.join(path, source, 'images', labels['FILE_NAME'][i]))
+            class_id = L_classes.index(os.path.join(path, str(labels['CATEGORY'][i]))[10:]) ### PB conflict with others here
+            train_dic['targets'].append(class_id)
+            train_dic['num_elements_per_class'][class_id]+=1
     return train_dic
 
 def get_labels(SET):
-    l = os.listdir(os.path.join(args.dataset_path, 'MetaAlbum', SET))
+    #l = os.listdir(os.path.join(args.dataset_path, 'MetaAlbum', SET))
+    l = ['BCT', 'BRD', 'CRS', 'FLW', 'MD_MIX', 'PLK', 'PLT_VIL', 'RESISC', 'SPT', 'TEX']
+    l = list(map(lambda x: f'{x}_{SET.split("_")[-1]}', l))
     labels =[]
     for source in l:
         if os.path.isdir(os.path.join(args.dataset_path,'MetaAlbum' ,SET, source)):

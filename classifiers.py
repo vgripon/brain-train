@@ -104,8 +104,7 @@ def ncm(shots, queries):
     return score / total
 
 ###  softkmeans
-def softkmeans(shots, queries):
-    T = 5
+def softkmeans(shots, queries, T = 5):
     score, total = 0, 0
     centroids = torch.stack([shotClass.mean(dim=0) for shotClass in shots])
     support = centroids.clone()

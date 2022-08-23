@@ -302,7 +302,7 @@ def metadataset_vggflower(datasetName):
     f = open(args.dataset_path + "datasets.json")    
     all_datasets = json.loads(f.read())
     f.close()
-    dataset = all_datasets["metadataset_vggflower_" + datasetName]
+    dataset = all_datasets["metadataset_vgg_flower_" + datasetName]
     data = dataset["data"]
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -400,6 +400,38 @@ def audioset(datasetName):
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans if datasetName == "train" else test_trans, target_transforms=target_trans, opener=opener), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
+def esc50(datasetName):
+    def randcrop(tensor, duration,sr=44100):
+        nsamples = sr * duration
+        N = tensor.shape[0]
+        if N<nsamples:
+            new_tensor = torch.zeros(nsamples)
+            new_tensor[:N] = tensor
+            return new_tensor
+        
+        if N > nsamples:
+            i = random.randint(0,N - nsamples - 1)
+        else:
+            i = 0
+        return tensor[i:i+nsamples]
+
+    f = open(args.dataset_path + "datasets.json")
+    all_datasets = json.loads(f.read())
+    f.close()
+    dataset = all_datasets["esc50fs_" + datasetName]
+    data = dataset["data"]
+    targets = dataset["targets"]
+    
+    #trans = transforms.Compose([lambda x : randcrop(x, duration = 3).unsqueeze(0), lambda x: x + 0.1 * torch.randn_like(x), lambda x: -1 * x if random.random() < 0.5 else x])
+    trans = lambda x : x.unsqueeze(0)
+    test_trans = lambda x : x.unsqueeze(0)
+    opener = lambda x: torch.load(x, map_location='cpu')
+
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans if datasetName == "train" else test_trans, opener=opener), shuffle = datasetName == "train"), 
+    "name":dataset['name'], 
+    "num_classes":dataset["num_classes"], 
+    "name_classes": dataset["name_classes"]}
+
 def metaalbum(source, is_train=False):
     f = open(args.dataset_path + "datasets.json")    
     all_datasets = json.loads(f.read())
@@ -408,14 +440,15 @@ def metaalbum(source, is_train=False):
     data = dataset["data"]
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    image_size = 224 if args.backbone == "resnet50" else 126
     if is_train:
         trans = transforms.Compose([
-            transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
+            transforms.RandomResizedCrop(image_size), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
     else:
         if args.sample_aug == 1:
-            trans = transforms.Compose([transforms.Resize(126), transforms.CenterCrop(126), transforms.ToTensor(), normalization])
+            trans = transforms.Compose([transforms.Resize(image_size), transforms.CenterCrop(image_size), transforms.ToTensor(), normalization])
         else:
-            trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization])
+            trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = is_train), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def subdomain(k):
@@ -486,21 +519,24 @@ def prepareDataLoader(name, is_train=False):
             "metadataset_quickdraw_train": lambda: metadataset_quickdraw("train"),
             "metadataset_quickdraw_validation": lambda: metadataset_quickdraw("validation"),
             "metadataset_quickdraw_test": lambda: metadataset_quickdraw("test"),
-            "metadataset_vggflower_train": lambda: metadataset_vggflower("train"),
-            "metadataset_vggflower_validation": lambda: metadataset_vggflower("validation"),
-            "metadataset_vggflower_test": lambda: metadataset_vggflower("test"),
+            "metadataset_vgg_flower_train": lambda: metadataset_vggflower("train"),
+            "metadataset_vgg_flower_validation": lambda: metadataset_vggflower("validation"),
+            "metadataset_vgg_flower_test": lambda: metadataset_vggflower("test"),
             "metadataset_traffic_signs_train": lambda: metadataset_traffic_signs("train"),
             "metadataset_traffic_signs_validation": lambda: metadataset_traffic_signs("validation"),
             "metadataset_traffic_signs_test": lambda: metadataset_traffic_signs("test"),
             "audioset_train":lambda: audioset("train"),
             "audioset_test":lambda: audioset("test"), 
+            "esc50fs_train":lambda: esc50("train"),
+            "esc50fs_val":lambda: esc50("validation"),
+            "esc50fs_test":lambda: esc50("test"),
             "metaalbum_micro":lambda: metaalbum("Micro", is_train=is_train),
             "metaalbum_mini":lambda: metaalbum("Mini", is_train=is_train),
             "metaalbum_extended":lambda: metaalbum("Extended", is_train=is_train),
         }
     # Meta albums
-    for album in ['BCT', 'BRD', 'CRS', 'FLW', 'MD_MIX', 'PLK', 'PLT_VIL', 'RESISC', 'SPT', 'TEX']:
-        for setting in ['Micro', 'Macro', 'Extended']:
+    for setting in ['Micro', 'Macro', 'Extended']:
+        for album in ['BCT', 'BRD', 'CRS', 'FLW', 'MD_MIX', 'PLK', 'PLT_VIL', 'RESISC', 'SPT', 'TEX']:
             dataset_options[f'metaalbum_{album.lower()}_{setting.lower()}'] = lambda: metaalbum(f'{album}_{setting}', is_train=is_train)    
 
     for h in range(nb_cluster):
