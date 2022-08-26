@@ -122,7 +122,7 @@ def test(backbone, datasets, criterion):
         display(" " * (1 + max(0, len(datasets[testSetIdx]["name"]) - 16)) + opener + "{:.2e}  {:6.2f}%".format(losses / total_elt, 100 * accuracies / total_elt) + ender, end = '', force = True)
     return torch.tensor(results)
 
-def testFewShot(features, datasets = None):
+def testFewShot(features, datasets = None, write_file=False):
     results = torch.zeros(len(features), 2)
     for i in range(len(features)):
         accs = []
@@ -141,6 +141,13 @@ def testFewShot(features, datasets = None):
         results[i, 1] = (up - low) / 2
         if datasets is not None:
             display(" " * (1 + max(0, len(datasets[i]["name"]) - 16)) + opener + "{:6.2f}% (±{:6.2f})".format(results[i, 0], results[i, 1]) + ender, end = '', force = True)
+    if write_file:
+        try:
+            saved_results = torch.load('results.pt')
+            updated_results = torch.cat((saved_results, results.unsqueeze(0)), dim=0)
+            torch.save( updated_results ,'results.pt')
+        except:
+            torch.save(results.unsqueeze(0),'results.pt')
     return results
 
 def process(featuresSet, mean):
@@ -195,7 +202,7 @@ def generateFeatures(backbone, datasets, sample_aug=args.sample_aug):
 
 if args.test_features != "":
     features = [torch.load(args.test_features, map_location=args.device)]
-    print(testFewShot(features))
+    print(testFewShot(features, write_file=True))
     exit()
 
 allRunTrainStats = None
