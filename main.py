@@ -142,12 +142,8 @@ def testFewShot(features, datasets = None, write_file=False):
         if datasets is not None:
             display(" " * (1 + max(0, len(datasets[i]["name"]) - 16)) + opener + "{:6.2f}% (±{:6.2f})".format(results[i, 0], results[i, 1]) + ender, end = '', force = True)
     if write_file:
-        try:
-            saved_results = torch.load('results.pt')
-            updated_results = torch.cat((saved_results, results.unsqueeze(0)), dim=0)
-            torch.save( updated_results ,'results.pt')
-        except:
-            torch.save(results.unsqueeze(0),'results.pt')
+        result_file = torch.load('results.pt')
+        result_file[args.load_backbone] = {args.test_dataset : results}
     return results
 
 def process(featuresSet, mean):
