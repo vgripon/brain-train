@@ -122,7 +122,7 @@ def test(backbone, datasets, criterion):
         display(" " * (1 + max(0, len(datasets[testSetIdx]["name"]) - 16)) + opener + "{:.2e}  {:6.2f}%".format(losses / total_elt, 100 * accuracies / total_elt) + ender, end = '', force = True)
     return torch.tensor(results)
 
-def testFewShot(features, datasets = None, write_file=False):
+def testFewShot(features, datasets = None, write_file=True):
     results = torch.zeros(len(features), 2)
     for i in range(len(features)):
         accs = []
@@ -142,8 +142,13 @@ def testFewShot(features, datasets = None, write_file=False):
         if datasets is not None:
             display(" " * (1 + max(0, len(datasets[i]["name"]) - 16)) + opener + "{:6.2f}% (±{:6.2f})".format(results[i, 0], results[i, 1]) + ender, end = '', force = True)
     if write_file:
-        result_file = torch.load('results.pt')
-        result_file[args.load_backbone] = {args.test_dataset : results}
+        result_file = torch.load('results_dic.pt')
+        try:
+            result_file[args.test_dataset][args.load_backbone ] =  results
+        except:    
+            result_file[args.test_dataset] = {args.load_backbone : results}
+
+        torch.save(result_file , 'results_dic.pt')
     return results
 
 def process(featuresSet, mean):

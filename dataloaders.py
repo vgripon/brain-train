@@ -144,6 +144,7 @@ def metadataset_imagenet(datasetName):
     f.close()
     try:
         dataset = all_datasets["metadataset_imagenet_" + datasetName]
+        is_cluster = False
     except:
         dataset = all_datasets["metadataset_imagenet_clustertrain" + datasetName]
         is_cluster = True
