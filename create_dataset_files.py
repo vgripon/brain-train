@@ -376,7 +376,7 @@ if 'quickdraw' in available_datasets:
             result['name_classes'].append(class_name)
             for i in range(samples.shape[0]):
                 class_path = all_samples_path+class_name+'/'
-                sample_path = os.path.join('quickdraw/all_samples2/',class_name,'/', str(i),'.JPEG')
+                sample_path = os.path.join('quickdraw/all_samples2/',class_name, str(i)+'.JPEG')
                 result['data'].append(sample_path)
                 result['targets'].append(class_count)
             class_count += 1
