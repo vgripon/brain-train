@@ -6,6 +6,10 @@ N=50   # number of subdomains
 info = 'results saved in a dictionnary'
 torch.save({'info' : info}, 'results_dic.pt')
 list_test_sets = [ 'metadataset_vgg_flower_test', 'metadataset_cub_test', 'metadataset_aircraft_test', 'metadataset_fungi_test', 'metadataset_dtd_test', 'metadataset_omniglot_test', 'metadataset_mscoco_test', 'metadataset_traffic_signs_test','metadataset_quickdraw_test']
+list_test_sets = [ 'metadataset_quickdraw_test']
+#list_test_sets = [ 'metadataset_vgg_flower_test']
+
+
 for test_set in list_test_sets:
     for i in range(N):
         #try:

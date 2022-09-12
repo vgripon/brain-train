@@ -15,7 +15,7 @@ import classifiers
 import backbones
 import backbones1d
 from few_shot_evaluation import EpisodicGenerator, ImageNetGenerator, OmniglotGenerator
-
+from tqdm import tqdm
 if args.wandb!='':
     import wandb
 
@@ -187,7 +187,7 @@ def generateFeatures(backbone, datasets, sample_aug=args.sample_aug):
         with torch.no_grad():
             for augs in range(n_aug):
                 features = [{"name_class": name_class, "features": []} for name_class in dataset["name_classes"]]
-                for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
+                for batchIdx, (data, target) in tqdm(enumerate(dataset["dataloader"])):
                     data, target = data.to(args.device), target.to(args.device)
                     feats = backbone(data).to("cpu")
                     for i in range(feats.shape[0]):
