@@ -119,7 +119,6 @@ if 'imagenet' in available_datasets:
         duplicates += [p.split('#')[0].replace(' ','') for p in duplicates_tmp if len(p)>0 and p[0] not in ['#']] # parse the duplicates files
     # check which file exists:
     path = os.path.join('imagenet', 'ILSVRC2012_img_train' if os.path.exists(os.path.join(args.dataset_path, 'imagenet', 'ILSVRC2012_img_train')) else 'train')
-    print('where are u defined', dataset)
     if args.subdomain!='':
         clusters = np.load(args.subdomain)
         nb_clusters = clusters.max()+1
