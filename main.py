@@ -4,7 +4,7 @@ import random # for mixup
 import numpy as np # for manifold mixup
 import math
 from colorama import Fore, Back, Style
-
+import sys
 # Loading other files
 from args import args
 if not args.silent:
@@ -181,6 +181,8 @@ def generateFeatures(backbone, datasets, sample_aug=args.sample_aug):
                 features = [{"name_class": name_class, "features": []} for name_class in dataset["name_classes"]]
                 for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
                     data, target = data.to(args.device), target.to(args.device)
+                    torch.save(data,'/users2/libre/datasets/samples_from_ours/'+dataset['name']+'2.pt')
+                    sys.exit(0)
                     feats = backbone(data).to("cpu")
                     for i in range(feats.shape[0]):
                         features[target[i]]["features"].append(feats[i])
