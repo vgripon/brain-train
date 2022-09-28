@@ -207,7 +207,7 @@ def metadataset_dtd(datasetName):
     dataset = all_datasets["metadataset_dtd_" + datasetName]
     data = dataset["data"]
     targets = dataset["targets"]
-    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    normalization = transforms.Normalize(mean=[0.5329,0.4562,0.4081], std=[0.2664,0.2505,0.2519])
     if datasetName == 'train':
         trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
     else:
@@ -226,7 +226,7 @@ def metadataset_cub(datasetName):
     dataset = all_datasets["metadataset_cub_" + datasetName]
     data = dataset["data"]
     targets = dataset["targets"]
-    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    normalization = transforms.Normalize(mean=[0.4935,0.5037,0.4423], std=[0.2278,0.2221,0.2547])
     if datasetName == 'train':
         trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
     else:
@@ -244,7 +244,7 @@ def metadataset_fungi(datasetName):
     dataset = all_datasets["metadataset_fungi_" + datasetName]
     data = dataset["data"]
     targets = dataset["targets"]
-    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    normalization = transforms.Normalize(mean=[0.4368,0.4121,0.3353], std=[0.2537,0.2400,0.2445])
     if datasetName == 'train':
         trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
     else:
@@ -262,7 +262,7 @@ def metadataset_aircraft(datasetName):
     dataset = all_datasets["metadataset_aircraft_" + datasetName]
     data = dataset["data"]
     targets = dataset["targets"]
-    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    normalization = transforms.Normalize(mean=[0.4819,0.5067,0.5285], std=[0.2467,0.2390, 0.2559])
 
     if datasetName == 'train':
         trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
@@ -282,7 +282,7 @@ def metadataset_mscoco(datasetName):
     dataset = all_datasets["metadataset_mscoco_" + datasetName]
     data = dataset["data"]
     targets = dataset["targets"]
-    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    normalization = transforms.Normalize(mean=[0.4374,0.3975,0.3528], std=[0.2665,0.2576,0.2576])
 
     if datasetName == 'train':
         trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
@@ -300,7 +300,7 @@ def metadataset_vggflower(datasetName):
     dataset = all_datasets["metadataset_vgg_flower_" + datasetName]
     data = dataset["data"]
     targets = dataset["targets"]
-    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    normalization = transforms.Normalize(mean=[0.4477,0.3872,0.2656], std=[0.2930,0.2273,0.2409])
  
     if datasetName == 'train':
         trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
@@ -320,7 +320,7 @@ def metadataset_quickdraw(datasetName):
     dataset = all_datasets["metadataset_quickdraw_" + datasetName]
     data = dataset["data"]
     targets = dataset["targets"]
-    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    normalization = transforms.Normalize(mean=[0,0,0], std=[1,1,1])
     if datasetName == 'train':
         trans = transforms.Compose([transforms.RandomResizedCrop(28), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
     else:
@@ -338,7 +338,7 @@ def metadataset_omniglot(datasetName):
     dataset = all_datasets["metadataset_omniglot_" + datasetName]
     data = dataset["data"]
     targets = dataset["targets"]
-    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    normalization = transforms.Normalize(mean=[0.9161,0.9161,0.9161], std=[0.2643,0.2643,0.2643])
     if datasetName == 'train':
         trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
     else:
@@ -356,7 +356,7 @@ def metadataset_traffic_signs(datasetName):
     dataset = all_datasets["metadataset_traffic_signs_" + datasetName]
     data = dataset["data"]
     targets = dataset["targets"]
-    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    normalization = transforms.Normalize(mean=[0.3406,0.3121,0.3217], std=[0.2601,0.2509,0.2566])
     if datasetName == 'train':
         trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
     else:

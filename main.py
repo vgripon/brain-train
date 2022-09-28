@@ -15,6 +15,7 @@ import classifiers
 import backbones
 import backbones1d
 from few_shot_evaluation import EpisodicGenerator, ImageNetGenerator, OmniglotGenerator
+from tqdm import tqdm
 
 if args.wandb!='':
     import wandb
@@ -179,11 +180,18 @@ def generateFeatures(backbone, datasets, sample_aug=args.sample_aug):
         with torch.no_grad():
             for augs in range(n_aug):
                 features = [{"name_class": name_class, "features": []} for name_class in dataset["name_classes"]]
-                for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
+                sum_mean, sum_std , count = 0, 0, 0
+                for batchIdx, (data, target) in tqdm(enumerate(dataset["dataloader"])):
                     data, target = data.to(args.device), target.to(args.device)
-                    torch.save(data,'/users2/libre/datasets/samples_from_ours/'+dataset['name']+'3.pt')
-                    sys.exit(0)
-                    feats = backbone(data).to("cpu")
+                    #torch.save(data,'/users2/libre/datasets/samples_from_ours/'+dataset['name']+'4.pt')
+                    #sys.exit(0)
+                    #feats = backbone(data).to("cpu")
+                    feats = torch.randn(data.shape[0], 640)
+                    mean_data = torch.mean(data, dim = (0,2,3))
+                    std_data = torch.std(data, dim = (0,2,3))
+                    count+=1
+                    sum_mean += mean_data
+                    sum_std += std_data
                     for i in range(feats.shape[0]):
                         features[target[i]]["features"].append(feats[i])
                 for c in range(len(allFeatures)):
@@ -191,7 +199,7 @@ def generateFeatures(backbone, datasets, sample_aug=args.sample_aug):
                         allFeatures[c]["features"] = torch.stack(features[c]["features"])/n_aug
                     else:
                         allFeatures[c]["features"] += torch.stack(features[c]["features"])/n_aug
-
+                print(dataset['name'], '\n mean',sum_mean/count,'\n std' , sum_std/count)
         results.append([{"name_class": allFeatures[i]["name_class"], "features": allFeatures[i]["features"]} for i in range(len(allFeatures))])
     return results
 
