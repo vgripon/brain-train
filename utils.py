@@ -10,7 +10,15 @@ import torch
 from torchvision.utils import _log_api_usage_once
 from collections.abc import Sequence
 import warnings
-
+from absl import logging
+from PIL import Image
+from PIL import ImageOps
+import io
+import os
+import itertools
+import sys
+import json
+import collections
 
 lastDisplay = time.time()
 def display(string, end = '\n', force = False):
@@ -125,5 +133,92 @@ class Resize_with_corners(torch.nn.Module):
     def __repr__(self) -> str:
         detail = f"(size={self.size}, mode={self.mode}, max_size={self.max_size}, antialias={self.antialias})"
         return f"{self.__class__.__name__}{detail}"
+
+
+
+def write_example(img, class_label, i, path):
+    if not os.path.isdir(os.path.join(path,str(class_label))):
+        os.mkdir(os.path.join(path,str(class_label)))
+    img.save(os.path.join(path,str(class_label),'img'+str(i)+'.jpg'))
+
+def write_from_image_files(class_files,
+                                    class_label,
+                                    invert_img=False,
+                                    bboxes=None,
+                                    output_format='JPEG',
+                                    skip_on_error=False, new_path= 'set_new_path'):
+  """Create and write a tf.record file for the images corresponding to a class.
+  Args:
+    class_files: the list of paths to images of class class_label.
+    class_label: the label of the class that a record is being made for.
+    invert_img: change black pixels to white ones and vice versa. Used for
+      Omniglot for example to change the black-background-white-digit images
+      into more conventional-looking white-background-black-digit ones.
+    bboxes: list of bounding boxes, one for each filename passed as input. If
+      provided, images are cropped to those bounding box values.
+    output_format: a string representing a PIL.Image encoding type: how the
+      image data is encoded inside the tf.record. This needs to be consistent
+      with the record_decoder of the DataProvider that will read the file.
+    skip_on_error: whether to skip an image if there is an issue in reading it.
+      The default it to crash and report the original exception.
+  Returns:
+    The number of images written into the records file.
+  """
+
+  def load_and_process_image(path, bbox=None):
+    """Process the image living at path if necessary.
+    If the image does not need any processing (inverting, converting to RGB
+    for instance), and is in the desired output_format, then the original
+    byte representation is returned.
+    If that is not the case, the resulting image is encoded to output_format.
+    Args:
+      path: the path to an image file (e.g. a .png file).
+      bbox: bounding box to crop the image to.
+    Returns:
+      A bytes representation of the encoded image.
+    """
+    try:
+        img = Image.open(path)
+    except:
+      logging.warn('Failed to open image: %s', path)
+      raise
+
+    img_needs_encoding = False
+
+    if img.format != output_format:
+      img_needs_encoding = True
+    if img.mode != 'RGB':
+      img = img.convert('RGB')
+      img_needs_encoding = True
+    if bbox is not None:
+      img = img.crop(bbox)
+      img_needs_encoding = True
+    if invert_img:
+      img = ImageOps.invert(img)
+      img_needs_encoding = True
+
+    if img_needs_encoding:
+      # Convert the image into output_format
+      #buf = io.BytesIO()
+      #img.save(buf, format=output_format)
+      #buf.seek(0)
+      #image_bytes = buf.getvalue()
+      pass
+    return img
+  written_images_count = 0
+
+  for i, path in enumerate(class_files):
+    bbox = bboxes[i] if bboxes is not None else None
+
+    img = load_and_process_image(path, bbox)
+    
+
+      # This gets executed only if no Exception was raised
+    if 'img' in locals():
+        write_example(img, class_label, i, path = os.path.join(args.dataset_path, new_path))
+        written_images_count += 1
+
+  print( written_images_count)
+
 
 print(" utils,", end="")

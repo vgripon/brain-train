@@ -8,89 +8,8 @@ import sys
 import json
 import collections
 
-dataset_path = str(sys.argv[1])
-
-def write_example(img, class_label, i):
-    img.save(dataset_path + 'fgvc-aircraft-2013b/data/images_cropped2/class'+str(class_label)+'img'+str(i)+'.jpg')
-
-def write_tfrecord_from_image_files(class_files,
-                                    class_label,
-                                    invert_img=False,
-                                    bboxes=None,
-                                    output_format='JPEG',
-                                    skip_on_error=False):
-  """Create and write a tf.record file for the images corresponding to a class.
-  Args:
-    class_files: the list of paths to images of class class_label.
-    class_label: the label of the class that a record is being made for.
-    invert_img: change black pixels to white ones and vice versa. Used for
-      Omniglot for example to change the black-background-white-digit images
-      into more conventional-looking white-background-black-digit ones.
-    bboxes: list of bounding boxes, one for each filename passed as input. If
-      provided, images are cropped to those bounding box values.
-    output_format: a string representing a PIL.Image encoding type: how the
-      image data is encoded inside the tf.record. This needs to be consistent
-      with the record_decoder of the DataProvider that will read the file.
-    skip_on_error: whether to skip an image if there is an issue in reading it.
-      The default it to crash and report the original exception.
-  Returns:
-    The number of images written into the records file.
-  """
-
-  def load_and_process_image(path, bbox=None):
-    """Process the image living at path if necessary.
-    If the image does not need any processing (inverting, converting to RGB
-    for instance), and is in the desired output_format, then the original
-    byte representation is returned.
-    If that is not the case, the resulting image is encoded to output_format.
-    Args:
-      path: the path to an image file (e.g. a .png file).
-      bbox: bounding box to crop the image to.
-    Returns:
-      A bytes representation of the encoded image.
-    """
-    try:
-        img = Image.open(path)
-    except:
-      logging.warn('Failed to open image: %s', path)
-      raise
-
-    img_needs_encoding = False
-
-    if img.format != output_format:
-      img_needs_encoding = True
-    if img.mode != 'RGB':
-      img = img.convert('RGB')
-      img_needs_encoding = True
-    if bbox is not None:
-      img = img.crop(bbox)
-      img_needs_encoding = True
-    if invert_img:
-      img = ImageOps.invert(img)
-      img_needs_encoding = True
-
-    if img_needs_encoding:
-      # Convert the image into output_format
-      #buf = io.BytesIO()
-      #img.save(buf, format=output_format)
-      #buf.seek(0)
-      #image_bytes = buf.getvalue()
-      pass
-    return img
-  written_images_count = 0
-
-  for i, path in enumerate(class_files):
-    bbox = bboxes[i] if bboxes is not None else None
-
-    img = load_and_process_image(path, bbox)
-    
-
-      # This gets executed only if no Exception was raised
-    if 'img' in locals():
-        write_example(img, class_label, i)
-        written_images_count += 1
-
-  print(i, written_images_count)
+sys.path.insert(0,'./../../../')
+from utils import *
 
 
 class AircraftConverter():
@@ -102,7 +21,7 @@ class AircraftConverter():
     self.NUM_TRAIN_CLASSES = 70
     self.NUM_VALID_CLASSES = 15
     self.NUM_TEST_CLASSES = 15
-    self.data_root = os.path.join(dataset_path, 'fgvc-aircraft-2013b')
+    self.data_root = os.path.join(args.dataset_path, 'fgvc-aircraft-2013b')
     self.classes_per_split = {
         0: 0,
         1: 0,
@@ -219,8 +138,7 @@ class AircraftConverter():
 
       self.class_names[class_id] = class_name
       self.images_per_class[class_id] = len(class_files)
-      write_tfrecord_from_image_files(
-          class_files, class_id, bboxes=bboxes)
+      write_from_image_files(class_files, class_id, bboxes=bboxes, new_path = 'fgvc-aircraft-2013b/data/images_cropped2/')
 
 
 
