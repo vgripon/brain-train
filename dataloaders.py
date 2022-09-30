@@ -325,7 +325,8 @@ def metadataset_quickdraw(datasetName):
         trans = transforms.Compose([transforms.RandomResizedCrop(28), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
     else:
         if args.sample_aug == 1:
-            trans = transforms.Compose([transforms.ToTensor(), Resize_with_corners(84, align_corners=True), normalization])
+            #trans = transforms.Compose([transforms.ToTensor(), Resize_with_corners(84, align_corners=True), normalization])
+            trans = transforms.Compose([transforms.ToTensor(), transforms.Resize(84, antialias=True), normalization])
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(28), transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}

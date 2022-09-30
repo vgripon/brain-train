@@ -186,12 +186,12 @@ def generateFeatures(backbone, datasets, sample_aug=args.sample_aug):
                     #torch.save(data,'/users2/libre/datasets/samples_from_ours/'+dataset['name']+'4.pt')
                     #sys.exit(0)
                     feats = backbone(data).to("cpu")
-                    '''feats = torch.randn(data.shape[0], 640)
+                    feats = torch.randn(data.shape[0], 640)
                     mean_data = torch.mean(data, dim = (0,2,3))
                     std_data = torch.std(data, dim = (0,2,3))
                     count+=1
                     sum_mean += mean_data
-                    sum_std += std_data'''
+                    sum_std += std_data
                     for i in range(feats.shape[0]):
                         features[target[i]]["features"].append(feats[i])
                 for c in range(len(allFeatures)):
@@ -200,6 +200,8 @@ def generateFeatures(backbone, datasets, sample_aug=args.sample_aug):
                     else:
                         allFeatures[c]["features"] += torch.stack(features[c]["features"])/n_aug
                 #print(dataset['name'], '\n mean',sum_mean/count,'\n std' , sum_std/count)
+                #print('batchIdx=',batchIdx)
+                #sys.exit(0)
         results.append([{"name_class": allFeatures[i]["name_class"], "features": allFeatures[i]["features"]} for i in range(len(allFeatures))])
     return results
 
