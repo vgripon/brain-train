@@ -175,10 +175,10 @@ def metadataset_imagenet(datasetName):
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     if datasetName == 'train':
-        trans = transforms.Compose([ totensor(), norm(), bi_resize()]) 
+        trans = transforms.Compose([ totensor(), norm(), bi_resize()])
     else:
         if args.sample_aug == 1:
-            trans = transforms.Compose([ totensor(), norm(), bi_resize()]) 
+            trans = transforms.Compose([ totensor(), norm(), bi_resize()])
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization])
 
@@ -390,7 +390,7 @@ def metadataset_traffic_signs(datasetName):
         trans = transforms.Compose([ totensor(), norm(), bi_resize()])
     else:
         if args.sample_aug == 1:
-            ttransforms.Compose([ totensor(), norm(), bi_resize()])
+            trans = transforms.Compose([ totensor(), norm(), bi_resize()])
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
