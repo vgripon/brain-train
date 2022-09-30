@@ -8,7 +8,7 @@ from collections import defaultdict
 import tqdm 
 all_results = {}
 
-all_samples_path = os.path.join(args.dataset_path , "quickdraw",'all_samples2')
+all_samples_path = os.path.join(args.dataset_path , "quickdraw",'all_samples3')
 if not os.path.exists(all_samples_path):
     os.mkdir(all_samples_path)
 for idx,class_npy in tqdm.tqdm(enumerate([f for f in os.listdir(os.path.join(args.dataset_path , "quickdraw")) if f.endswith('npy')])):
@@ -20,5 +20,5 @@ for idx,class_npy in tqdm.tqdm(enumerate([f for f in os.listdir(os.path.join(arg
         samples = np.load(os.path.join(args.dataset_path , "quickdraw",class_npy))
         print(samples.shape[0])
         for i in range(samples.shape[0]):
-            sample = Image.fromarray(samples[i].reshape(28,28)*255)
+            sample = Image.fromarray(samples[i].reshape(28,28))
             sample.save(os.path.join(class_path, str(i)+'.JPEG'))
