@@ -340,7 +340,7 @@ if 'vgg_flower' in available_datasets:
 
 ### generate data for quickdraw
 if 'quickdraw' in available_datasets:
-    all_samples_path = os.path.join(args.dataset_path , "quickdraw",'all_samples2')
+    all_samples_path = os.path.join(args.dataset_path , "quickdraw",'all_samples')
     with open("./datasets/metadatasets/quickdraw/quickdraw_splits.json") as jsonFile:
             split = json.load(jsonFile)
             jsonFile.close()
@@ -355,7 +355,7 @@ if 'quickdraw' in available_datasets:
             result['name_classes'].append(class_name)
             for i in range(samples.shape[0]):
                 class_path = all_samples_path+class_name+'/'
-                sample_path = os.path.join('quickdraw/all_samples2/',class_name, str(i)+'.JPEG')
+                sample_path = os.path.join('quickdraw/all_samples/',class_name, str(i)+'.JPEG')
                 result['data'].append(sample_path)
                 result['targets'].append(class_count)
             class_count += 1
