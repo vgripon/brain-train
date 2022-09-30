@@ -60,7 +60,6 @@ class bi_resize(object):
         self.target_size = target_size
 
     def __call__(self, img):
-        print(img.shape)
         img = torch.nn.functional.interpolate(img.unsqueeze(0),size=(self.target_size,self.target_size),mode='bilinear',align_corners=self.align_corners).squeeze(0)
         return img
 
