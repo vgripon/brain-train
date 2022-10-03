@@ -183,8 +183,8 @@ def generateFeatures(backbone, datasets, sample_aug=args.sample_aug):
                 sum_mean, sum_std , count = 0, 0, 0
                 for batchIdx, (data, target) in tqdm(enumerate(dataset["dataloader"])):
                     data, target = data.to(args.device), target.to(args.device)
-                    #torch.save(data,'/users2/libre/datasets/samples_from_ours/'+dataset['name']+'4.pt')
-                    #sys.exit(0)
+                    torch.save(data,'/users2/libre/datasets/samples_from_ours/'+dataset['name']+'5.pt')
+                    sys.exit(0)
                     feats = backbone(data).to("cpu")
                     feats = torch.randn(data.shape[0], 640)
                     mean_data = torch.mean(data, dim = (0,2,3))
@@ -232,7 +232,7 @@ for nRun in range(args.runs):
     backbone = backbone.to(args.device)
     if not args.silent:
         numParamsBackbone = torch.tensor([m.numel() for m in backbone.parameters()]).sum().item()
-        print(" containing {:,} parameters.".format(numParamsBackbone))
+        print(" containing {:,} parameters and feature space of dim {:d}.".format(numParamsBackbone, outputDim))
 
         print("Preparing criterion(s) and classifier(s)... ", end='')
     criterion = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in trainSet]
