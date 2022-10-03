@@ -220,7 +220,7 @@ for nRun in range(args.runs):
     backbone = backbone.to(args.device)
     if not args.silent:
         numParamsBackbone = torch.tensor([m.numel() for m in backbone.parameters()]).sum().item()
-        print(" containing {:,} parameters.".format(numParamsBackbone))
+        print(" containing {:,} parameters and feature space of dim {:d}.".format(numParamsBackbone, outputDim))
 
         print("Preparing criterion(s) and classifier(s)... ", end='')
     criterion = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in trainSet]
