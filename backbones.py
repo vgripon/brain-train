@@ -199,7 +199,7 @@ def prepareBackbone():
         "resnet50": lambda: (ResNet(BottleneckBlock, [(3, 1, 1), (4, 2, 2), (6, 2, 4), (3, 2, 8)], args.feature_maps, large = large), 8 * 4 * args.feature_maps),
         "resnet12": lambda: (ResNet12(args.feature_maps), 10 * args.feature_maps),
         "wrn28_10": lambda: (ResNet(BasicBlock, [(4, 1, 10), (4, 2, 20), (4, 2, 40)], args.feature_maps, large = large), 40 * args.feature_maps),
-        "wrn16_16": lambda: (ResNet(BasicBlock, [(2, 1, 32), (2, 2, 64), (2, 2, 128)], args.feature_maps, large = large), 128 * args.feature_maps)
+        "wrn16_16": lambda: (ResNet(BasicBlock, [(2, 1, 16), (2, 2, 32), (2, 2, 64)], args.feature_maps, large = large), 64 * args.feature_maps)
         }[args.backbone.lower()]()
 
 print(" backbones,", end='')
