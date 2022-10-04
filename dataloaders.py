@@ -45,14 +45,14 @@ class GaussianNoise(object):
         return img
 
 class norm(object):
-    def __init__(self, max_val=255):
+    def __init__(self, max_val=255, change_sign = 1):
         self.max_val = max_val
-
+        self.change_sign = change_sign
     def __call__(self, img):
         img /= self.max_val
         img-= 0.5
         img*=2
-        return img
+        return self.change_sign * img
     
 class bi_resize(object):
     def __init__(self, align_corners=True,target_size =126):
@@ -64,12 +64,12 @@ class bi_resize(object):
         return img
 
 class totensor(object):
-    def __init__(self, normalize=True, change_sign = 1):
+    def __init__(self, normalize=True):
         self.normalize = normalize
-        self.change_sign = change_sign
+        
     def __call__(self, img):
 
-        img = self.change_sign * torch.tensor(np.array(img).astype(np.float32)).permute(2,0,1)
+        img =torch.tensor(np.array(img).astype(np.float32)).permute(2,0,1)
         return img
 
 def cifar10(dataset):
@@ -372,7 +372,7 @@ def metadataset_omniglot(datasetName):
 
     else:
         if args.sample_aug == 1:
-            trans = transforms.Compose([ totensor(change_sign= -1), norm(), bi_resize()])
+            trans = transforms.Compose([ totensor(), norm(change_sign= -1), bi_resize()])
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
