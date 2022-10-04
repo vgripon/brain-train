@@ -64,11 +64,12 @@ class bi_resize(object):
         return img
 
 class totensor(object):
-    def __init__(self, normalize=True):
+    def __init__(self, normalize=True, change_sign = 1):
         self.normalize = normalize
+        self.change_sign = change_sign
     def __call__(self, img):
 
-        img = torch.tensor(np.array(img).astype(np.float32)).permute(2,0,1)
+        img = self.change_sign * torch.tensor(np.array(img).astype(np.float32)).permute(2,0,1)
         return img
 
 def cifar10(dataset):
@@ -371,7 +372,7 @@ def metadataset_omniglot(datasetName):
 
     else:
         if args.sample_aug == 1:
-            trans = transforms.Compose([ totensor(), norm(), bi_resize()])
+            trans = transforms.Compose([ totensor(change_sign= -1), norm(), bi_resize()])
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
