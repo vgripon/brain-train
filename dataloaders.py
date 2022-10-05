@@ -45,14 +45,14 @@ class GaussianNoise(object):
         return img
 
 class norm(object):
-    def __init__(self, max_val=255):
+    def __init__(self, max_val=255, change_sign = 1):
         self.max_val = max_val
-
+        self.change_sign = change_sign
     def __call__(self, img):
         img /= self.max_val
         img-= 0.5
         img*=2
-        return img
+        return self.change_sign * img
     
 class bi_resize(object):
     def __init__(self, align_corners=True,target_size =126):
@@ -367,11 +367,11 @@ def metadataset_omniglot(datasetName):
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     if datasetName == 'train':
-        trans = transforms.Compose([ totensor(), norm(), bi_resize()])
+        trans = transforms.Compose([ totensor(), norm(change_sign = -1), bi_resize()])
 
     else:
         if args.sample_aug == 1:
-            trans = transforms.Compose([ totensor(), norm(), bi_resize()])
+            trans = transforms.Compose([ totensor(), norm(change_sign = -1), bi_resize()])
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
