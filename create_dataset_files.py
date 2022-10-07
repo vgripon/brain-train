@@ -253,9 +253,7 @@ if 'fungi' in available_datasets:
 if 'fgvc-aircraft-2013b' in available_datasets:
     results_aircraft  = get_data_aircraft()
 if 'mscoco' in available_datasets:
-    with open(args.dataset_path + 'mscoco/cropped_mscoco.json') as jsonFile:   #this file is obtained by running datasets/metadatasets/mscoco/RUN_ONLY_ONCE.sh (read instructions carefully)
-        results_mscoco  = json.load(jsonFile)
-        jsonFile.close()
+    results_mscoco = get_data('./datasets/metadatasets/mscoco/mscoco_splits.json', 'mscoco/imgs_g/', 'mscoco')
     
 for dataset in ['train', 'test', 'validation']:
     if 'CUB_200_2011' in available_datasets:
