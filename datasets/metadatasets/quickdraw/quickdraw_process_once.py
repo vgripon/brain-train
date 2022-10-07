@@ -8,13 +8,14 @@ from collections import defaultdict
 import tqdm 
 all_results = {}
 
-all_samples_path = os.path.join(args.dataset_path , "quickdraw",'all_samples3')
+all_samples_path = os.path.join(args.dataset_path , "quickdraw",'all_samples')
+print(all_samples_path)
 if not os.path.exists(all_samples_path):
     os.mkdir(all_samples_path)
 for idx,class_npy in tqdm.tqdm(enumerate([f for f in os.listdir(os.path.join(args.dataset_path , "quickdraw")) if f.endswith('npy')])):
     class_name = class_npy[:-4]
     print('processing class: ',class_name)
-    class_path = all_samples_path+class_name+'/'
+    class_path = os.path.join(all_samples_path,class_name)
     if not os.path.exists(class_path):
         os.mkdir(class_path)
         samples = np.load(os.path.join(args.dataset_path , "quickdraw",class_npy))
