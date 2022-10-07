@@ -368,11 +368,11 @@ def metadataset_omniglot(datasetName):
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.9161,0.9161,0.9161], std=[0.2643,0.2643,0.2643])
     if datasetName == 'train':
-        trans = transforms.Compose([ totensor(), norm(), bi_resize()])
+        trans = transforms.Compose([ totensor(), norm(change_sign = -1), bi_resize()])
 
     else:
         if args.sample_aug == 1:
-            trans = transforms.Compose([ totensor(), norm(change_sign= -1), bi_resize()])
+            trans = transforms.Compose([ totensor(), norm(change_sign = -1), bi_resize()])
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
