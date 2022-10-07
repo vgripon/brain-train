@@ -181,11 +181,14 @@ def generateFeatures(backbone, datasets, sample_aug=args.sample_aug):
             for augs in range(n_aug):
                 features = [{"name_class": name_class, "features": []} for name_class in dataset["name_classes"]]
                 sum_mean, sum_std , count = 0, 0, 0
-                for batchIdx, (data, target) in tqdm(enumerate(dataset["dataloader"])):
+                for batchIdx, (data, target) in enumerate(tqdm(dataset["dataloader"])):
                     data, target = data.to(args.device), target.to(args.device)
-                    torch.save(data,'/users2/libre/datasets/samples_from_ours/'+dataset['name']+'5.pt')
-                    sys.exit(0)
-                    feats = backbone(data).to("cpu")
+                    if batchIdx==30:
+                        torch.save(data,'/users2/libre/datasets/samples_from_ours/'+dataset['name']+'6.pt')
+                        sys.exit(0)
+                    else:
+                        pass
+                    '''feats = backbone(data).to("cpu")
                     feats = torch.randn(data.shape[0], 640)
                     mean_data = torch.mean(data, dim = (0,2,3))
                     std_data = torch.std(data, dim = (0,2,3))
@@ -193,7 +196,7 @@ def generateFeatures(backbone, datasets, sample_aug=args.sample_aug):
                     sum_mean += mean_data
                     sum_std += std_data
                     for i in range(feats.shape[0]):
-                        features[target[i]]["features"].append(feats[i])
+                        features[target[i]]["features"].append(feats[i])'''
                 for c in range(len(allFeatures)):
                     if augs == 0:
                         allFeatures[c]["features"] = torch.stack(features[c]["features"])/n_aug

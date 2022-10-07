@@ -145,7 +145,7 @@ def split_fn(json_path):
 
 def get_data(jsonpath, image_dir, datasetName):
     split = split_fn(jsonpath)
-    data ,num_classes, num_elts = {},{},{}
+    data = {}
     split = {"validation" if k == 'valid' else k:v for k,v in split.items()}
     for index_subset, subset in enumerate(split.keys()):
         data[subset] = {'data': [], 'targets' : [] , 'name': 'metadataset_' + datasetName + '_' +subset,'name_classes' : [],'num_elements_per_class':[], 'num_classes': []}
@@ -153,11 +153,11 @@ def get_data(jsonpath, image_dir, datasetName):
         data[subset]['num_classes'] = len(l_classes)
         for index_class, cl in enumerate(l_classes):
             
-            cl_path = args.dataset_path + image_dir + cl
+            cl_path = os.path.join(args.dataset_path , image_dir , cl)
             images = sorted(os.listdir(cl_path)) #Careful here you might mix the order (not sure that sorted is good enough)
             data[subset]['num_elements_per_class'].append(len(images))
             for index_image , im in enumerate(images):
-                data[subset]['data'].append( image_dir + cl +'/' + im)
+                data[subset]['data'].append( os.path.join(image_dir , cl , im))
                 data[subset]['targets'].append(index_class)
             
             data[subset]['name_classes'].append(cl)
@@ -253,9 +253,7 @@ if 'fungi' in available_datasets:
 if 'fgvc-aircraft-2013b' in available_datasets:
     results_aircraft  = get_data_aircraft()
 if 'mscoco' in available_datasets:
-    with open(args.dataset_path + 'mscoco/cropped_mscoco.json') as jsonFile:   #this file is obtained by running datasets/metadatasets/mscoco/RUN_ONLY_ONCE.sh (read instructions carefully)
-        results_mscoco  = json.load(jsonFile)
-        jsonFile.close()
+    results_mscoco = get_data('./datasets/metadatasets/mscoco/mscoco_splits.json', 'mscoco/imgs_g/', 'mscoco')
     
 for dataset in ['train', 'test', 'validation']:
     if 'CUB_200_2011' in available_datasets:
