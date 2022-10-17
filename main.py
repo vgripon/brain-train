@@ -95,10 +95,10 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                 if 21 < 2 + len(trainSet[trainingSetIdx]["name"]):
                     text = " " * (2 + len(trainSet[trainingSetIdx]["name"]) - 21) + text
             optimizer.step()
-            scheduler.step()
             if args.wandb!='':
                 wandb.log({"epoch":epoch, "train_loss": losses / total_elt})
             display("\r" + Style.RESET_ALL + "{:4d} {:.2e}".format(epoch, float(scheduler.get_last_lr()[0])) + text, end = '', force = (finished == 1))
+            scheduler.step()
         except StopIteration:
             return torch.stack([losses / total_elt, 100 * accuracies / total_elt]).transpose(0,1)
 
@@ -228,7 +228,7 @@ for nRun in range(args.runs):
     backbone = backbone.to(args.device)
     if not args.silent:
         numParamsBackbone = torch.tensor([m.numel() for m in backbone.parameters()]).sum().item()
-        print(" containing {:,} parameters.".format(numParamsBackbone))
+        print(" containing {:,} parameters and feature space of dim {:d}.".format(numParamsBackbone, outputDim))
 
         print("Preparing criterion(s) and classifier(s)... ", end='')
     criterion = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in trainSet]

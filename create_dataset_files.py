@@ -273,9 +273,7 @@ if 'fungi' in available_datasets:
 if 'fgvc-aircraft-2013b' in available_datasets:
     results_aircraft  = get_data_aircraft()
 if 'mscoco' in available_datasets:
-    with open(args.dataset_path + 'mscoco/cropped_mscoco.json') as jsonFile:   #this file is obtained by running datasets/metadatasets/mscoco/RUN_ONLY_ONCE.sh (read instructions carefully)
-        results_mscoco  = json.load(jsonFile)
-        jsonFile.close()
+    results_mscoco = get_data('./datasets/metadatasets/mscoco/mscoco_splits.json', 'mscoco/imgs_g/', 'mscoco')
     
 for dataset in ['train', 'test', 'validation']:
     if 'CUB_200_2011' in available_datasets:
@@ -360,7 +358,7 @@ if 'vgg_flower' in available_datasets:
 
 ### generate data for quickdraw
 if 'quickdraw' in available_datasets:
-    all_samples_path = os.path.join(args.dataset_path , "quickdraw",'all_samples2')
+    all_samples_path = os.path.join(args.dataset_path , "quickdraw",'all_samples')
     with open("./datasets/metadatasets/quickdraw/quickdraw_splits.json") as jsonFile:
             split = json.load(jsonFile)
             jsonFile.close()
@@ -375,7 +373,7 @@ if 'quickdraw' in available_datasets:
             result['name_classes'].append(class_name)
             for i in range(samples.shape[0]):
                 class_path = all_samples_path+class_name+'/'
-                sample_path = os.path.join('quickdraw/all_samples2/',class_name, str(i)+'.JPEG')
+                sample_path = os.path.join('quickdraw/all_samples/',class_name, str(i)+'.JPEG')
                 result['data'].append(sample_path)
                 result['targets'].append(class_count)
             class_count += 1

@@ -57,7 +57,7 @@ parser.add_argument("--training-dataset", type=str, default="", help="training d
 parser.add_argument("--validation-dataset", type=str, default="", help="validation dataset, overriden by --dataset")
 parser.add_argument("--test-dataset", type=str, default="", help="test dataset, overriden by --dataset")
 parser.add_argument("--dataset-size", type=int, default=0, help="defines a maximum of samples considered at each epoch, 0 means it is ignored")
-parser.add_argument("--audio", action="store_true", help="used audio inputs, so switch back to 1d backbones")
+parser.add_argument("--audio", action="store_true", help="use audio inputs, so switch back to 1d backbones")
 parser.add_argument("--wandb", type=str, default='', help="Report to wandb, input is the entity name")
 parser.add_argument("--wandbProjectName", type=str, default='few-shot', help="wandb project name")
 ### backbones parameters
@@ -71,7 +71,7 @@ parser.add_argument("--classifier", type=str, default="lr", help="define which c
 
 ### scheduler parameters
 parser.add_argument("--epochs", type=int, default=350, help="total number of training epochs")
-parser.add_argument("--milestones", type=str, default="[100,200,300]", help="milestones for scheduler")
+parser.add_argument("--milestones", type=str, default="100", help="milestones for scheduler")
 parser.add_argument("--gamma", type=float, default=0.1, help="learning rate multiplier after each milestone")
 parser.add_argument("--cosine", action="store_true", help="use cosine annealing instead of multisteplr")
 

@@ -44,6 +44,33 @@ class GaussianNoise(object):
         img += self.noise_std * torch.randn(img.size())
         return img
 
+class norm(object):
+    def __init__(self, max_val=255, change_sign = 1):
+        self.max_val = max_val
+        self.change_sign = change_sign
+    def __call__(self, img):
+        img /= self.max_val
+        img-= 0.5
+        img*=2
+        return self.change_sign * img
+    
+class bi_resize(object):
+    def __init__(self, align_corners=True,target_size =126):
+        self.align_corners = align_corners
+        self.target_size = target_size
+
+    def __call__(self, img):
+        img = torch.nn.functional.interpolate(img.unsqueeze(0),size=(self.target_size,self.target_size),mode='bilinear',align_corners=self.align_corners).squeeze(0)
+        return img
+
+class totensor(object):
+    def __init__(self, normalize=True):
+        self.normalize = normalize
+    def __call__(self, img):
+
+        img = torch.tensor(np.array(img).astype(np.float32)).permute(2,0,1)
+        return img
+
 def cifar10(dataset):
     pytorchDataset = datasets.CIFAR10(args.dataset_path, train = dataset != "test", download = 'cifar-10-python.tar.gz' not in os.listdir(args.dataset_path))
     data = torch.tensor(pytorchDataset.data).transpose(1,3).transpose(2,3).float() / 256.
@@ -153,10 +180,10 @@ def metadataset_imagenet(datasetName):
     print(dataset['name'])
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     if datasetName == 'train' or is_cluster:
-        trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
+        trans = transforms.Compose([ totensor(), norm(), bi_resize()])
     else:
         if args.sample_aug == 1:
-            trans = transforms.Compose([transforms.Resize(126), transforms.CenterCrop(126), transforms.ToTensor(), normalization])
+            trans = transforms.Compose([ totensor(), norm(), bi_resize()])
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization])
 
@@ -215,10 +242,10 @@ def metadataset_dtd(datasetName):
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     if datasetName == 'train':
-        trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
+        trans = transforms.Compose([ totensor(), norm(), bi_resize()]) 
     else:
         if args.sample_aug == 1:
-            trans = transforms.Compose([transforms.Resize(126), transforms.CenterCrop(126), transforms.ToTensor(), normalization])
+            trans = transforms.Compose([ totensor(), norm(), bi_resize()])
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization])
 
@@ -234,10 +261,10 @@ def metadataset_cub(datasetName):
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     if datasetName == 'train':
-        trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
+        trans = transforms.Compose([ totensor(), norm(), bi_resize()]) 
     else:
         if args.sample_aug == 1:
-            trans = transforms.Compose([transforms.Resize(126), transforms.CenterCrop(126), transforms.ToTensor(), normalization])
+            trans = transforms.Compose([ totensor(), norm(), bi_resize()]) 
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
@@ -252,10 +279,10 @@ def metadataset_fungi(datasetName):
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     if datasetName == 'train':
-        trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
+        trans = transforms.Compose([ totensor(), norm(), bi_resize()])  
     else:
         if args.sample_aug == 1:
-            trans = transforms.Compose([transforms.Resize(126), transforms.CenterCrop(126), transforms.ToTensor(), normalization])
+            trans = transforms.Compose([ totensor(), norm(), bi_resize()]) 
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization])
 
@@ -271,10 +298,10 @@ def metadataset_aircraft(datasetName):
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
     if datasetName == 'train':
-        trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
+        trans = transforms.Compose([ totensor(), norm(), bi_resize()]) 
     else:
         if args.sample_aug == 1:
-            trans = transforms.Compose([transforms.Resize(126), transforms.CenterCrop(126), transforms.ToTensor(), normalization])
+            trans = transforms.Compose([ totensor(), norm(), bi_resize()])
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
@@ -291,10 +318,10 @@ def metadataset_mscoco(datasetName):
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
     if datasetName == 'train':
-        trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
+        trans = transforms.Compose([ totensor(), norm(), bi_resize()]) 
     else:
         if args.sample_aug == 1:
-            trans = transforms.Compose([transforms.Resize(126), transforms.CenterCrop(126), transforms.ToTensor(), normalization])
+            trans = transforms.Compose([ totensor(), norm(), bi_resize()])
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
@@ -309,10 +336,10 @@ def metadataset_vggflower(datasetName):
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
  
     if datasetName == 'train':
-        trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
+        trans = transforms.Compose([ totensor(), norm(), bi_resize()]) 
     else:
         if args.sample_aug == 1:
-            trans = transforms.Compose([transforms.Resize(126), transforms.CenterCrop(126), transforms.ToTensor(), normalization])
+            trans = transforms.Compose([ totensor(), norm(), bi_resize()])
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization])
 
@@ -328,10 +355,10 @@ def metadataset_quickdraw(datasetName):
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     if datasetName == 'train':
-        trans = transforms.Compose([transforms.RandomResizedCrop(28), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
+        trans = transforms.Compose([ totensor(), norm(), bi_resize()])
     else:
         if args.sample_aug == 1:
-            trans = transforms.Compose([transforms.Resize(28), transforms.CenterCrop(28), transforms.ToTensor(), normalization])
+            trans = transforms.Compose([ totensor(), norm(), bi_resize()])
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(28), transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
@@ -346,10 +373,11 @@ def metadataset_omniglot(datasetName):
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     if datasetName == 'train':
-        trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
+        trans = transforms.Compose([ totensor(), norm(change_sign = -1), bi_resize()])
+
     else:
         if args.sample_aug == 1:
-            trans = transforms.Compose([transforms.Resize(126), transforms.CenterCrop(126), transforms.ToTensor(), normalization])
+            trans = transforms.Compose([ totensor(), norm(change_sign = -1), bi_resize()])
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
@@ -364,10 +392,10 @@ def metadataset_traffic_signs(datasetName):
     targets = dataset["targets"]
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     if datasetName == 'train':
-        trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
+        trans = transforms.Compose([ totensor(), norm(), bi_resize()])
     else:
         if args.sample_aug == 1:
-            trans = transforms.Compose([transforms.Resize(126), transforms.CenterCrop(126), transforms.ToTensor(), normalization])
+            trans = transforms.Compose([ totensor(), norm(), bi_resize()])
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}

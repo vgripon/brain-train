@@ -32,7 +32,7 @@ class BasicBlock(nn.Module):
         super(BasicBlock, self).__init__()
         self.convbn1 = ConvBN2d(in_f, out_f, stride = stride, outRelu = True)
         self.convbn2 = ConvBN2d(out_f, out_f)
-        self.shortcut = None if stride == 1 else ConvBN2d(in_f, out_f, kernel_size = 1, stride = stride, padding = 0)
+        self.shortcut = None if stride == 1 and in_f == out_f else ConvBN2d(in_f, out_f, kernel_size = 1, stride = stride, padding = 0)
 
     def forward(self, x, lbda = None, perm = None):
         y = self.convbn1(x)
@@ -197,7 +197,9 @@ def prepareBackbone():
         "resnet56flat": lambda: (ResNet(BasicBlock, [(9, 1, 1), (9, 2, 1.41), (9, 2, 2)], args.feature_maps, large = large), 2 * args.feature_maps),
         "resnet110": lambda: (ResNet(BasicBlock, [(18, 1, 1), (18, 2, 2), (18, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
         "resnet50": lambda: (ResNet(BottleneckBlock, [(3, 1, 1), (4, 2, 2), (6, 2, 4), (3, 2, 8)], args.feature_maps, large = large), 8 * 4 * args.feature_maps),
-        "resnet12": lambda: (ResNet12(args.feature_maps), 10 * args.feature_maps)
+        "resnet12": lambda: (ResNet12(args.feature_maps), 10 * args.feature_maps),
+        "wrn28_10": lambda: (ResNet(BasicBlock, [(4, 1, 10), (4, 2, 20), (4, 2, 40)], args.feature_maps, large = large), 40 * args.feature_maps),
+        "wrn16_16": lambda: (ResNet(BasicBlock, [(2, 1, 16), (2, 2, 32), (2, 2, 64)], args.feature_maps, large = large), 64 * args.feature_maps)
         }[args.backbone.lower()]()
 
 print(" backbones,", end='')
