@@ -554,13 +554,29 @@ def prepareDataLoader(name, is_train=False):
         assert elt.lower() in dataset_options.keys(), f'The chosen dataset "{elt}" is not existing, please provide a valid option: \n {list(dataset_options.keys())}'
         result.append(dataset_options[elt.lower()]())
     return result
-    
+def checkSize(dataset):
+        if 'cifar' in dataset:
+            image_size = 32
+        elif 'mnist' in dataset or 'omniglot' in dataset:
+            image_size = 28
+        elif 'imagenet' in dataset and 'metadataset' not in dataset:
+            image_size = 224
+        elif 'metadataset' in dataset: 
+            image_size = 126
+        elif 'miniimagenet' in dataset or 'tieredimagenet' in dataset or 'cub' in dataset:
+            image_size = 84
+        return image_size
+        
 if args.training_dataset != "":
     try:
         eval(args.training_dataset)
         trainSet = prepareDataLoader(eval(args.training_dataset), is_train=True)
+        if args.image_size == -1:
+            args.image_size = checkSize(eval(args.training_dataset)[0])
     except NameError:
         trainSet = prepareDataLoader(args.training_dataset, is_train=True)
+        if args.image_size == -1:
+            args.image_size = checkSize(eval(args.training_dataset)[0])
 else:
     trainSet = []
 
@@ -568,8 +584,12 @@ if args.validation_dataset != "":
     try:
         eval(args.validation_dataset)
         validationSet = prepareDataLoader(eval(args.validation_dataset), is_train=False)
+        if args.image_size == -1:
+            args.image_size = checkSize(eval(args.validation_dataset)[0])
     except NameError:
         validationSet = prepareDataLoader(args.validation_dataset, is_train=False)
+        if args.image_size == -1:
+            args.image_size = checkSize(eval(args.validation_dataset)[0])
 else:
     validationSet = []
 
@@ -577,9 +597,13 @@ if args.test_dataset != "":
     try:
         eval(args.test_dataset)
         testSet = prepareDataLoader(eval(args.test_dataset), is_train=False)
+        if args.image_size == -1:
+            args.image_size = checkSize(eval(args.test_dataset)[0])
     except NameError:
         testSet = prepareDataLoader(args.test_dataset, is_train=False)
+        if args.image_size == -1:
+            args.image_size = checkSize(eval(args.test_dataset)[0])
 else:
     testSet = []
-    
+
 print(" dataloaders,", end='')
