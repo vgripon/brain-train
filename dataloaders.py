@@ -566,7 +566,7 @@ def checkSize(dataset):
         elif 'miniimagenet' in dataset or 'tieredimagenet' in dataset or 'cub' in dataset:
             image_size = 84
         return image_size
-        
+
 if args.training_dataset != "":
     try:
         eval(args.training_dataset)
@@ -576,7 +576,7 @@ if args.training_dataset != "":
     except NameError:
         trainSet = prepareDataLoader(args.training_dataset, is_train=True)
         if args.image_size == -1:
-            args.image_size = checkSize(eval(args.training_dataset)[0])
+            args.image_size = checkSize(args.training_dataset)
 else:
     trainSet = []
 
@@ -589,7 +589,7 @@ if args.validation_dataset != "":
     except NameError:
         validationSet = prepareDataLoader(args.validation_dataset, is_train=False)
         if args.image_size == -1:
-            args.image_size = checkSize(eval(args.validation_dataset)[0])
+            args.image_size = checkSize(args.validation_dataset)
 else:
     validationSet = []
 
@@ -602,7 +602,7 @@ if args.test_dataset != "":
     except NameError:
         testSet = prepareDataLoader(args.test_dataset, is_train=False)
         if args.image_size == -1:
-            args.image_size = checkSize(eval(args.test_dataset)[0])
+            args.image_size = checkSize(args.test_dataset)
 else:
     testSet = []
 

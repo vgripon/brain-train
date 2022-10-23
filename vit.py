@@ -90,7 +90,7 @@ class ViT(nn.Module):
         
         self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim)
         self.norm = nn.LayerNorm(dim)
-    def forward(self, x, norm=True) -> torch.Tensor:
+    def forward(self, x, norm=True, mixup=None, lbda = None, perm = None) -> torch.Tensor:
         
         x = self.patch_to_embedding(x)# Project to embedding space (batch, num_patches, dim)
         b, n = x.shape[:2]
