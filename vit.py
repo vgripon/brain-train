@@ -73,7 +73,8 @@ class ViT(nn.Module):
                 depth,
                 heads,
                 mlp_dim,
-                dim_head=64) -> None:
+                dim_head=64, 
+                pool=True) -> None:
         super(ViT, self).__init__()
         image_height, image_width = pair(image_size)
         patch_height, patch_width = pair(patch_size)
@@ -89,6 +90,7 @@ class ViT(nn.Module):
         self.cls_token = nn.Parameter(torch.randn(1, 1, dim)) # Trainable parameter for the class token, refers to the task at hand used for training the transformer.
         
         self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim)
+        self.pool = pool
         self.norm = nn.LayerNorm(dim)
     def forward(self, x, norm=True, mixup=None, lbda = None, perm = None) -> torch.Tensor:
         
@@ -98,6 +100,6 @@ class ViT(nn.Module):
         x = torch.cat((cls_tokens, x), dim=1) # Concat cls_token to (batch, num_patches+1, dim)
         x += self.pos_embedding[:, :(n+1)] # Add positional embedding, make sure to add only num_patches+1 embeddings in case of variable image size
         x = self.transformer(x) # Pass through transformer
-        features = x.mean(dim=1) # Average pooling for features
+        features = x.mean(dim=1) if self.pool else x[:,0]# Average pooling for features
         if norm: features = self.norm(features)
         return features
