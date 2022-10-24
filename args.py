@@ -24,6 +24,8 @@ parser.add_argument("--wd", type=float, default=-1., help="weight decay, default
 parser.add_argument("--steps", type=str, default="[[]]", help="describe what steps during training are made of, is a list of lists containing 'rotations', 'mixup' or 'manifold mixup', for example \"[['manifold mixup'],['rotations']]\" does two steps: first with manifold mixup then with rotations as additional self-supervision. Last list is used to compute losses and scores")
 parser.add_argument("--label-smoothing", type=float, default=0, help="use label smoothing with given smoothing factor. 0 means no smoothing")
 
+parser.add_argument("--image-size", type=int, default=-1, help="image input size")
+
 ### dataloaders args
 # list of datasets, which automatically define a train, a validation and a test set
 datasets = {

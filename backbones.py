@@ -184,7 +184,7 @@ class ResNet12(nn.Module):
         
         y = y.mean(dim = list(range(2, len(y.shape))))
         return y
-
+from vit import ViT
 def prepareBackbone():
     large = False
     if args.backbone.lower()[-6:] == "_large":
@@ -199,7 +199,12 @@ def prepareBackbone():
         "resnet50": lambda: (ResNet(BottleneckBlock, [(3, 1, 1), (4, 2, 2), (6, 2, 4), (3, 2, 8)], args.feature_maps, large = large), 8 * 4 * args.feature_maps),
         "resnet12": lambda: (ResNet12(args.feature_maps), 10 * args.feature_maps),
         "wrn28_10": lambda: (ResNet(BasicBlock, [(4, 1, 10), (4, 2, 20), (4, 2, 40)], args.feature_maps, large = large), 40 * args.feature_maps),
-        "wrn16_16": lambda: (ResNet(BasicBlock, [(2, 1, 16), (2, 2, 32), (2, 2, 64)], args.feature_maps, large = large), 64 * args.feature_maps)
+        "wrn16_16": lambda: (ResNet(BasicBlock, [(2, 1, 16), (2, 2, 32), (2, 2, 64)], args.feature_maps, large = large), 64 * args.feature_maps),
+        "vit_small_32": lambda: (ViT(image_size = args.image_size, patch_size = 32, channels = 3, dim_head=64, dim = 768, depth = 12, heads = 12, mlp_dim = 3072, pool=True), 768),
+        "vit_small_16": lambda: (ViT(image_size = args.image_size, patch_size = 16, channels = 3, dim_head=64, dim = 768, depth = 12, heads = 12, mlp_dim = 3072, pool=True), 768),
+        "vit_large_32": lambda: (ViT(image_size = args.image_size, patch_size = 32, channels = 3, dim_head=64, dim = 1024, depth = 24, heads = 16, mlp_dim = 4096, pool=True), 1024),
+        "vit_large_16": lambda: (ViT(image_size = args.image_size, patch_size = 16, channels = 3, dim_head=64, dim = 1024, depth = 24, heads = 16, mlp_dim = 4096, pool=True), 1024),
+        "vit_huge_14": lambda: (ViT(image_size = args.image_size, patch_size = 32, channels = 3, dim_head=64, dim = 1280, depth = 32, heads = 16, mlp_dim = 5120, pool=True), 1280)
         }[args.backbone.lower()]()
 
 print(" backbones,", end='')
