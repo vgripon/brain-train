@@ -193,7 +193,7 @@ def prepareBackbone():
         args.backbone = args.backbone[:-6]
     if 'vit' in args.backbone:
         patch_size = int(args.backbone.split('_')[-1])
-        args.backbone = args.backbone.split('_')[:-1].join('_')
+        args.backbone = '_'.join(args.backbone.split('_')[:-1])
     return {
         "resnet18": lambda: (ResNet(BasicBlock, [(2, 1, 1), (2, 2, 2), (2, 2, 4), (2, 2, 8)], args.feature_maps, large = large), 8 * args.feature_maps),
         "resnet20": lambda: (ResNet(BasicBlock, [(3, 1, 1), (3, 2, 2), (3, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
