@@ -38,7 +38,7 @@ class Attention(nn.Module):
         out = rearrange(out, 'b h n d -> b n (h d)', h=self.heads) # (batch, num_patches, dim_head*heads)
         return self.to_out(out) #(batch, num_patches, dim)
 
-class TransformerLayer(nn.Module):
+class TransformerBlock(nn.Module):
     def __init__(self, dim, heads, dim_head, mlp_dim):
         super().__init__()
         self.attention = Attention(dim, heads, dim_head)
@@ -50,18 +50,6 @@ class TransformerLayer(nn.Module):
         x = x + self.attention(self.norm1(x))
         x = x + self.mlp(self.norm2(x))
         return x
-class Transformer(nn.Module):
-    """
-    Transformer Architecture    
-    """
-    def __init__(self,  dim, depth, heads, dim_head, mlp_dim,) -> None:
-        super(Transformer, self).__init__()
-        self.layers = []
-        for _ in range(depth):
-            self.layers.append(TransformerLayer(dim, heads, dim_head, mlp_dim))
-        self.layers = nn.Sequential(*self.layers)
-    def forward(self, x) -> torch.Tensor:
-        return self.layers(x)
 
 class ConvProjection(nn.Module):
     def __init__(self, channels, dim, patch_size) -> None:
@@ -71,7 +59,6 @@ class ConvProjection(nn.Module):
     def forward(self, x):
         x = self.projection(x)
         return x.flatten(2).transpose(1,2)
-
 
 class ViT(nn.Module):
     """
@@ -104,8 +91,7 @@ class ViT(nn.Module):
             
         self.pos_embedding = nn.Parameter(torch.randn(1, num_patches + 1, dim)) # Trainable parameter Add 1 for cls token
         self.cls_token = nn.Parameter(torch.randn(1, 1, dim)) # Trainable parameter for the class token, refers to the task at hand used for training the transformer.
-        
-        self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim)
+        self.layers = nn.ModuleList([TransformerBlock(dim, heads, dim_head, mlp_dim) for _ in range(depth)])
         self.pool = pool
         self.norm = nn.LayerNorm(dim)
 
@@ -141,7 +127,10 @@ class ViT(nn.Module):
         cls_tokens = self.cls_token.expand(b, -1, -1) # Expand cls_token to (batch, 1, dim)
         x = torch.cat((cls_tokens, x), dim=1) # Concat cls_token to (batch, num_patches+1, dim)
         x += self.interpolate_pos_encoding(x, w, h) # Add positional embedding, make sure to add only num_patches+1 embeddings in case of variable image size #self.pos_embedding[:, :(n+1)]
-        x = self.transformer(x) # Pass through transformer
+        
+        for layer in self.layers: # Pass through transformer layers
+            x = layer(x)
+
         features = x.mean(dim=1) if self.pool else x[:,0]# Average pooling for features
         if norm: features = self.norm(features)
         return features
