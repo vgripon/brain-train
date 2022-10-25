@@ -41,7 +41,7 @@ if args.deterministic:
 
 def train(epoch, backbone, criterion, optimizer, scheduler):
     backbone.train()
-    for c in criterion:
+    for c in [item for sublist in criterion.values() for item in sublist] :
         c.train()
     iterators = [enumerate(dataset["dataloader"]) for dataset in trainSet]
     losses, accuracies, total_elt = torch.zeros(len(iterators)), torch.zeros(len(iterators)), torch.zeros(len(iterators))
@@ -54,35 +54,10 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                     raise StopIteration
                 batchIdx, (data, target) = next(iterators[trainingSetIdx])
                 data, target = data.to(args.device), target.to(args.device)
-
+                
                 for step in eval(args.steps):
                     dataStep = data.clone()
-                    
-                    if "mixup" in step or "manifold mixup" in step:
-                        perm = torch.randperm(dataStep.shape[0])
-                        if "mixup" in step:
-                            lbda = random.random()
-                            mixupType = "mixup"
-                        else:
-                            lbda = np.random.beta(2,2)
-                            mixupType = "manifold mixup"
-                    else:
-                        lbda, perm, mixupType = None, None, None
-
-                    if "rotations" in step:
-                        bs = dataStep.shape[0] // 4
-                        targetRot = torch.LongTensor(dataStep.shape[0]).to(args.device)
-                        targetRot[:bs] = 0
-                        dataStep[bs:] = dataStep[bs:].transpose(3,2).flip(2)
-                        targetRot[bs:2*bs] = 1
-                        dataStep[2*bs:] = dataStep[2*bs:].transpose(3,2).flip(2)
-                        targetRot[2*bs:3*bs] = 2
-                        dataStep[3*bs:] = dataStep[3*bs:].transpose(3,2).flip(2)
-                        targetRot[3*bs:] = 3
-                    else:
-                        targetRot = None
-
-                    loss, score = criterion[trainingSetIdx](backbone(dataStep, mixup = mixupType, lbda = lbda, perm = perm), target, yRotations = targetRot if "rotations" in step else None, lbda = lbda, perm = perm)
+                    loss, score = criterion['lr_rotation_mixup'][trainingSetIdx](backbone, dataStep, target, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
                     loss.backward()
 
                 losses[trainingSetIdx] += data.shape[0] * loss.item()
@@ -110,7 +85,7 @@ def test(backbone, datasets, criterion):
         with torch.no_grad():
             for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
                 data, target = data.to(args.device), target.to(args.device)
-                loss, score = criterion[testSetIdx](backbone(data), target)
+                loss, score = criterion[testSetIdx](backbone, data, target)
                 losses += data.shape[0] * loss.item()
                 accuracies += data.shape[0] * score.item()
                 total_elt += data.shape[0]
@@ -223,9 +198,10 @@ for nRun in range(args.runs):
         print(" containing {:,} parameters and feature space of dim {:d}.".format(numParamsBackbone, outputDim))
 
         print("Preparing criterion(s) and classifier(s)... ", end='')
-    criterion = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in trainSet]
+    criterion = {}
+    criterion['lr_rotation_mixup'] = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in trainSet]
     numParamsCriterions = 0
-    for c in criterion:
+    for c in [item for sublist in criterion.values() for item in sublist] :
         c.to(args.device)
         numParamsCriterions += torch.tensor([m.numel() for m in c.parameters()]).sum().item()
     if not args.silent:
@@ -236,7 +212,7 @@ for nRun in range(args.runs):
         parameters = list(backbone.parameters())
     else:
         parameters = []
-    for c in criterion:
+    for c in [item for sublist in criterion.values() for item in sublist] :
         parameters += list(c.parameters())
     if not args.silent:
         print(" done.")
@@ -303,7 +279,7 @@ for nRun in range(args.runs):
                 featuresValidation = process(featuresValidation, meanVector)
                 tempValidationStats = testFewShot(featuresValidation, validationSet)
             else:
-                tempValidationStats = test(backbone, validationSet, criterion)
+                tempValidationStats = test(backbone, validationSet, criterion['lr_rotation_mixup'])
             updateCSV(tempValidationStats)
             if (tempValidationStats[:,0].mean().item() < best_val and not args.few_shot) or (args.few_shot and tempValidationStats[:,0].mean().item() > best_val):
                 validationStats = tempValidationStats
@@ -320,7 +296,7 @@ for nRun in range(args.runs):
                 featuresTest = process(featuresTest, meanVector)
                 tempTestStats = testFewShot(featuresTest, testSet)
             else:
-                tempTestStats = test(backbone, testSet, criterion)
+                tempTestStats = test(backbone, testSet, criterion['lr_rotation_mixup'])
             updateCSV(tempTestStats)
             if continueTest:
                 testStats = tempTestStats
