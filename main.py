@@ -57,8 +57,10 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                 
                 for step in eval(args.steps):
                     dataStep = data.clone()
-                    loss, score = criterion['lr_rotation_mixup'][trainingSetIdx](backbone, dataStep, target, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
-                    loss.backward()
+
+                    if 'mixup' in step or 'manifold mixup' in step or 'rotations' in step:
+                        loss, score = criterion['lr_rotation_mixup'][trainingSetIdx](backbone, dataStep, target, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
+                        loss.backward()
 
                 losses[trainingSetIdx] += data.shape[0] * loss.item()
                 accuracies[trainingSetIdx] += data.shape[0] * score.item()
