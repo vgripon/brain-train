@@ -12,8 +12,6 @@ if not args.silent:
 from utils import *
 from dataloaders import trainSet, validationSet, testSet
 import classifiers
-import backbones
-import backbones1d
 from few_shot_evaluation import EpisodicGenerator, ImageNetGenerator, OmniglotGenerator
 
 if args.wandb!='':
@@ -212,8 +210,10 @@ for nRun in range(args.runs):
     if not args.silent:
         print("Preparing backbone... ", end='')
     if args.audio:
+        import backbones1d
         backbone, outputDim = backbones1d.prepareBackbone()
     else:
+        import backbones
         backbone, outputDim = backbones.prepareBackbone()
     if args.load_backbone != "":
         backbone.load_state_dict(torch.load(args.load_backbone))
