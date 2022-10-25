@@ -9,44 +9,48 @@ def pair(t):
     return t if isinstance(t, tuple) else (t, t)
 
 class FeedForward(nn.Module):
-    def __init__(self, dim, hidden_dim):
+    def __init__(self, dim, hidden_dim, dropout) -> None:
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(dim, hidden_dim),
+            nn.Dropout(dropout),
             nn.GELU(),
             nn.Linear(hidden_dim, dim),
+            nn.Dropout(dropout)
         )
-    def forward(self, x):
+    def forward(self, x) -> torch.Tensor:
         return self.net(x)
 
 class Attention(nn.Module):
-    def __init__(self, dim, heads, dim_head) -> None:
+    def __init__(self, dim, heads, dim_head, dropout) -> None:
         super(Attention, self).__init__()
         inner_dim = dim_head *  heads   
         self.heads = heads
         self.scale = dim_head ** -0.5 # 1/sqrt(dim_head)
+        self.dropout = nn.Dropout(dropout)
         self.to_qkv = nn.Linear(dim, inner_dim*3, bias=False) # One linear for all Q, K, V for all heads
         self.softmax = nn.Softmax(dim=-1) # Softmax over num_patches for each head separately
-        self.to_out = nn.Linear(inner_dim, dim)
+        self.to_out = nn.Sequential(nn.Linear(inner_dim, dim), nn.Dropout(dropout))
     
     def forward(self, x) -> torch.Tensor:
         qkv = self.to_qkv(x).chunk(3, dim=-1) # Split Q, K, V for all heads, (batch, num_patches, dim) -> 3x(batch, num_patches, dim_head*heads)
         q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h=self.heads), qkv) # Rearrange to (batch, heads, num_patches, dim_head)
         prod = torch.einsum('b h n d, b h m d -> b h n m', q, k) * self.scale # (batch, heads, num_patches, num_patches)
         prod = self.softmax(prod)
+        prod = self.dropout(prod)
         out = torch.einsum('b h n m, b h m d -> b h n d', prod, v) # (batch, heads, num_patches, dim_head)
         out = rearrange(out, 'b h n d -> b n (h d)', h=self.heads) # (batch, num_patches, dim_head*heads)
         return self.to_out(out) #(batch, num_patches, dim)
 
 class TransformerBlock(nn.Module):
-    def __init__(self, dim, heads, dim_head, mlp_dim):
+    def __init__(self, dim, heads, dim_head, mlp_dim, dropout) -> None:
         super().__init__()
-        self.attention = Attention(dim, heads, dim_head)
+        self.attention = Attention(dim, heads, dim_head, dropout)
         self.norm1 = nn.LayerNorm(dim)
-        self.mlp = FeedForward(dim, mlp_dim)
+        self.mlp = FeedForward(dim, mlp_dim, dropout)
         self.norm2 = nn.LayerNorm(dim)
     
-    def forward(self, x):
+    def forward(self, x) -> torch.Tensor:
         x = x + self.attention(self.norm1(x))
         x = x + self.mlp(self.norm2(x))
         return x
@@ -56,7 +60,7 @@ class ConvProjection(nn.Module):
         super(ConvProjection, self).__init__()
         self.projection = nn.Conv2d(channels, dim, kernel_size=patch_size, stride=patch_size)
 
-    def forward(self, x):
+    def forward(self, x) -> torch.Tensor:
         x = self.projection(x)
         return x.flatten(2).transpose(1,2)
 
@@ -74,7 +78,9 @@ class ViT(nn.Module):
                 mlp_dim,
                 dim_head=64, 
                 pool=False, 
-                projection='linear' # if not linear use a convolution instead (in original paper they use linear)
+                projection='linear', # if not linear use a convolution instead (in original paper they use linear)
+                dropout=0.,
+                emb_dropout = 0.
                 ) -> None:
         super(ViT, self).__init__()
         image_height, image_width = pair(image_size)
@@ -91,11 +97,12 @@ class ViT(nn.Module):
             
         self.pos_embedding = nn.Parameter(torch.randn(1, num_patches + 1, dim)) # Trainable parameter Add 1 for cls token
         self.cls_token = nn.Parameter(torch.randn(1, 1, dim)) # Trainable parameter for the class token, refers to the task at hand used for training the transformer.
-        self.layers = nn.ModuleList([TransformerBlock(dim, heads, dim_head, mlp_dim) for _ in range(depth)])
+        self.dropout = nn.Dropout(emb_dropout)
+        self.layers = nn.ModuleList([TransformerBlock(dim, heads, dim_head, mlp_dim, dropout) for _ in range(depth)])
         self.pool = pool
         self.norm = nn.LayerNorm(dim)
 
-    def interpolate_pos_encoding(self, x, w, h):
+    def interpolate_pos_encoding(self, x, w, h) -> torch.Tensor:
         """
         Interpolate pos encoding in transfer learning or for images with different size
         function taken from https://github.com/facebookresearch/dino/
@@ -127,7 +134,7 @@ class ViT(nn.Module):
         cls_tokens = self.cls_token.expand(b, -1, -1) # Expand cls_token to (batch, 1, dim)
         x = torch.cat((cls_tokens, x), dim=1) # Concat cls_token to (batch, num_patches+1, dim)
         x += self.interpolate_pos_encoding(x, w, h) # Add positional embedding, make sure to add only num_patches+1 embeddings in case of variable image size #self.pos_embedding[:, :(n+1)]
-        
+        x = self.dropout(x)
         for layer in self.layers: # Pass through transformer layers
             x = layer(x)
 

@@ -24,8 +24,6 @@ parser.add_argument("--wd", type=float, default=-1., help="weight decay, default
 parser.add_argument("--steps", type=str, default="[[]]", help="describe what steps during training are made of, is a list of lists containing 'rotations', 'mixup' or 'manifold mixup', for example \"[['manifold mixup'],['rotations']]\" does two steps: first with manifold mixup then with rotations as additional self-supervision. Last list is used to compute losses and scores")
 parser.add_argument("--label-smoothing", type=float, default=0, help="use label smoothing with given smoothing factor. 0 means no smoothing")
 
-parser.add_argument("--image-size", type=int, default=-1, help="image input size")
-
 ### dataloaders args
 # list of datasets, which automatically define a train, a validation and a test set
 datasets = {
@@ -59,14 +57,17 @@ parser.add_argument("--training-dataset", type=str, default="", help="training d
 parser.add_argument("--validation-dataset", type=str, default="", help="validation dataset, overriden by --dataset")
 parser.add_argument("--test-dataset", type=str, default="", help="test dataset, overriden by --dataset")
 parser.add_argument("--dataset-size", type=int, default=0, help="defines a maximum of samples considered at each epoch, 0 means it is ignored")
+parser.add_argument("--image-size", type=int, default=-1, help="image input size")
 parser.add_argument("--audio", action="store_true", help="use audio inputs, so switch back to 1d backbones")
 parser.add_argument("--wandb", type=str, default='', help="Report to wandb, input is the entity name")
 parser.add_argument("--wandbProjectName", type=str, default='few-shot', help="wandb project name")
+
 ### backbones parameters
 parser.add_argument("--feature-maps", type=int, default=64, help="initial number of feature maps in first embedding, used as a base downstream convolutions")
 parser.add_argument("--backbone", type=str, default="resnet18", help="backbone architecture")
 parser.add_argument("--feature-processing", type=str, default="", help="feature processing before few-shot classifiers, can contain M (remove mean of feature vectors), and E (unit sphere projection of feature vectors)")
 parser.add_argument("--leaky", action="store_true", help="use leaky relu instead of relu for intermediate activations")
+parser.add_argument("--dropout", type=float, default=0., help="dropout rate")
 
 ### criterion
 parser.add_argument("--classifier", type=str, default="lr", help="define which classifier is used on top of selected backbone, can be any of lr for logistic regression, or L2 for euclidean distance regression, or multilabelBCE for multi label classification")
