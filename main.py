@@ -39,7 +39,7 @@ if args.deterministic:
     torch.backends.cudnn.benchmark = False
 
 
-def train(epoch, backbone, criterion, optimizer, scheduler):
+def train(epoch, backbone, criterion, optimizer, scheduler, transforms=None):
     backbone.train()
     for c in [item for sublist in criterion.values() for item in sublist] :
         c.train()
@@ -208,9 +208,11 @@ for nRun in range(args.runs):
         print("Preparing criterion(s) and classifier(s)... ", end='')
     criterion = {}
     all_steps = [item for sublist in eval(args.steps) for item in sublist]
+    transforms = False
     if 'lr' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or 'rotations' in all_steps:
         criterion['lr_rotation_mixup'] = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in trainSet]
     if 'dino' in all_steps:
+        transforms = True
         from ssl import DINO
         criterion['dino'] = DINO()
     numParamsCriterions = 0
