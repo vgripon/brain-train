@@ -181,7 +181,7 @@ def metadataset_imagenet(datasetName):
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(126), transforms.ToTensor(), normalization])
 
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train" and not args.unshuffle_train), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def imagenet(datasetName):
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
