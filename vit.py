@@ -4,22 +4,9 @@ import torch.nn as nn
 from einops import rearrange
 from einops.layers.torch import Rearrange
 import math 
-
+torch.autograd.set_detect_anomaly(True)
 def pair(t):
     return t if isinstance(t, tuple) else (t, t)
-
-class FeedForward(nn.Module):
-    def __init__(self, dim, hidden_dim, dropout) -> None:
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(dim, hidden_dim),
-            nn.Dropout(dropout),
-            nn.GELU(),
-            nn.Linear(hidden_dim, dim),
-            nn.Dropout(dropout)
-        )
-    def forward(self, x) -> torch.Tensor:
-        return self.net(x)
 
 class Attention(nn.Module):
     def __init__(self, dim, heads, dim_head, dropout) -> None:
@@ -47,12 +34,20 @@ class TransformerBlock(nn.Module):
         super().__init__()
         self.attention = Attention(dim, heads, dim_head, dropout)
         self.norm1 = nn.LayerNorm(dim)
-        self.mlp = FeedForward(dim, mlp_dim, dropout)
+        self.mlp = nn.Sequential(
+            nn.Linear(dim, mlp_dim),
+            nn.Dropout(dropout),
+            nn.GELU(),
+            nn.Linear(mlp_dim, dim),
+            nn.Dropout(dropout)
+        )
         self.norm2 = nn.LayerNorm(dim)
     
     def forward(self, x) -> torch.Tensor:
-        x = x + self.attention(self.norm1(x))
-        x = x + self.mlp(self.norm2(x))
+        x = self.norm1(x)
+        x = x + self.attention(x)
+        x = self.norm2(x)
+        x = x + self.mlp(x)
         return x
 
 class ConvProjection(nn.Module):
