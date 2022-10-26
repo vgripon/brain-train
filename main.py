@@ -60,10 +60,7 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                 if args.dataset_size > 0 and total_elt[trainingSetIdx] >= args.dataset_size:
                     raise StopIteration
                 batchIdx, (data, target) = next(iterators[trainingSetIdx])
-                if args.ssl:
-                    data = to(data, args.device)
-                else:
-                    data = {'supervised':data.to(args.device)}
+                data = to(data, args.device)
                 target = target.to(args.device)
                 batch_size = data['supervised'].shape[0]
 

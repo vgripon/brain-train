@@ -7,6 +7,22 @@ from PIL import Image
 from PIL import ImageFilter, ImageOps
 
 DEFAULT_NORMALIZATION = transforms.Normalize(mean=torch.tensor([0.485, 0.456, 0.406]),std=torch.tensor([0.229, 0.224, 0.225]))
+class SSLTransform(object):
+    def __init__(self, all_transforms):
+        self.all_transforms = all_transforms
+    def __call__(self, image):
+        out = {}
+        for name, T in self.all_transforms.items():
+            out[name] = T(image)
+        return out
+def get_ssl_transform(image_size, supervised_transform, normalization):
+    all_steps = [item for sublist in eval(args.steps) for item in sublist]
+    all_transforms = {'supervised':supervised_transform}
+    for step in all_steps:
+        if 'dino' in step:
+            local_crops_number = 8
+            all_transforms['dino'] = DINOAugmentation(local_crops_number, image_size, normalization=normalization, global_crops_scale=(0.5,1), local_crops_scale=(0.05, 0.4))
+    return SSLTransform(all_transforms)
 
 class GaussianBlur(object):
     """
@@ -89,22 +105,6 @@ class DINOAugmentation(object):
         for _ in range(self.local_crops_number):
             crops.append(self.local_transform(image))
         return crops
-class SSLTransform(object):
-    def __init__(self, all_transforms):
-        self.all_transforms = all_transforms
-    def __call__(self, image):
-        out = {}
-        for name, T in self.all_transforms.items():
-            out[name] = T(image)#out.append(T(image))
-        return out
-def get_ssl_transform(image_size, supervised_transform, normalization):
-    all_steps = [item for sublist in eval(args.steps) for item in sublist]
-    all_transforms = {'supervised':supervised_transform}
-    for step in all_steps:
-        if 'dino' in step:
-            local_crops_number = 8
-            all_transforms['dino'] = DINOAugmentation(local_crops_number, image_size, normalization=normalization, global_crops_scale=(0.5,1), local_crops_scale=(0.05, 0.4))
-    return SSLTransform(all_transforms)
 
 class DINO(nn.Module):
     def __init__(self, backbone, in_dim, out_dim, temperature_student, temperature_teacher, norm_last_layer=True, moving_average_decay=0.999, head_hidden_dim=2048, bottleneck_dim=256):

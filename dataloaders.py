@@ -120,13 +120,10 @@ def miniimagenet(datasetName):
 
     normalization = transforms.Normalize([125.3/255, 123.0/255, 113.9/255], [63.0/255, 62.1/255, 66.7/255])
     image_size = args.image_size if args.image_size>0 else 84
-    trans_train = None
     if datasetName == 'train':
         supervised_transform = transforms.Compose([transforms.ToTensor(), normalization, transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()])
-        if args.ssl:
-            trans = get_ssl_transform(image_size, supervised_transform, normalization) 
-        else:
-            trans = supervised_transform
+        trans = get_ssl_transform(image_size, supervised_transform, normalization) 
+       
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([transforms.Resize(int(image_size*92/84)), transforms.CenterCrop(image_size), transforms.ToTensor(), normalization])
