@@ -5,10 +5,12 @@ from torchvision import transforms, datasets
 import random
 from args import args
 import torch
+import torch.nn as nn
 import os
 import json
 import numpy as np
 from PIL import Image
+import copy
 from utils import *
 ### first define dataholder, which will be used as an argument to dataloaders
 class DataHolder():
@@ -117,15 +119,21 @@ def miniimagenet(datasetName):
 
     normalization = transforms.Normalize([125.3/255, 123.0/255, 113.9/255], [63.0/255, 62.1/255, 66.7/255])
     image_size = args.image_size if args.image_size>0 else 84
+    trans_train = None
     if datasetName == 'train':
-        trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization])
+        if args.ssl:
+            trans_train = transforms.Compose([normalization, transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()])
+            trans = transforms.ToTensor()
+        else:
+            trans_train = nn.Identity()
+            trans = transforms.Compose([transforms.ToTensor(), normalization, transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()])
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([transforms.Resize(int(image_size*92/84)), transforms.CenterCrop(image_size), transforms.ToTensor(), normalization])
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ToTensor(), normalization])
 
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}, trans_train
 
 def tieredimagenet(datasetName):
     f = open(args.dataset_path + "datasets.json")    
@@ -137,16 +145,21 @@ def tieredimagenet(datasetName):
 
     normalization = transforms.Normalize([125.3/255, 123.0/255, 113.9/255], [63.0/255, 62.1/255, 66.7/255])
     image_size = args.image_size if args.image_size>0 else 84
-
+    trans_train = None
     if datasetName == 'train':
-        trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization])
+        if args.ssl:
+            trans_train = transforms.Compose([normalization, transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()])
+            trans = transforms.ToTensor()
+        else:
+            trans_train = nn.Identity()
+            trans = transforms.Compose([transforms.ToTensor(), normalization, transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()])
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([transforms.Resize(int(image_size*92/84)), transforms.CenterCrop(image_size), transforms.ToTensor(), normalization])
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ToTensor(), normalization])
 
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}, trans_train
 
 def cifarfs(datasetName):
     f = open(args.dataset_path + "datasets.json")    
@@ -498,6 +511,7 @@ def prepareDataLoader(name, is_train=False):
     if isinstance(name, str):
         name = [name]
     result = []
+    train_trans_results = []
     dataset_options = {
             "cifar10_train": lambda: cifar10("train"),
             "cifar10_validation": lambda: cifar10("validation"),
@@ -566,15 +580,18 @@ def prepareDataLoader(name, is_train=False):
             "metaalbum_mini":lambda: metaalbum("Mini", is_train=is_train),
             "metaalbum_extended":lambda: metaalbum("Extended", is_train=is_train),
         }
-    # Meta albums
+    # Adding Meta albums
     for setting in ['Micro', 'Macro', 'Extended']:
         for album in ['BCT', 'BRD', 'CRS', 'FLW', 'MD_MIX', 'PLK', 'PLT_VIL', 'RESISC', 'SPT', 'TEX']:
             dataset_options[f'metaalbum_{album.lower()}_{setting.lower()}'] = lambda: metaalbum(f'{album}_{setting}', is_train=is_train)    
                  
     for elt in name:
         assert elt.lower() in dataset_options.keys(), f'The chosen dataset "{elt}" is not existing, please provide a valid option: \n {list(dataset_options.keys())}'
-        result.append(dataset_options[elt.lower()]())
-    return result
+        dict_results, train_trans = dataset_options[elt.lower()]()
+        result.append(dict_results)
+        train_trans_results.append(train_trans)
+
+    return result, train_trans_results
 def checkSize(dataset):
         if 'cifar' in dataset:
             image_size = 32
@@ -591,24 +608,24 @@ def checkSize(dataset):
 if args.training_dataset != "":
     try:
         eval(args.training_dataset)
-        trainSet = prepareDataLoader(eval(args.training_dataset), is_train=True)
+        trainSet, train_trans = prepareDataLoader(eval(args.training_dataset), is_train=True)
         if args.image_size == -1:
             args.image_size = checkSize(eval(args.training_dataset)[0])
     except NameError:
-        trainSet = prepareDataLoader(args.training_dataset, is_train=True)
+        trainSet, train_trans = prepareDataLoader(args.training_dataset, is_train=True)
         if args.image_size == -1:
             args.image_size = checkSize(args.training_dataset)
 else:
     trainSet = []
-
+    train_trans = []
 if args.validation_dataset != "":
     try:
         eval(args.validation_dataset)
-        validationSet = prepareDataLoader(eval(args.validation_dataset), is_train=False)
+        validationSet, _ = prepareDataLoader(eval(args.validation_dataset), is_train=False)
         if args.image_size == -1:
             args.image_size = checkSize(eval(args.validation_dataset)[0])
     except NameError:
-        validationSet = prepareDataLoader(args.validation_dataset, is_train=False)
+        validationSet, _ = prepareDataLoader(args.validation_dataset, is_train=False)
         if args.image_size == -1:
             args.image_size = checkSize(args.validation_dataset)
 else:
@@ -617,11 +634,11 @@ else:
 if args.test_dataset != "":
     try:
         eval(args.test_dataset)
-        testSet = prepareDataLoader(eval(args.test_dataset), is_train=False)
+        testSet, _ = prepareDataLoader(eval(args.test_dataset), is_train=False)
         if args.image_size == -1:
             args.image_size = checkSize(eval(args.test_dataset)[0])
     except NameError:
-        testSet = prepareDataLoader(args.test_dataset, is_train=False)
+        testSet, _ = prepareDataLoader(args.test_dataset, is_train=False)
         if args.image_size == -1:
             args.image_size = checkSize(args.test_dataset)
 else:

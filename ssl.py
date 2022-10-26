@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import random
-from torchvision import transforms as T
 
 class RandomApply(nn.Module):
     def __init__(self, fn, p):
@@ -16,6 +15,7 @@ class RandomApply(nn.Module):
 
 class DINO(nn.Module):
     def __init__(self, backbone, in_dim, out_dim, temperature_student, temperature_teacher, norm_last_layer=True, moving_average_decay=0.999, head_hidden_dim=2048, bottleneck_dim=256):
+        super(DINO, self).__init__()
         self.teacher = backbone.clone().detach()
         for p in self.teacher.parameters():
             p.requires_grad = False
