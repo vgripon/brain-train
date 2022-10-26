@@ -53,24 +53,29 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                 if args.dataset_size > 0 and total_elt[trainingSetIdx] >= args.dataset_size:
                     raise StopIteration
                 batchIdx, (data, target) = next(iterators[trainingSetIdx])
-                data, target = data.to(args.device), target.to(args.device)
-                
-                for step in eval(args.steps):
-                    dataStep = data.clone()
-                    loss = 0.
+                if args.ssl:
+                    data = [d.to(args.device) for d in data]
+                else:
+                    data = [data.to(args.device)]
+                target = target.to(args.device)
+                batch_size = data[0].shape[0]
 
+                for step in eval(args.steps):
+                    loss = 0.
                     if 'lr' in step or 'mixup' in step or 'manifold mixup' in step or 'rotations' in step:
+                        dataStep = data[0].clone()
                         loss_lr, score = criterion['lr_rotation_mixup'][trainingSetIdx](backbone, dataStep, target, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
                         loss += loss_lr
 
                     # if 'dino' in step:
+                    #     dataStep = data[1:]
                     #     loss_dino, score = criterion['dino'][trainingSetIdx](backbone, dataStep, target)
                     #     loss += loss_dino
                     loss.backward()
 
-                losses[trainingSetIdx] += data.shape[0] * loss.item()
-                accuracies[trainingSetIdx] += data.shape[0] * score.item()
-                total_elt[trainingSetIdx] += data.shape[0]
+                losses[trainingSetIdx] += batch_size * loss.item()
+                accuracies[trainingSetIdx] += batch_size * score.item()
+                total_elt[trainingSetIdx] += batch_size
                 finished = (batchIdx + 1) / len(trainSet[trainingSetIdx]["dataloader"])
                 text += " " + opener + "{:3d}% {:.2e} {:6.2f}%".format(round(100*finished), losses[trainingSetIdx] / total_elt[trainingSetIdx], 100 * accuracies[trainingSetIdx] / total_elt[trainingSetIdx]) + ender
                 if 21 < 2 + len(trainSet[trainingSetIdx]["name"]):
@@ -212,7 +217,7 @@ for nRun in range(args.runs):
         criterion['lr_rotation_mixup'] = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in trainSet]
     if 'dino' in all_steps:
         from ssl import DINO
-        criterion['dino'] = DINO()
+        #criterion['dino'] = DINO(backbone=backbone, in_dim=outputDim, out_dim=256, )
     numParamsCriterions = 0
     for c in [item for sublist in criterion.values() for item in sublist] :
         c.to(args.device)
