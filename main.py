@@ -10,7 +10,7 @@ from args import args
 if not args.silent:
     print("Loading local files... ", end ='')
 from utils import *
-from dataloaders import trainSet, validationSet, testSet, train_trans
+from dataloaders import trainSet, validationSet, testSet
 import classifiers
 from few_shot_evaluation import EpisodicGenerator, ImageNetGenerator, OmniglotGenerator
 
@@ -60,7 +60,7 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                     loss = 0.
 
                     if 'lr' in step or 'mixup' in step or 'manifold mixup' in step or 'rotations' in step:
-                        loss_lr, score = criterion['lr_rotation_mixup'][trainingSetIdx](backbone, train_trans[trainingSetIdx](dataStep), target, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
+                        loss_lr, score = criterion['lr_rotation_mixup'][trainingSetIdx](backbone, dataStep, target, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
                         loss += loss_lr
 
                     # if 'dino' in step:

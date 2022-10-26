@@ -133,7 +133,7 @@ def miniimagenet(datasetName):
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ToTensor(), normalization])
 
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}, trans_train
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def tieredimagenet(datasetName):
     f = open(args.dataset_path + "datasets.json")    
@@ -159,7 +159,7 @@ def tieredimagenet(datasetName):
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ToTensor(), normalization])
 
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}, trans_train
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def cifarfs(datasetName):
     f = open(args.dataset_path + "datasets.json")    
@@ -587,11 +587,8 @@ def prepareDataLoader(name, is_train=False):
                  
     for elt in name:
         assert elt.lower() in dataset_options.keys(), f'The chosen dataset "{elt}" is not existing, please provide a valid option: \n {list(dataset_options.keys())}'
-        dict_results, train_trans = dataset_options[elt.lower()]()
-        result.append(dict_results)
-        train_trans_results.append(train_trans)
-
-    return result, train_trans_results
+        result.append(dataset_options[elt.lower()]())
+    return result
 def checkSize(dataset):
         if 'cifar' in dataset:
             image_size = 32
@@ -608,24 +605,23 @@ def checkSize(dataset):
 if args.training_dataset != "":
     try:
         eval(args.training_dataset)
-        trainSet, train_trans = prepareDataLoader(eval(args.training_dataset), is_train=True)
+        trainSet = prepareDataLoader(eval(args.training_dataset), is_train=True)
         if args.image_size == -1:
             args.image_size = checkSize(eval(args.training_dataset)[0])
     except NameError:
-        trainSet, train_trans = prepareDataLoader(args.training_dataset, is_train=True)
+        trainSet = prepareDataLoader(args.training_dataset, is_train=True)
         if args.image_size == -1:
             args.image_size = checkSize(args.training_dataset)
 else:
     trainSet = []
-    train_trans = []
 if args.validation_dataset != "":
     try:
         eval(args.validation_dataset)
-        validationSet, _ = prepareDataLoader(eval(args.validation_dataset), is_train=False)
+        validationSet = prepareDataLoader(eval(args.validation_dataset), is_train=False)
         if args.image_size == -1:
             args.image_size = checkSize(eval(args.validation_dataset)[0])
     except NameError:
-        validationSet, _ = prepareDataLoader(args.validation_dataset, is_train=False)
+        validationSet = prepareDataLoader(args.validation_dataset, is_train=False)
         if args.image_size == -1:
             args.image_size = checkSize(args.validation_dataset)
 else:
@@ -634,11 +630,11 @@ else:
 if args.test_dataset != "":
     try:
         eval(args.test_dataset)
-        testSet, _ = prepareDataLoader(eval(args.test_dataset), is_train=False)
+        testSet = prepareDataLoader(eval(args.test_dataset), is_train=False)
         if args.image_size == -1:
             args.image_size = checkSize(eval(args.test_dataset)[0])
     except NameError:
-        testSet, _ = prepareDataLoader(args.test_dataset, is_train=False)
+        testSet = prepareDataLoader(args.test_dataset, is_train=False)
         if args.image_size == -1:
             args.image_size = checkSize(args.test_dataset)
 else:
