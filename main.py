@@ -38,6 +38,13 @@ if args.deterministic:
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
+def to(obj, device):
+    if isinstance(obj, list):
+        return [to(o, device) for o in obj]
+    elif isinstance(obj, dict):
+        return {k:to(v, device) for k,v in obj.items()}
+    else:
+        return obj.to(device)
 
 def train(epoch, backbone, criterion, optimizer, scheduler):
     backbone.train()
@@ -54,21 +61,21 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                     raise StopIteration
                 batchIdx, (data, target) = next(iterators[trainingSetIdx])
                 if args.ssl:
-                    data = [d.to(args.device) for d in data]
+                    data = to(data, args.device)
                 else:
-                    data = [data.to(args.device)]
+                    data = {'supervised':data.to(args.device)}
                 target = target.to(args.device)
-                batch_size = data[0].shape[0]
+                batch_size = data['supervised'].shape[0]
 
                 for step in eval(args.steps):
                     loss = 0.
                     if 'lr' in step or 'mixup' in step or 'manifold mixup' in step or 'rotations' in step:
-                        dataStep = data[0].clone()
-                        loss_lr, score = criterion['lr_rotation_mixup'][trainingSetIdx](backbone, dataStep, target, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
+                        dataStep = data['supervised'].clone()
+                        loss_lr, score = criterion['supervised'][trainingSetIdx](backbone, dataStep, target, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
                         loss += loss_lr
 
                     # if 'dino' in step:
-                    #     dataStep = data[1:]
+                    #     dataStep = data['dino']
                     #     loss_dino, score = criterion['dino'][trainingSetIdx](backbone, dataStep, target)
                     #     loss += loss_dino
                     loss.backward()
@@ -214,7 +221,7 @@ for nRun in range(args.runs):
     criterion = {}
     all_steps = [item for sublist in eval(args.steps) for item in sublist]
     if 'lr' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or 'rotations' in all_steps:
-        criterion['lr_rotation_mixup'] = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in trainSet]
+        criterion['supervised'] = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in trainSet]
     if 'dino' in all_steps:
         from ssl import DINO
         #criterion['dino'] = DINO(backbone=backbone, in_dim=outputDim, out_dim=256, )
@@ -297,7 +304,7 @@ for nRun in range(args.runs):
                 featuresValidation = process(featuresValidation, meanVector)
                 tempValidationStats = testFewShot(featuresValidation, validationSet)
             else:
-                tempValidationStats = test(backbone, validationSet, criterion['lr_rotation_mixup'])
+                tempValidationStats = test(backbone, validationSet, criterion['supervised'])
             updateCSV(tempValidationStats)
             if (tempValidationStats[:,0].mean().item() < best_val and not args.few_shot) or (args.few_shot and tempValidationStats[:,0].mean().item() > best_val):
                 validationStats = tempValidationStats
@@ -314,7 +321,7 @@ for nRun in range(args.runs):
                 featuresTest = process(featuresTest, meanVector)
                 tempTestStats = testFewShot(featuresTest, testSet)
             else:
-                tempTestStats = test(backbone, testSet, criterion['lr_rotation_mixup'])
+                tempTestStats = test(backbone, testSet, criterion['supervised'])
             updateCSV(tempTestStats)
             if continueTest:
                 testStats = tempTestStats

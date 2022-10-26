@@ -43,10 +43,9 @@ class Solarization(object):
 
 class DINOAugmentation(object):
     def __init__(self, local_crops_number,
-                 image_size, supervised_transform, normalization=DEFAULT_NORMALIZATION, global_crops_scale=(0.5,1), local_crops_scale=(0.05, 0.4)):
+                 image_size, normalization=DEFAULT_NORMALIZATION, global_crops_scale=(0.5,1), local_crops_scale=(0.05, 0.4)):
         if normalization == None:
             normalization = DEFAULT_NORMALIZATION
-        self.supervised_transform = supervised_transform
         flip_and_color_jitter = transforms.Compose([
             transforms.RandomApply([transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.2, hue=0.1)],p=0.8),
             transforms.RandomGrayscale(p=0.2),
@@ -85,21 +84,27 @@ class DINOAugmentation(object):
 
     def __call__(self, image):
         crops = []
-        if self.supervised_transform is not None:
-            crops.append(self.supervised_transform(image))
         crops.append(self.global_transform1(image))
         crops.append(self.global_transform2(image))
         for _ in range(self.local_crops_number):
             crops.append(self.local_transform(image))
         return crops
-
+class SSLTransform(object):
+    def __init__(self, all_transforms):
+        self.all_transforms = all_transforms
+    def __call__(self, image):
+        out = {}
+        for name, T in self.all_transforms.items():
+            out[name] = T(image)#out.append(T(image))
+        return out
 def get_ssl_transform(image_size, supervised_transform, normalization):
     all_steps = [item for sublist in eval(args.steps) for item in sublist]
+    all_transforms = {'supervised':supervised_transform}
     for step in all_steps:
         if 'dino' in step:
             local_crops_number = 8
-            return DINOAugmentation(local_crops_number, image_size, supervised_transform, normalization=normalization, global_crops_scale=(0.5,1), local_crops_scale=(0.05, 0.4))
-    return supervised_transform
+            all_transforms['dino'] = DINOAugmentation(local_crops_number, image_size, normalization=normalization, global_crops_scale=(0.5,1), local_crops_scale=(0.05, 0.4))
+    return SSLTransform(all_transforms)
 
 class DINO(nn.Module):
     def __init__(self, backbone, in_dim, out_dim, temperature_student, temperature_teacher, norm_last_layer=True, moving_average_decay=0.999, head_hidden_dim=2048, bottleneck_dim=256):
