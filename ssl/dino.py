@@ -10,7 +10,15 @@ from PIL import ImageFilter, ImageOps
 import numpy as np
 
 DEFAULT_NCROPS = 8
-
+DEFAULT_HEAD_HIDDEN_DIM = 2048
+DEFAULT_OUT_DIM = 256
+DEFAULT_BOTTELENECK_DIM = 256
+DEFAULT_CENTER_MOMENTUM = 0.9
+DEFAULT_STUDENT_TEMPERATURE = 0.1
+DEFAULT_WARMUP_TEACHER_TEMP = 0.04
+DEFAULT_WARMUP_TEACHER_TEMP_EPOCHS = 30
+DEFAULT_TEACHER_TEMPERATURE = 0.04
+DEFAULT_MOMENTUM_TEACHER = 0.996
 class GaussianBlur(object):
     """
     Apply Gaussian Blur to the PIL image.
@@ -124,9 +132,8 @@ def cosine_scheduler(base_value, final_value, epochs, niter_per_ep, warmup_epoch
     schedule = np.concatenate((warmup_schedule, schedule))
     assert len(schedule) == epochs * niter_per_ep
     return schedule
-
 class DINO(nn.Module):
-    def __init__(self, in_dim, epochs, nSteps, head_hidden_dim=2048, out_dim=256, bottleneck_dim=256, center_momentum=0.9, student_temperature=0.1, norm_last_layer=True, warmup_teacher_temp=0.04, warmup_teacher_temp_epochs=30, teacher_temperature=0.04, momentum_teacher=0.996, ncrops=DEFAULT_NCROPS+2):
+    def __init__(self, in_dim, epochs, nSteps, head_hidden_dim=DEFAULT_HEAD_HIDDEN_DIM, out_dim=DEFAULT_OUT_DIM, bottleneck_dim=DEFAULT_BOTTELENECK_DIM, center_momentum=DEFAULT_CENTER_MOMENTUM, student_temperature=DEFAULT_STUDENT_TEMPERATURE, norm_last_layer=True, warmup_teacher_temp=DEFAULT_WARMUP_TEACHER_TEMP, warmup_teacher_temp_epochs=DEFAULT_WARMUP_TEACHER_TEMP_EPOCHS, teacher_temperature=DEFAULT_TEACHER_TEMPERATURE, momentum_teacher=DEFAULT_MOMENTUM_TEACHER, ncrops=DEFAULT_NCROPS+2):
         super(DINO, self).__init__()
         self.ncrops = ncrops
         self.center_momentum = center_momentum
