@@ -118,10 +118,4 @@ else:
 if args.epochs not in args.milestones and args.milestones != []:
     args.milestones.append(args.epochs)
 
-# Check if ssl step is enabled
-ssl_steps = [item for sublist in eval(args.steps) for item in sublist if item not in ['lr', '', 'mixup', 'manifold mixup', 'rotations']]
-if len(ssl_steps) > 0:
-    args.ssl = True
-else:
-    args.ssl = False
 print(" args,", end = '')
