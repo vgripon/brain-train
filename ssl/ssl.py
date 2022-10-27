@@ -1,11 +1,7 @@
 import torch
-import torch.nn as nn
-import random
 from args import args
 from torchvision import transforms
-from PIL import Image
-from PIL import ImageFilter, ImageOps
-from ssl.dino import DINOAugmentation, DEFAULT_NCROPS
+from ssl.dino import DINOAugmentation
 DEFAULT_NORMALIZATION = transforms.Normalize(mean=torch.tensor([0.485, 0.456, 0.406]),std=torch.tensor([0.229, 0.224, 0.225]))
 class SSLTransform(object):
     """
