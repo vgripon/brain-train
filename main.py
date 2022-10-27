@@ -241,7 +241,7 @@ for nRun in range(args.runs):
         criterion['supervised'] = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in trainSet]
     if 'dino' in all_steps:
         from ssl.dino import DINO
-        criterion['dino'] = [DINO(in_dim=outputDim, epochs=args.epochs, nSteps=nSteps, out_dim=256) for _ in trainSet]
+        criterion['dino'] = [DINO(in_dim=outputDim, epochs=args.epochs, nSteps=nSteps) for _ in trainSet]
         teacher['dino'] = deepcopy(backbone)
         for p in teacher['dino'].parameters(): # Freeze teacher
             p.requires_grad = False
