@@ -1,10 +1,10 @@
 # Loading main libraries
 import torch
+import torch.nn as nn 
 import random # for mixup
 import numpy as np # for manifold mixup
 import math
 from colorama import Fore, Back, Style
-
 # Loading other files
 from args import args
 if not args.silent:
@@ -243,6 +243,9 @@ for nRun in range(args.runs):
         from ssl.dino import DINO
         criterion['dino'] = [DINO(in_dim=outputDim, epochs=args.epochs, nSteps=nSteps) for _ in trainSet]
         teacher['dino'] = deepcopy(backbone)
+        backbone = nn.SyncBatchNorm.convert_sync_batchnorm(backbone)
+        teacher['dino'] = nn.SyncBatchNorm.convert_sync_batchnorm(teacher['dino'])
+        
         for p in teacher['dino'].parameters(): # Freeze teacher
             p.requires_grad = False
 
