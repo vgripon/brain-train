@@ -220,7 +220,7 @@ for nRun in range(args.runs):
     if 'lr' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or 'rotations' in all_steps:
         criterion['supervised'] = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in trainSet]
     if 'dino' in all_steps:
-        from ssl import DINO
+        from ssl.dino import DINO
         #criterion['dino'] = DINO(backbone=backbone, in_dim=outputDim, out_dim=256, )
     numParamsCriterions = 0
     for c in [item for sublist in criterion.values() for item in sublist] :

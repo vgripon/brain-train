@@ -11,7 +11,7 @@ import json
 import numpy as np
 from PIL import Image
 import copy
-from ssl import get_ssl_transform
+from ssl.ssl import get_ssl_transform
 from utils import *
 ### first define dataholder, which will be used as an argument to dataloaders
 class DataHolder():
