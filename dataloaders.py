@@ -122,7 +122,7 @@ def miniimagenet(datasetName):
     image_size = args.image_size if args.image_size>0 else 84
     if datasetName == 'train':
         supervised_transform = transforms.Compose([transforms.ToTensor(), normalization, transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()])
-        trans = get_ssl_transform(image_size, supervised_transform, normalization) 
+        trans = get_ssl_transform(image_size, supervised_transform, normalization)
        
     else:
         if args.sample_aug == 1:
@@ -167,7 +167,8 @@ def cifarfs(datasetName):
     image_size = args.image_size if args.image_size>0 else 32
 
     if datasetName == 'train':
-        trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization])
+        supervised_transform = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization])
+        trans = get_ssl_transform(image_size, supervised_transform, normalization)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([transforms.Resize([int(1.15*image_size), int(1.15*image_size)]), transforms.CenterCrop(image_size), transforms.ToTensor(), normalization])

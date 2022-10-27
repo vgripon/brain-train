@@ -1,10 +1,16 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+from copy import deepcopy
 import random
 from args import args
 from torchvision import transforms
 from PIL import Image
 from PIL import ImageFilter, ImageOps
+import numpy as np
+
+DEFAULT_NCROPS = 8
+
 class GaussianBlur(object):
     """
     Apply Gaussian Blur to the PIL image.
@@ -39,8 +45,8 @@ class Solarization(object):
             return img
 
 class DINOAugmentation(object):
-    def __init__(self, local_crops_number,
-                 image_size, normalization, global_crops_scale=(0.5,1), local_crops_scale=(0.05, 0.4)):
+    def __init__(self,
+                 image_size, normalization, local_crops_number=DEFAULT_NCROPS, global_crops_scale=(0.5,1), local_crops_scale=(0.05, 0.4)):
     
         flip_and_color_jitter = transforms.Compose([
             transforms.RandomApply([transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.2, hue=0.1)],p=0.8),
@@ -86,34 +92,113 @@ class DINOAugmentation(object):
             crops.append(self.local_transform(image))
         return crops
 
-class DINO(nn.Module):
-    def __init__(self, backbone, in_dim, out_dim, temperature_student, temperature_teacher, norm_last_layer=True, moving_average_decay=0.999, head_hidden_dim=2048, bottleneck_dim=256):
-        super(DINO, self).__init__()
-        self.teacher = backbone.clone().detach()
-        for p in self.teacher.parameters():
-            p.requires_grad = False
-        self.moving_average_decay = moving_average_decay
-        self.centering = nn.Parameter(torch.zeros(in_dim))
-        self.temperature_student = temperature_student
-        self.temperature_teacher = temperature_teacher
-
-        self.projector = self.build_projector(in_dim, out_dim, norm_last_layer, head_hidden_dim, bottleneck_dim)
+class DINOHead(nn.Module):
+    def __init__(self, in_dim, out_dim, norm_last_layer, head_hidden_dim, bottleneck_dim):
+        super(DINOHead, self).__init__()
+        layers = [nn.Linear(in_dim, head_hidden_dim), nn.BatchNorm1d(head_hidden_dim)]
+        for i in range(2):
+            layers.append(nn.Linear(head_hidden_dim, head_hidden_dim))
+            layers.append(nn.BatchNorm1d(head_hidden_dim))
+            layers.append(nn.GELU())
+        layers.append(nn.Linear(head_hidden_dim, bottleneck_dim))
+        self.mlp = nn.Sequential(*layers)
         self.last_layer = nn.utils.weight_norm(nn.Linear(bottleneck_dim, out_dim, bias=False))
         self.last_layer.weight_g.data.fill_(1)
         if norm_last_layer:
                 self.last_layer.weight_g.requires_grad = False
-        
-    def build_projector(self, in_dim, out_dim, norm_last_layer, head_hidden_dim, bottleneck_dim):
-        projector = [nn.Linear(in_dim, head_hidden_dim), nn.BatchNorm1d(head_hidden_dim)]
-        for i in range(2):
-            projector.append(nn.Linear(head_hidden_dim, head_hidden_dim))
-            projector.append(nn.BatchNorm1d(head_hidden_dim))
-            projector.append(nn.GELU())
-        projector.append(nn.Linear(head_hidden_dim, bottleneck_dim))
-        projector = nn.Sequential(*projector)
-        return projector
-        
-    def forward(self, student, dataStep, target):
-        pass
+    def forward(self, x):
+        x = self.mlp(x)
+        x = nn.functional.normalize(x, dim=-1, p=2)
+        x = self.last_layer(x)
+        return x
 
+def cosine_scheduler(base_value, final_value, epochs, niter_per_ep, warmup_epochs=0, start_warmup_value=0):
+    warmup_schedule = np.array([])
+    warmup_iters = warmup_epochs * niter_per_ep
+    if warmup_epochs > 0:
+        warmup_schedule = np.linspace(start_warmup_value, base_value, warmup_iters)
 
+    iters = np.arange(epochs * niter_per_ep - warmup_iters)
+    schedule = final_value + 0.5 * (base_value - final_value) * (1 + np.cos(np.pi * iters / len(iters)))
+
+    schedule = np.concatenate((warmup_schedule, schedule))
+    assert len(schedule) == epochs * niter_per_ep
+    return schedule
+
+class DINO(nn.Module):
+    def __init__(self, in_dim, epochs, nSteps, head_hidden_dim=2048, out_dim=256, bottleneck_dim=256, center_momentum=0.9, student_temperature=0.1, norm_last_layer=True, warmup_teacher_temp=0.04, warmup_teacher_temp_epochs=30, teacher_temperature=0.04, momentum_teacher=0.996, ncrops=DEFAULT_NCROPS+2):
+        super(DINO, self).__init__()
+        self.ncrops = ncrops
+        self.center_momentum = center_momentum
+        self.nSteps = nSteps
+        self.momentum_schedule = cosine_scheduler(momentum_teacher, 1, epochs, nSteps)
+        self.centering = nn.Parameter(torch.zeros(in_dim))
+        self.student_temperature = student_temperature
+        self.teacher_temp_schedule = np.concatenate((
+                np.linspace(warmup_teacher_temp,teacher_temperature, warmup_teacher_temp_epochs),
+                np.ones(epochs - warmup_teacher_temp_epochs) * teacher_temperature
+            ))
+        self.register_buffer("center", torch.zeros(1, out_dim)) # won't be updated by optimizer, not returned by model.parameters()
+        self.teacher_head = DINOHead(in_dim, out_dim, norm_last_layer, head_hidden_dim, bottleneck_dim)
+        self.student_head = DINOHead(in_dim, out_dim, norm_last_layer, head_hidden_dim, bottleneck_dim)
+
+    @torch.no_grad()
+    def update_teacher(self, student, teacher, epoch, batchIdx):
+        # EMA update for the teacher
+        m = self.momentum_schedule[self.nSteps*epoch+batchIdx]
+        for param_t, param_s in zip(teacher.parameters(), student.parameters()):
+            param_t.data.mul_(m).add_((1 - m)*param_s.detach().data)
+
+    def forward_multicrops(self, backbone, head, x):
+        # convert to list
+        if not isinstance(x, list):
+            x = [x]
+        idx_crops = torch.cumsum(torch.unique_consecutive(
+            torch.tensor([inp.shape[-1] for inp in x]),
+            return_counts=True,
+        )[1], 0)
+        start_idx, output = 0, torch.empty(0).to(x[0].device)
+        for end_idx in idx_crops:
+            _out = backbone(torch.cat(x[start_idx: end_idx]))
+            # The output is a tuple with XCiT model. See:
+            # https://github.com/facebookresearch/xcit/blob/master/xcit.py#L404-L405
+            if isinstance(_out, tuple):
+                _out = _out[0]
+            # accumulate outputs
+            output = torch.cat((output, _out))
+            start_idx = end_idx
+        # Run the head forward on the concatenated features.
+        return head(output)
+
+    def forward(self, student, teacher, dataStep, target, epoch):
+        teacher_output = self.forward_multicrops(teacher, self.teacher_head, dataStep[:2]) # only the 2 global views pass through the teacher
+        student_output = self.forward_multicrops(student, self.student_head, dataStep)
+        student_out = student_output / self.student_temperature
+        student_out = student_out.chunk(self.ncrops)
+        # teacher centering and sharpening
+        teacher_out = F.softmax((teacher_output - self.center) / self.teacher_temp_schedule[epoch], dim=-1)
+        teacher_out = teacher_out.detach().chunk(2)
+        total_loss = 0
+        n_loss_terms = 0
+        for iq, q in enumerate(teacher_out):
+            for v in range(len(student_out)):
+                if v == iq:
+                    # we skip cases where student and teacher operate on the same view
+                    continue
+                loss = torch.sum(-q * F.log_softmax(student_out[v], dim=-1), dim=-1)
+                total_loss += loss.mean()
+                n_loss_terms += 1
+        total_loss /= n_loss_terms
+        self.update_center(teacher_output)
+        return total_loss
+
+    @torch.no_grad()
+    def update_center(self, teacher_output):
+        """
+        Update center used for teacher output.
+        """
+        batch_center = torch.sum(teacher_output, dim=0, keepdim=True)
+        batch_center = batch_center / len(teacher_output) 
+
+        # ema update
+        self.center = self.center * self.center_momentum + batch_center * (1 - self.center_momentum)
