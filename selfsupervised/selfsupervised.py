@@ -1,7 +1,7 @@
 import torch
 from args import args
 from torchvision import transforms
-from ssl.dino import DINOAugmentation
+from selfsupervised.dino import DINOAugmentation
 DEFAULT_NORMALIZATION = transforms.Normalize(mean=torch.tensor([0.485, 0.456, 0.406]),std=torch.tensor([0.229, 0.224, 0.225]))
 class SSLTransform(object):
     """

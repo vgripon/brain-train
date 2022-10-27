@@ -240,7 +240,7 @@ for nRun in range(args.runs):
     if 'lr' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or 'rotations' in all_steps:
         criterion['supervised'] = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in trainSet]
     if 'dino' in all_steps:
-        from ssl.dino import DINO
+        from selfsupervised.dino import DINO
         criterion['dino'] = [DINO(in_dim=outputDim, epochs=args.epochs, nSteps=nSteps) for _ in trainSet]
         teacher['dino'] = deepcopy(backbone)
         
