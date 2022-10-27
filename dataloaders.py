@@ -5,10 +5,13 @@ from torchvision import transforms, datasets
 import random
 from args import args
 import torch
+import torch.nn as nn
 import os
 import json
 import numpy as np
 from PIL import Image
+import copy
+from ssl.ssl import get_ssl_transform
 from utils import *
 ### first define dataholder, which will be used as an argument to dataloaders
 class DataHolder():
@@ -80,7 +83,8 @@ def cifar10(dataset):
     image_size = args.image_size if args.image_size>0 else 32
 
     if dataset == 'train':
-        trans = transforms.Compose([transforms.RandomCrop(image_size, padding=4), transforms.RandomHorizontalFlip(), normalization]) 
+        supervised_transform = transforms.Compose([transforms.RandomCrop(image_size, padding=4), transforms.RandomHorizontalFlip(), normalization]) 
+        trans = get_ssl_transform(image_size, supervised_transform, normalization)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([normalization])
@@ -98,7 +102,9 @@ def cifar100(dataset):
     image_size = args.image_size if args.image_size>0 else 32
 
     if dataset == 'train':
-        trans = transforms.Compose([transforms.RandomCrop(image_size, padding=4), transforms.RandomHorizontalFlip(), normalization]) 
+        supervised_transform = transforms.Compose([transforms.RandomCrop(image_size, padding=4), transforms.RandomHorizontalFlip(), normalization]) 
+        trans = get_ssl_transform(image_size, supervised_transform, normalization)
+
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([normalization])
@@ -118,7 +124,9 @@ def miniimagenet(datasetName):
     normalization = transforms.Normalize([125.3/255, 123.0/255, 113.9/255], [63.0/255, 62.1/255, 66.7/255])
     image_size = args.image_size if args.image_size>0 else 84
     if datasetName == 'train':
-        trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization])
+        supervised_transform = transforms.Compose([transforms.ToTensor(), normalization, transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()])
+        trans = get_ssl_transform(image_size, supervised_transform, normalization)
+       
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([transforms.Resize(int(image_size*92/84)), transforms.CenterCrop(image_size), transforms.ToTensor(), normalization])
@@ -137,9 +145,9 @@ def tieredimagenet(datasetName):
 
     normalization = transforms.Normalize([125.3/255, 123.0/255, 113.9/255], [63.0/255, 62.1/255, 66.7/255])
     image_size = args.image_size if args.image_size>0 else 84
-
     if datasetName == 'train':
-        trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization])
+        supervised_transform = transforms.Compose([transforms.ToTensor(), normalization, transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()])
+        trans = get_ssl_transform(image_size, supervised_transform, normalization)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([transforms.Resize(int(image_size*92/84)), transforms.CenterCrop(image_size), transforms.ToTensor(), normalization])
@@ -160,7 +168,8 @@ def cifarfs(datasetName):
     image_size = args.image_size if args.image_size>0 else 32
 
     if datasetName == 'train':
-        trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization])
+        supervised_transform = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization])
+        trans = get_ssl_transform(image_size, supervised_transform, normalization)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([transforms.Resize([int(1.15*image_size), int(1.15*image_size)]), transforms.CenterCrop(image_size), transforms.ToTensor(), normalization])
@@ -179,7 +188,9 @@ def metadataset_imagenet(datasetName):
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     image_size = args.image_size if args.image_size>0 else 126
     if datasetName == 'train':
-        trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
+        supervised_transform = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
+        trans = get_ssl_transform(image_size, supervised_transform, normalization)
+
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
@@ -192,7 +203,9 @@ def imagenet(datasetName):
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     image_size = args.image_size if args.image_size>0 else 224
     if datasetName == 'train':
-        trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization])
+        supervised_transform = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization])
+        trans = get_ssl_transform(image_size, supervised_transform, normalization)
+
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([transforms.Resize(int(image_size*256/224)), transforms.CenterCrop(image_size), transforms.ToTensor(), normalization])
@@ -206,7 +219,10 @@ def imagenet(datasetName):
 
 def metadataset_imagenet_v2():
     image_size = args.image_size if args.image_size>0 else 126
-    trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
+    normalization = norm()
+    supervised_transform = transforms.Compose([ totensor(), normalization, bi_resize(target_size=image_size)])
+    trans = get_ssl_transform(image_size, supervised_transform, normalization)
+
     pytorchDataset = datasets.ImageNet(args.dataset_path + "/imagenet", split = "train", transform = trans)
     return {"dataloader": dataLoader(pytorchDataset, shuffle = True), "name":"metadataset_imagenet_v2_train", "num_classes":1000, "name_classes": pytorchDataset.classes}
 
@@ -215,10 +231,11 @@ def mnist(datasetName):
     pytorchDataset = datasets.MNIST(args.dataset_path, train = datasetName != "test", download = 'MNIST' not in os.listdir(args.dataset_path))
     data = pytorchDataset.data.clone().unsqueeze(1).float() / 256.
     targets = pytorchDataset.targets
-
+    image_size = args.image_size if args.image_size>0 else 28
     normalization = transforms.Normalize((0.1302,), (0.3069,))
+    supervised_transform = transforms.Compose([normalization])
+    trans = get_ssl_transform(image_size, supervised_transform, normalization)
 
-    trans = transforms.Compose([normalization])
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name": "mnist_" + datasetName, "num_classes": 10, "name_classes": list(range(10))}
 
@@ -231,7 +248,9 @@ def fashionMnist(datasetName):
 
     image_size = args.image_size if args.image_size>0 else 28
     if datasetName == 'train':
-        trans = transforms.Compose([transforms.RandomCrop(image_size, padding=4), transforms.RandomHorizontalFlip(), normalization])
+        supervised_transform = transforms.Compose([transforms.RandomCrop(image_size, padding=4), transforms.RandomHorizontalFlip(), normalization])
+        trans = get_ssl_transform(image_size, supervised_transform, normalization)
+
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([normalization])
@@ -248,10 +267,11 @@ def metadataset_dtd(datasetName):
     dataset = all_datasets["metadataset_dtd_" + datasetName]
     data = dataset["data"]
     targets = dataset["targets"]
-    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    normalization = norm()#transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     image_size = args.image_size if args.image_size>0 else 126
     if datasetName == 'train':
-        trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)]) 
+        supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
+        trans = get_ssl_transform(image_size, supervised_transform, normalization)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
@@ -268,10 +288,11 @@ def metadataset_cub(datasetName):
     dataset = all_datasets["metadataset_cub_" + datasetName]
     data = dataset["data"]
     targets = dataset["targets"]
-    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    normalization = norm()#transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     image_size = args.image_size if args.image_size>0 else 126
     if datasetName == 'train':
-        trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)]) 
+        supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
+        trans = get_ssl_transform(image_size, supervised_transform, normalization)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)]) 
@@ -287,10 +308,11 @@ def metadataset_fungi(datasetName):
     dataset = all_datasets["metadataset_fungi_" + datasetName]
     data = dataset["data"]
     targets = dataset["targets"]
-    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    normalization = norm()#transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     image_size = args.image_size if args.image_size>0 else 126
     if datasetName == 'train':
-        trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])  
+        supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
+        trans = get_ssl_transform(image_size, supervised_transform, normalization)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)]) 
@@ -306,10 +328,11 @@ def metadataset_aircraft(datasetName):
     dataset = all_datasets["metadataset_aircraft_" + datasetName]
     data = dataset["data"]
     targets = dataset["targets"]
-    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    normalization = norm()#transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     image_size = args.image_size if args.image_size>0 else 126
     if datasetName == 'train':
-        trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)]) 
+        supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
+        trans = get_ssl_transform(image_size, supervised_transform, normalization)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
@@ -326,10 +349,11 @@ def metadataset_mscoco(datasetName):
     dataset = all_datasets["metadataset_mscoco_" + datasetName]
     data = dataset["data"]
     targets = dataset["targets"]
-    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    normalization = norm()#transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     image_size = args.image_size if args.image_size>0 else 126
     if datasetName == 'train':
-        trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)]) 
+        supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
+        trans = get_ssl_transform(image_size, supervised_transform, normalization)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
@@ -344,10 +368,11 @@ def metadataset_vggflower(datasetName):
     dataset = all_datasets["metadataset_vgg_flower_" + datasetName]
     data = dataset["data"]
     targets = dataset["targets"]
-    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    normalization = norm()#transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     image_size = args.image_size if args.image_size>0 else 126
     if datasetName == 'train':
-        trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)]) 
+        supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
+        trans = get_ssl_transform(image_size, supervised_transform, normalization)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
@@ -364,10 +389,11 @@ def metadataset_quickdraw(datasetName):
     dataset = all_datasets["metadataset_quickdraw_" + datasetName]
     data = dataset["data"]
     targets = dataset["targets"]
-    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    normalization = norm()#transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     image_size = args.image_size if args.image_size>0 else 126
     if datasetName == 'train':
-        trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
+        supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
+        trans = get_ssl_transform(image_size, supervised_transform, normalization)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
@@ -383,10 +409,11 @@ def metadataset_omniglot(datasetName):
     dataset = all_datasets["metadataset_omniglot_" + datasetName]
     data = dataset["data"]
     targets = dataset["targets"]
-    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    normalization = norm(change_sign=-1)#transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     image_size = args.image_size if args.image_size>0 else 126
     if datasetName == 'train':
-        trans = transforms.Compose([ totensor(), norm(change_sign = -1), bi_resize(target_size=image_size)])
+        supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
+        trans = get_ssl_transform(image_size, supervised_transform, normalization)
 
     else:
         if args.sample_aug == 1:
@@ -403,10 +430,11 @@ def metadataset_traffic_signs(datasetName):
     dataset = all_datasets["metadataset_traffic_signs_" + datasetName]
     data = dataset["data"]
     targets = dataset["targets"]
-    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    normalization = norm()#transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     image_size = args.image_size if args.image_size>0 else 126
     if datasetName == 'train':
-        trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
+        supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
+        trans = get_ssl_transform(image_size, supervised_transform, normalization)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
@@ -485,8 +513,9 @@ def metaalbum(source, is_train=False):
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     image_size = 224 if args.backbone == "resnet50" else 126
     if is_train:
-        trans = transforms.Compose([
+        supervised_transform = transforms.Compose([
             transforms.RandomResizedCrop(image_size), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
+        trans = get_ssl_transform(image_size, supervised_transform, normalization)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([transforms.Resize(image_size), transforms.CenterCrop(image_size), transforms.ToTensor(), normalization])
@@ -498,6 +527,7 @@ def prepareDataLoader(name, is_train=False):
     if isinstance(name, str):
         name = [name]
     result = []
+    train_trans_results = []
     dataset_options = {
             "cifar10_train": lambda: cifar10("train"),
             "cifar10_validation": lambda: cifar10("validation"),
@@ -566,7 +596,7 @@ def prepareDataLoader(name, is_train=False):
             "metaalbum_mini":lambda: metaalbum("Mini", is_train=is_train),
             "metaalbum_extended":lambda: metaalbum("Extended", is_train=is_train),
         }
-    # Meta albums
+    # Adding Meta albums
     for setting in ['Micro', 'Macro', 'Extended']:
         for album in ['BCT', 'BRD', 'CRS', 'FLW', 'MD_MIX', 'PLK', 'PLT_VIL', 'RESISC', 'SPT', 'TEX']:
             dataset_options[f'metaalbum_{album.lower()}_{setting.lower()}'] = lambda: metaalbum(f'{album}_{setting}', is_train=is_train)    
@@ -600,7 +630,6 @@ if args.training_dataset != "":
             args.image_size = checkSize(args.training_dataset)
 else:
     trainSet = []
-
 if args.validation_dataset != "":
     try:
         eval(args.validation_dataset)
