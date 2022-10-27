@@ -10,6 +10,8 @@ from PIL import ImageFilter, ImageOps
 import numpy as np
 
 DEFAULT_NCROPS = 8
+DEFAULT_GLOBAL_CROPS_SCALE = (0.5,1)
+DEFAULT_LOCAL_CROPS_SCALE = (0.05, 0.4)
 DEFAULT_HEAD_HIDDEN_DIM = 2048
 DEFAULT_OUT_DIM = 256
 DEFAULT_BOTTELENECK_DIM = 256
@@ -55,7 +57,7 @@ class Solarization(object):
 
 class DINOAugmentation(object):
     def __init__(self,
-                 image_size, normalization, local_crops_number=DEFAULT_NCROPS, global_crops_scale=(0.5,1), local_crops_scale=(0.05, 0.4)):
+                 image_size, normalization, local_crops_number=DEFAULT_NCROPS, global_crops_scale=DEFAULT_GLOBAL_CROPS_SCALE, local_crops_scale=DEFAULT_LOCAL_CROPS_SCALE):
     
         flip_and_color_jitter = transforms.Compose([
             transforms.RandomApply([transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.2, hue=0.1)],p=0.8),
