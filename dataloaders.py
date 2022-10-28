@@ -227,6 +227,25 @@ def metadataset_imagenet_v2():
     return {"dataloader": dataLoader(pytorchDataset, shuffle = True), "name":"metadataset_imagenet_v2_train", "num_classes":1000, "name_classes": pytorchDataset.classes}
 
 
+def metadataset_imagenet_v2():
+    f = open(args.dataset_path + "datasets.json")    
+    all_datasets = json.loads(f.read())
+    f.close()
+    dataset_train = all_datasets["metadataset_imagenet_train"]
+    dataset_validation = all_datasets["metadataset_imagenet_validation"]
+    dataset_test = all_datasets["metadataset_imagenet_test"]
+    data = dataset_train["data"] + dataset_validation["data"] + dataset_test["data"]
+    train_classes = dataset_train["num_classes"]
+    validation_classes = dataset_validation["num_classes"]
+    test_classes = dataset_test["num_classes"]
+    num_classes = train_classes + validation_classes + test_classes
+    targets = dataset_train["targets"] + [t + train_classes for t in dataset_validation["targets"]] + [t + train_classes + validation_classes for t in dataset_test["targets"]]
+    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    image_size = args.image_size if args.image_size>0 else 126
+    supervised_transform = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
+    trans = get_ssl_transform(image_size, supervised_transform, normalization)
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = True), "name":"metadataset_imagenet_v2_train", "num_classes":num_classes, "name_classes": dataset_train["name_classes"]+dataset_validation["name_classes"]+dataset_test["name_classes"]}
+
 def mnist(datasetName):
     pytorchDataset = datasets.MNIST(args.dataset_path, train = datasetName != "test", download = 'MNIST' not in os.listdir(args.dataset_path))
     data = pytorchDataset.data.clone().unsqueeze(1).float() / 256.
