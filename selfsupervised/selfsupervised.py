@@ -16,7 +16,10 @@ class SSLTransform(object):
         return out
 def get_ssl_transform(image_size, supervised_transform, normalization=DEFAULT_NORMALIZATION):
     all_steps = [item for sublist in eval(args.steps) for item in sublist]
-    all_transforms = {'supervised':supervised_transform}
+    if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps:
+        all_transforms = {'supervised':supervised_transform}
+    else:
+        all_transforms = {}
     for step in all_steps:
         if 'dino' in step:
             all_transforms['dino'] = DINOAugmentation(image_size, normalization=normalization)

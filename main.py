@@ -65,7 +65,6 @@ def train(epoch, backbone, teacher, criterion, optimizer, scheduler):
                 batch_idx_list.append(batchIdx)
                 data = to(data, args.device)
                 target = target.to(args.device)
-                batch_size = data['supervised'].shape[0]
 
                 for step in eval(args.steps):
                     loss, score = 0., torch.zeros(1)
@@ -81,9 +80,9 @@ def train(epoch, backbone, teacher, criterion, optimizer, scheduler):
                 
                     loss.backward()
 
-                losses[trainingSetIdx] += batch_size * loss.item()
-                accuracies[trainingSetIdx] += batch_size * score.item()
-                total_elt[trainingSetIdx] += batch_size
+                losses[trainingSetIdx] += args.batch_size * loss.item()
+                accuracies[trainingSetIdx] += args.batch_size * score.item()
+                total_elt[trainingSetIdx] += args.batch_size
                 finished = (batchIdx + 1) / len(trainSet[trainingSetIdx]["dataloader"])
                 text += " " + opener + "{:3d}% {:.2e} {:6.2f}%".format(round(100*finished), losses[trainingSetIdx] / total_elt[trainingSetIdx], 100 * accuracies[trainingSetIdx] / total_elt[trainingSetIdx]) + ender
                 if 21 < 2 + len(trainSet[trainingSetIdx]["name"]):

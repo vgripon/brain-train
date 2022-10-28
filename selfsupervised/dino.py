@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from copy import deepcopy
 import random
 from args import args
 from torchvision import transforms
