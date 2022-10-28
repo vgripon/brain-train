@@ -86,6 +86,10 @@ parser.add_argument("--few-shot-classifier", type=str, default="ncm", help="clas
 parser.add_argument("--sample-aug", type=int, default=1, help="number of versions of support/query samples (using random crop) 1 means no augmentation")
 parser.add_argument("--test-features", type=str, default="", help="test few-shot runs on saved features")
 
+
+parser.add_argument("--proxy", type=str, default="", help="proxy metric to identify the best backbone")
+parser.add_argument("--target-dataset", type=str, default="", help="target_dataset")
+
 args = parser.parse_args()
 
 if args.dataset != "":
