@@ -6,18 +6,43 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import random
+import numpy as np
 from args import args
+
 
 ### Logistic Regression module, which is the classic way to train deep models for classification
 class LR(nn.Module):
-    def __init__(self, inputDim, numClasses):
+    def __init__(self, inputDim, numClasses, backbone=None):
         super(LR, self).__init__()
         self.fc = nn.Linear(inputDim, numClasses)
         self.fcRotations = nn.Linear(inputDim, 4)
         self.criterion = nn.CrossEntropyLoss() if args.label_smoothing == 0 else LabelSmoothingLoss(numClasses, args.label_smoothing)
+        self.backbone = backbone
+    def forward(self, backbone, dataStep, y, rotation=False, mixup=False, manifold_mixup=False):
+        lbda, perm, mixupType = None, None, None
+        if mixup or manifold_mixup:
+            perm = torch.randperm(dataStep.shape[0])
+            if mixup:
+                lbda = random.random()
+                mixupType = "mixup"
+            else:
+                lbda = np.random.beta(2,2)
+                mixupType = "manifold mixup"
+        yRotations = None
+        if rotation:
+            bs = dataStep.shape[0] // 4
+            targetRot = torch.LongTensor(dataStep.shape[0]).to(args.device)
+            targetRot[:bs] = 0
+            dataStep[bs:] = dataStep[bs:].transpose(3,2).flip(2)
+            targetRot[bs:2*bs] = 1
+            dataStep[2*bs:] = dataStep[2*bs:].transpose(3,2).flip(2)
+            targetRot[2*bs:3*bs] = 2
+            dataStep[3*bs:] = dataStep[3*bs:].transpose(3,2).flip(2)
+            targetRot[3*bs:] = 3
+            yRotations = targetRot
 
-    def forward(self, x, y, yRotations = None, lbda = None, perm = None):
+        x = backbone(dataStep, mixup = mixupType, lbda = lbda, perm = perm)
         output = self.fc(x)
         decision = output.argmax(dim = 1)
         score = (decision - y == 0).float().mean()

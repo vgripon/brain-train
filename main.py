@@ -1,10 +1,10 @@
 # Loading main libraries
 import torch
+import torch.nn as nn 
 import random # for mixup
 import numpy as np # for manifold mixup
 import math
 from colorama import Fore, Back, Style
-
 # Loading other files
 from args import args
 if not args.silent:
@@ -12,9 +12,8 @@ if not args.silent:
 from utils import *
 from dataloaders import trainSet, validationSet, testSet
 import classifiers
-import backbones
-import backbones1d
 from few_shot_evaluation import EpisodicGenerator, ImageNetGenerator, OmniglotGenerator
+from copy import deepcopy
 
 if args.wandb!='':
     import wandb
@@ -40,10 +39,17 @@ if args.deterministic:
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
+def to(obj, device):
+    if isinstance(obj, list):
+        return [to(o, device) for o in obj]
+    elif isinstance(obj, dict):
+        return {k:to(v, device) for k,v in obj.items()}
+    else:
+        return obj.to(device)
 
-def train(epoch, backbone, criterion, optimizer, scheduler):
+def train(epoch, backbone, teacher, criterion, optimizer, scheduler):
     backbone.train()
-    for c in criterion:
+    for c in [item for sublist in criterion.values() for item in sublist] :
         c.train()
     iterators = [enumerate(dataset["dataloader"]) for dataset in trainSet]
     losses, accuracies, total_elt = torch.zeros(len(iterators)), torch.zeros(len(iterators)), torch.zeros(len(iterators))
@@ -51,45 +57,32 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
         try:
             optimizer.zero_grad()
             text = ""
+            batch_idx_list = []
             for trainingSetIdx in range(len(iterators)):
                 if args.dataset_size > 0 and total_elt[trainingSetIdx] >= args.dataset_size:
                     raise StopIteration
                 batchIdx, (data, target) = next(iterators[trainingSetIdx])
-                data, target = data.to(args.device), target.to(args.device)
+                batch_idx_list.append(batchIdx)
+                data = to(data, args.device)
+                target = target.to(args.device)
 
                 for step in eval(args.steps):
-                    dataStep = data.clone()
-                    
-                    if "mixup" in step or "manifold mixup" in step:
-                        perm = torch.randperm(dataStep.shape[0])
-                        if "mixup" in step:
-                            lbda = random.random()
-                            mixupType = "mixup"
-                        else:
-                            lbda = np.random.beta(2,2)
-                            mixupType = "manifold mixup"
-                    else:
-                        lbda, perm, mixupType = None, None, None
+                    loss, score = 0., torch.zeros(1)
+                    if 'lr' in step or 'mixup' in step or 'manifold mixup' in step or 'rotations' in step:
+                        dataStep = data['supervised'].clone()
+                        loss_lr, score = criterion['supervised'][trainingSetIdx](backbone, dataStep, target, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
+                        loss += loss_lr
 
-                    if "rotations" in step:
-                        bs = dataStep.shape[0] // 4
-                        targetRot = torch.LongTensor(dataStep.shape[0]).to(args.device)
-                        targetRot[:bs] = 0
-                        dataStep[bs:] = dataStep[bs:].transpose(3,2).flip(2)
-                        targetRot[bs:2*bs] = 1
-                        dataStep[2*bs:] = dataStep[2*bs:].transpose(3,2).flip(2)
-                        targetRot[2*bs:3*bs] = 2
-                        dataStep[3*bs:] = dataStep[3*bs:].transpose(3,2).flip(2)
-                        targetRot[3*bs:] = 3
-                    else:
-                        targetRot = None
-
-                    loss, score = criterion[trainingSetIdx](backbone(dataStep, mixup = mixupType, lbda = lbda, perm = perm), target, yRotations = targetRot if "rotations" in step else None, lbda = lbda, perm = perm)
+                    if 'dino' in step:
+                        dataStep = data['dino']
+                        loss_dino = criterion['dino'][trainingSetIdx](backbone, teacher['dino'], dataStep, target, epoch)
+                        loss += loss_dino
+                
                     loss.backward()
 
-                losses[trainingSetIdx] += data.shape[0] * loss.item()
-                accuracies[trainingSetIdx] += data.shape[0] * score.item()
-                total_elt[trainingSetIdx] += data.shape[0]
+                losses[trainingSetIdx] += args.batch_size * loss.item()
+                accuracies[trainingSetIdx] += args.batch_size * score.item()
+                total_elt[trainingSetIdx] += args.batch_size
                 finished = (batchIdx + 1) / len(trainSet[trainingSetIdx]["dataloader"])
                 text += " " + opener + "{:3d}% {:.2e} {:6.2f}%".format(round(100*finished), losses[trainingSetIdx] / total_elt[trainingSetIdx], 100 * accuracies[trainingSetIdx] / total_elt[trainingSetIdx]) + ender
                 if 21 < 2 + len(trainSet[trainingSetIdx]["name"]):
@@ -99,6 +92,13 @@ def train(epoch, backbone, criterion, optimizer, scheduler):
                 wandb.log({"epoch":epoch, "train_loss": losses / total_elt})
             display("\r" + Style.RESET_ALL + "{:4d} {:.2e}".format(epoch, float(scheduler.get_last_lr()[0])) + text, end = '', force = (finished == 1))
             scheduler.step()
+            # update teachers in case of momentum encoders
+            if teacher != {}:
+                for trainingSetIdx in range(len(iterators)):
+                    for step in eval(args.steps):
+                        if 'dino' in step:
+                            criterion['dino'][trainingSetIdx].update_teacher(backbone, teacher['dino'], epoch, batch_idx_list[trainingSetIdx])
+                
         except StopIteration:
             return torch.stack([losses / total_elt, 100 * accuracies / total_elt]).transpose(0,1)
 
@@ -112,7 +112,7 @@ def test(backbone, datasets, criterion):
         with torch.no_grad():
             for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
                 data, target = data.to(args.device), target.to(args.device)
-                loss, score = criterion[testSetIdx](backbone(data), target)
+                loss, score = criterion[testSetIdx](backbone, data, target)
                 losses += data.shape[0] * loss.item()
                 accuracies += data.shape[0] * score.item()
                 total_elt += data.shape[0]
@@ -212,8 +212,10 @@ for nRun in range(args.runs):
     if not args.silent:
         print("Preparing backbone... ", end='')
     if args.audio:
+        import backbones1d
         backbone, outputDim = backbones1d.prepareBackbone()
     else:
+        import backbones
         backbone, outputDim = backbones.prepareBackbone()
     if args.load_backbone != "":
         backbone.load_state_dict(torch.load(args.load_backbone))
@@ -223,9 +225,29 @@ for nRun in range(args.runs):
         print(" containing {:,} parameters and feature space of dim {:d}.".format(numParamsBackbone, outputDim))
 
         print("Preparing criterion(s) and classifier(s)... ", end='')
-    criterion = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in trainSet]
+    
+    try:
+        nSteps = torch.min(torch.tensor([len(dataset["dataloader"]) for dataset in trainSet])).item()
+        if args.dataset_size > 0 and math.ceil(args.dataset_size / args.batch_size) < nSteps:
+            nSteps = math.ceil(args.dataset_size / args.batch_size)
+    except:
+        nSteps = 0
+    
+    criterion = {}
+    teacher = {}
+    all_steps = [item for sublist in eval(args.steps) for item in sublist]
+    if 'lr' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or 'rotations' in all_steps:
+        criterion['supervised'] = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in trainSet]
+    if 'dino' in all_steps:
+        from selfsupervised.dino import DINO
+        criterion['dino'] = [DINO(in_dim=outputDim, epochs=args.epochs, nSteps=nSteps) for _ in trainSet]
+        teacher['dino'] = deepcopy(backbone)
+        
+        for p in teacher['dino'].parameters(): # Freeze teacher
+            p.requires_grad = False
+
     numParamsCriterions = 0
-    for c in criterion:
+    for c in [item for sublist in criterion.values() for item in sublist] :
         c.to(args.device)
         numParamsCriterions += torch.tensor([m.numel() for m in c.parameters()]).sum().item()
     if not args.silent:
@@ -236,7 +258,7 @@ for nRun in range(args.runs):
         parameters = list(backbone.parameters())
     else:
         parameters = []
-    for c in criterion:
+    for c in [item for sublist in criterion.values() for item in sublist] :
         parameters += list(c.parameters())
     if not args.silent:
         print(" done.")
@@ -246,12 +268,7 @@ for nRun in range(args.runs):
     best_val = 1e10 if not args.few_shot else 0
     lr = args.lr
 
-    try:
-        nSteps = torch.min(torch.tensor([len(dataset["dataloader"]) for dataset in trainSet])).item()
-        if args.dataset_size > 0 and math.ceil(args.dataset_size / args.batch_size) < nSteps:
-            nSteps = math.ceil(args.dataset_size / args.batch_size)
-    except:
-        nSteps = 0
+
 
     for epoch in range(args.epochs):
         if (epoch % 30 == 0 and not args.silent) or epoch == 0 or epoch == args.skip_epochs:
@@ -286,7 +303,7 @@ for nRun in range(args.runs):
         if trainSet != []:
             opener = Fore.CYAN
             if not args.freeze_backbone:
-                trainStats = train(epoch + 1, backbone, criterion, optimizer, scheduler)
+                trainStats = train(epoch + 1, backbone, teacher, criterion, optimizer, scheduler)
                 updateCSV(trainStats, epoch = epoch)
             if (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
                 if epoch >= args.skip_epochs:
@@ -303,7 +320,7 @@ for nRun in range(args.runs):
                 featuresValidation = process(featuresValidation, meanVector)
                 tempValidationStats = testFewShot(featuresValidation, validationSet)
             else:
-                tempValidationStats = test(backbone, validationSet, criterion)
+                tempValidationStats = test(backbone, validationSet, criterion['supervised'])
             updateCSV(tempValidationStats)
             if (tempValidationStats[:,0].mean().item() < best_val and not args.few_shot) or (args.few_shot and tempValidationStats[:,0].mean().item() > best_val):
                 validationStats = tempValidationStats
@@ -320,7 +337,7 @@ for nRun in range(args.runs):
                 featuresTest = process(featuresTest, meanVector)
                 tempTestStats = testFewShot(featuresTest, testSet)
             else:
-                tempTestStats = test(backbone, testSet, criterion)
+                tempTestStats = test(backbone, testSet, criterion['supervised'])
             updateCSV(tempTestStats)
             if continueTest:
                 testStats = tempTestStats

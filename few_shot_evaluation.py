@@ -43,9 +43,12 @@ class EpisodicGenerator():
         return choices 
     
     def get_query_size(self, choice_classes, n_queries):
-        min_queries = n_queries if n_queries != 0 else 10
-        query_size = min([int(0.5*self.num_elements_per_class[c]) for c in choice_classes]) 
-        query_size = min(min_queries, query_size)
+        if n_queries == 0:
+            min_queries = n_queries if n_queries != 0 else 10
+            query_size = min([int(0.5*self.num_elements_per_class[c]) for c in choice_classes]) 
+            query_size = min(min_queries, query_size)
+        else:
+            query_size = n_queries
         return query_size
 
     def get_support_size(self, choice_classes, query_size, n_shots):
