@@ -59,10 +59,6 @@ class DINOAugmentation(object):
                  image_size, normalization, local_crops_number=DEFAULT_NCROPS, global_crops_scale=DEFAULT_GLOBAL_CROPS_SCALE, local_crops_scale=DEFAULT_LOCAL_CROPS_SCALE):
     
         flip_and_color_jitter = transforms.Compose([
-            transforms.RandomApply([transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.2, hue=0.1)],p=0.8),
-            transforms.RandomGrayscale(p=0.2),
-        ])
-        flip_and_color_jitter = transforms.Compose([
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.RandomApply([transforms.ColorJitter(0.8, 0.8, 0.8, 0.2)],p = 0.3),
             transforms.RandomGrayscale(p=0.2),
