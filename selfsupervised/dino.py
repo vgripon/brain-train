@@ -181,7 +181,7 @@ class DINO(nn.Module):
         student_out = student_output / self.student_temperature
         student_out = student_out.chunk(self.ncrops)
         # teacher centering and sharpening
-        teacher_out = F.softmax((teacher_output - self.center) / self.teacher_temp_schedule[epoch], dim=-1)
+        teacher_out = F.softmax((teacher_output - self.center) / self.teacher_temp_schedule[epoch-1], dim=-1)
         teacher_out = teacher_out.detach().chunk(2)
         total_loss = 0
         n_loss_terms = 0
