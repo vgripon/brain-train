@@ -20,12 +20,16 @@ def timeToStr(time):
     return "{:d}h{:02d}m{:02d}s".format(hours, minutes, seconds)
 
 def confInterval(scores):
+    try:
+        scores = scores.numpy()
+    except:
+        pass
     if scores.shape[0] == 1:
         low, up = -1., -1.
     elif scores.shape[0] < 30:
-        low, up = st.t.interval(0.95, df = scores.shape[0] - 1, loc = scores.mean(), scale = st.sem(scores.numpy()))
+        low, up = st.t.interval(0.95, df = scores.shape[0] - 1, loc = scores.mean(), scale = st.sem(scores))
     else:
-        low, up = st.norm.interval(0.95, loc = scores.mean(), scale = st.sem(scores.numpy()))
+        low, up = st.norm.interval(0.95, loc = scores.mean(), scale = st.sem(scores))
     return low, up
 
 def createCSV(trainSet, validationSet, testSet):
