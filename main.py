@@ -75,7 +75,7 @@ def train(epoch, backbone, teacher, criterion, optimizer, scheduler):
 
                     if 'dino' in step:
                         dataStep = data['dino']
-                        loss_dino = criterion['dino'][trainingSetIdx](backbone, teacher['dino'], dataStep, target, epoch)
+                        loss_dino = criterion['dino'][trainingSetIdx](backbone, teacher['dino'], dataStep, target, epoch-1)
                         loss += loss_dino
                 
                     loss.backward()
@@ -97,7 +97,7 @@ def train(epoch, backbone, teacher, criterion, optimizer, scheduler):
                 for trainingSetIdx in range(len(iterators)):
                     for step in eval(args.steps):
                         if 'dino' in step:
-                            criterion['dino'][trainingSetIdx].update_teacher(backbone, teacher['dino'], epoch, batch_idx_list[trainingSetIdx])
+                            criterion['dino'][trainingSetIdx].update_teacher(backbone, teacher['dino'], epoch-1, batch_idx_list[trainingSetIdx])
                 
         except StopIteration:
             return torch.stack([losses / total_elt, 100 * accuracies / total_elt]).transpose(0,1)
