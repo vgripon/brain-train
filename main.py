@@ -77,6 +77,16 @@ def train(epoch, backbone, teacher, criterion, optimizer, scheduler):
                         dataStep = data['dino']
                         loss_dino = criterion['dino'][trainingSetIdx](backbone, teacher['dino'], dataStep, target, epoch)
                         loss += loss_dino
+
+                    if 'simclr' in step:
+                        dataStep = data['simclr']
+                        loss_simclr = criterion['simclr'][trainingSetIdx](backbone, dataStep, target, epoch)
+                        loss += loss_simclr
+
+                    if 'barlowtwins' in step:
+                        dataStep = data['barlowtwins']
+                        loss_barlowtwins = criterion['barlowtwins'][trainingSetIdx](backbone, dataStep, target, epoch)
+                        loss += loss_barlowtwins
                 
                     loss.backward()
 
@@ -241,10 +251,15 @@ for nRun in range(args.runs):
     if 'dino' in all_steps:
         from selfsupervised.dino import DINO
         criterion['dino'] = [DINO(in_dim=outputDim, epochs=args.epochs, nSteps=nSteps) for _ in trainSet]
-        teacher['dino'] = deepcopy(backbone)
-        
+        teacher['dino'] = deepcopy(backbone) 
         for p in teacher['dino'].parameters(): # Freeze teacher
             p.requires_grad = False
+    if 'simclr' in all_steps:
+        from selfsupervised.simclr import SIMCLR
+        criterion['simclr'] = [SIMCLR(in_dim=outputDim, epochs=args.epochs, nSteps=nSteps) for _ in trainSet]
+    if 'barlowtwins' in all_steps:
+        from selfsupervised.barlowtwins import BARLOWTWINS
+        criterion['barlowtwins'] = [BARLOWTWINS(in_dim=outputDim, epochs=args.epochs, nSteps=nSteps) for _ in trainSet]
 
     numParamsCriterions = 0
     for c in [item for sublist in criterion.values() for item in sublist] :

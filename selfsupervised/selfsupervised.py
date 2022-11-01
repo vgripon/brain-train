@@ -2,6 +2,8 @@ import torch
 from args import args
 from torchvision import transforms
 from selfsupervised.dino import DINOAugmentation
+from selfsupervised.simclr import SIMCLRAugmentation
+from selfsupervised.barlowtwins import BARLOWTWINSAugmentation
 DEFAULT_NORMALIZATION = transforms.Normalize(mean=torch.tensor([0.485, 0.456, 0.406]),std=torch.tensor([0.229, 0.224, 0.225]))
 class SSLTransform(object):
     """
@@ -23,4 +25,8 @@ def get_ssl_transform(image_size, supervised_transform, normalization=DEFAULT_NO
     for step in all_steps:
         if 'dino' in step:
             all_transforms['dino'] = DINOAugmentation(image_size, normalization=normalization)
+        if 'simclr' in step:
+            all_transforms['simclr'] = SIMCLRAugmentation(image_size, normalization=normalization)
+        if 'barlowtwins' in step:
+            all_transforms['barlowtwins'] = SIMCLRAugmentation(image_size, normalization=normalization)
     return SSLTransform(all_transforms)
