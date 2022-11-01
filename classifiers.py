@@ -123,9 +123,12 @@ def ncm(shots, queries):
     score = 0
     total = 0
     for i, queriesClass in enumerate(queries):
-        distances = torch.norm(queriesClass.unsqueeze(1) - centroids.unsqueeze(0), dim = 2)
-        score += (distances.argmin(dim = 1) - i == 0).float().sum()
-        total += queriesClass.shape[0]
+        if queriesClass == []:
+            pass
+        else:
+            distances = torch.norm(queriesClass.unsqueeze(1) - centroids.unsqueeze(0), dim = 2)
+            score += (distances.argmin(dim = 1) - i == 0).float().sum()
+            total += queriesClass.shape[0]
     return score / total
 
 ###  softkmeans

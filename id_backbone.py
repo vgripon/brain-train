@@ -15,9 +15,10 @@ from time import time
 import json
 
 real_dp = args.dataset_path
-data_info_omniglot_file = os.path.join(args.dataset_path, 'omniglot_test.json')
-with open(data_info_omniglot_file) as f:
-    data_info_omniglot = json.load(f)
+if 'omniglot' in args.target_dataset:
+    data_info_omniglot_file = os.path.join(args.dataset_path, 'omniglot_test.json')
+    with open(data_info_omniglot_file) as f:
+        data_info_omniglot = json.load(f)
 
 def SNR(list_distrib):
     #print('n_ways distrib', len(list_distrib))
@@ -81,7 +82,7 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
                 fake_data = fake_samples2(shots)
                 fake_acc.append(classifiers.evalFewShotRun(shots, fake_data))
             if 'loo' in proxy:
-                loo.append(leave_one_out(shots))
+                loo.append(leave_one_out_2(shots))
         accs = 100 * torch.tensor(accs)
         fake_acc = 100 * torch.tensor(fake_acc)
         chance = 100 * torch.tensor(chance)
@@ -112,7 +113,7 @@ def fake_samples2(list_distrib, n_sample = 100):
     for i in range(n_ways):
         x= centered[i]
         if x.shape[0]!=1:
-            cov = (torch.matmul(x.T, x) + torch.eye(x.shape[1]) * 0.001) / (x.shape[0]-1)
+            cov = (torch.matmul(x.T, x) + torch.eye(x.shape[1]) * 0.001).to(args.device) / (x.shape[0]-1)
             check = torch.linalg.cholesky_ex(cov).info.eq(0).unsqueeze(0)
             covs.append(cov)
         else:
@@ -171,10 +172,10 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
         L[i,1] = np.array(res[proxy])
     print(dataset, n_shots, 'n_shots', 'proxy', proxy)
     random_backbone = np.take_along_axis(L[:,0],np.random.randint(0, N+1, L.shape[2] ).reshape(1,-1), axis = 0)
-    print_metric(random_backbone, 'random_backbone')
+    print_metric(random_backbone.ravel(), 'random_backbone')
     print_metric(res['chance'] , 'chance')
     opti = np.take_along_axis(L[:,0],L[:,1].argmax(0)[None,:], axis =0)
-    print_metric(opti, 'opti: ')
+    print_metric(opti.ravel(), 'opti: ')
     baseline = res_baseline['acc']
     print_metric(baseline,'baseline: ')
     print_metric(L[N,0,:],'sanity check baseline: ')
@@ -186,12 +187,31 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
 def leave_one_out(shots):
     n_ways = len(shots)
     nb_shots =  np.array([shots[j].shape[0] for j in range(n_ways)])
+    print('nb_shots' , nb_shots )
     max_shots = np.max(nb_shots)
     acc = 0
     for i in range(max_shots):
         pop_index = [i%nb_shots[j] for j in range(n_ways)]
         q = [shots[j][pop_index[j]].unsqueeze(0) for j in range(n_ways)]
         shots_loo = [ torch.cat((shots[j][:pop_index[j]],shots[j][pop_index[j]+1:]))  for j in range(n_ways) ] 
+        print('shots_loo' , [len(x) for x in shots_loo] )
+        acc += classifiers.evalFewShotRun(shots_loo, q)/max_shots
+    return acc
+
+def leave_one_out_2(shots):
+    n_ways = len(shots)
+    nb_shots =  np.array([shots[j].shape[0] for j in range(n_ways)])
+    max_shots = np.max(nb_shots)
+    acc = 0
+    for i in range(max_shots-1):
+        q,shots_loo=[],[]
+        for j in range(n_ways):
+            if i >= nb_shots[j]-1:
+                q.append([])
+                shots_loo.append(shots[j])
+            else:
+                q.append(shots[j][i].unsqueeze(0))
+                shots_loo.append(torch.cat((shots[j][:i],shots[j][i+1:])))
         acc += classifiers.evalFewShotRun(shots_loo, q)/max_shots
     return acc
 
