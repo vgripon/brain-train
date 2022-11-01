@@ -11,18 +11,24 @@ from few_shot_evaluation import EpisodicGenerator, ImageNetGenerator, OmniglotGe
 from tqdm import tqdm
 import random
 from utils import *
+from time import time
+import json
 
+real_dp = args.dataset_path
+data_info_omniglot_file = os.path.join(args.dataset_path, 'omniglot_test.json')
+with open(data_info_omniglot_file) as f:
+    data_info_omniglot = json.load(f)
 
 def SNR(list_distrib):
     #print('n_ways distrib', len(list_distrib))
     n_ways = len(list_distrib)
+    means = torch.stack([list_distrib[i].mean(0) for i in range(n_ways)])
+    stds = [torch.norm(list_distrib[i].std(0)).item()  for i in range(n_ways)]
+    noise = np.mean(stds)
+    margin = torch.cdist(means, means).sum().item()/(n_ways*(n_ways-1))
     for i in range(n_ways):
         if list_distrib[i].shape[0]<=1: #make sure you have more than one shot
-            return 0,0,0
-    means = torch.stack([list_distrib[i].mean(0) for i in range(n_ways)])
-    stds = [torch.norm(list_distrib[i].std(0)) for i in range(n_ways)]
-    noise = np.mean(stds).item() 
-    margin = torch.cdist(means, means).sum().item()/(n_ways*(n_ways-1))
+            return margin,margin,0
     return margin/noise , margin , noise
 
 def SNR_mean_couple(list_distrib):
@@ -44,7 +50,6 @@ def SNR_mean_couple(list_distrib):
 
 def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_verbose = False ):
     features = [torch.load(filename, map_location=args.device)]
-    results = torch.zeros(len(features), 2)
     for i in range(len(features)):
         accs = []
         fake_acc = []
@@ -54,15 +59,17 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
         loo = []
         if datasets=='omniglot':
             Generator = OmniglotGenerator
-            generator = Generator(datasetName='metadataset_omniglot_test', num_elements_per_class= [len(feat['features']) for feat in feature], dataset_path=args.dataset_path)
+            generator = Generator(datasetName=None, num_elements_per_class= [len(feat['features']) for feat in feature], dataset_path=args.dataset_path)
+            generator.dataset = data_info_omniglot
         else:
+            args.dataset_path = None
             Generator = EpisodicGenerator
             generator = Generator(datasetName=None, num_elements_per_class= [len(feat['features']) for feat in feature], dataset_path=args.dataset_path)
         for run in tqdm(range(args.few_shot_runs)) if tqdm_verbose else range(args.few_shot_runs):
             shots = []
             queries = []
             episode = generator.sample_episode(ways=args.few_shot_ways, n_shots=n_shots, n_queries=args.few_shot_queries, unbalanced_queries=args.few_shot_unbalanced_queries)
-            print(episode)
+            #print('1st shot', episode['shots_idx'][0][0])
             shots, queries = generator.get_features_from_indices(feature, episode)
             #print('1st shot', shots[0][0], '1st query' , queries[0][0])
             chance.append(1/len(shots)) # = 1/n_ways
@@ -70,6 +77,7 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
             if 'snr' in proxy:
                 snr.append(SNR(shots)[0])
             if 'fake_acc' in proxy:
+                init_seed(args.seed)
                 fake_data = fake_samples2(shots)
                 fake_acc.append(classifiers.evalFewShotRun(shots, fake_data))
             if 'loo' in proxy:
@@ -110,9 +118,8 @@ def fake_samples2(list_distrib, n_sample = 100):
         else:
             cov = torch.eye(x.shape[1])
             covs.append(cov)
-        dist = torch.distributions.MultivariateNormal(loc  = means[i].float(), covariance_matrix= cov.float())
+        dist = torch.distributions.MultivariateNormal(loc  = means[i].float().to(device  = args.device), covariance_matrix= cov.float().to(device  = args.device))
         fake_samples.append(dist.rsample(torch.Size([n_sample])))
-        
     return fake_samples
 
 def init_seed(seed = args.seed):
@@ -128,7 +135,6 @@ def init_seed(seed = args.seed):
 def plot_norm_correlation(L, plot=True, proxy= ''):
     stds = np.std(L,axis = 0)
     means = np.mean(L,axis = 0)
-    print(sum(stds==0))
     norm_L = (L-means)/stds
     y = norm_L[:,0].ravel()
     x = norm_L[:,1].ravel()
@@ -173,7 +179,7 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
     print_metric(baseline,'baseline: ')
     print_metric(L[N,0,:],'sanity check baseline: ')
     max_possible = np.take_along_axis(L[:,0],L[:,0].argmax(0)[None,:], axis =0)
-    print_metric(max_possible,'max_possible: ')
+    print_metric(max_possible.ravel(),'max_possible: ')
     _,_ = plot_norm_correlation(L, plot=False, proxy= proxy)
     return res_baseline, L
 
