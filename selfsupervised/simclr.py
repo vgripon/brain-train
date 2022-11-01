@@ -12,7 +12,7 @@ DEFAULT_TEMPERATURE = 0.07
 
 class SIMCLRAugmentation(object):
     def __init__(self,
-                 image_size, normalization, s=1.0, local_crops_number=DEFAULT_NCROPS, global_crops_scale=DEFAULT_GLOBAL_CROPS_SCALE, local_crops_scale=DEFAULT_LOCAL_CROPS_SCALE):
+                 image_size, normalization, s=1.0):
         #s is the color distorsion strength
         random_resized_crop = transforms.RandomResizedCrop(image_size, scale=global_crops_scale, interpolation=Image.BICUBIC)
         rnd_horizontal_flip = transforms.RandomHorizontalFlip(p=0.5)
@@ -65,5 +65,9 @@ class SIMCLR(nn.Module):
     def forward(self, backbone, dataStep, target):
         proj1 = self.forward_pass(backbone, self.head, dataStep[0])
         proj2 = self.forward_pass(backbone, self.head, dataStep[1])
-        simclr_loss = self.simclr_loss_fn(proj1, proj2)
+        if target is not None:
+            target = torch.cat([target, target], dim=0)
+            simclr_loss = self.simclr_loss_fn(proj1, proj2, target) #supervised contrastive if label
+        else:
+            simclr_loss = self.simclr_loss_fn(proj1, proj2) #simclr if unlabel
         return simclr_loss

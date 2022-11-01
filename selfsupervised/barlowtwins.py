@@ -72,7 +72,7 @@ class Transform:
 
 class BARLOWTWINSAugmentation(object):
     def __init__(self,
-                 image_size, normalization, s=1.0, local_crops_number=DEFAULT_NCROPS, global_crops_scale=DEFAULT_GLOBAL_CROPS_SCALE, local_crops_scale=DEFAULT_LOCAL_CROPS_SCALE):
+                 image_size, normalization, s=1.0):
         #s is the color distorsion strength
         random_resized_crop = transforms.RandomResizedCrop(image_size, scale=global_crops_scale, interpolation=Image.BICUBIC)
         rnd_horizontal_flip = transforms.RandomHorizontalFlip(p=0.5)
