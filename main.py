@@ -66,17 +66,17 @@ def train(epoch, backbone, teacher, criterion, optimizer, scheduler):
                 data = to(data, args.device)
                 target = target.to(args.device)
 
-                for step in eval(args.steps):
+                for step_idx, step in enumerate(eval(args.steps)):
                     loss, score = 0., torch.zeros(1)
                     if 'lr' in step or 'mixup' in step or 'manifold mixup' in step or 'rotations' in step:
                         dataStep = data['supervised'].clone()
-                        loss_lr, score = criterion['supervised'][trainingSetIdx](backbone, dataStep, target, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
-                        loss += loss_lr
+                        loss_lr, score = criterion['supervised'][trainingSetIdx](backbone, dataStep, target, lr="lr" in step, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
+                        loss += args.step_coefficient[step_idx]*loss_lr
 
                     if 'dino' in step:
                         dataStep = data['dino']
                         loss_dino = criterion['dino'][trainingSetIdx](backbone, teacher['dino'], dataStep, target, epoch-1)
-                        loss += loss_dino
+                        loss += args.step_coefficient[step_idx]*loss_dino
                 
                     loss.backward()
 
@@ -111,7 +111,8 @@ def test(backbone, datasets, criterion):
         losses, accuracies, total_elt = 0, 0, 0
         with torch.no_grad():
             for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
-                data, target = data.to(args.device), target.to(args.device)
+                data = to(data, args.device)
+                target = target.to(args.device)
                 loss, score = criterion[testSetIdx](backbone, data, target)
                 losses += data.shape[0] * loss.item()
                 accuracies += data.shape[0] * score.item()
@@ -180,7 +181,9 @@ def generateFeatures(backbone, datasets, sample_aug=args.sample_aug):
             for augs in range(n_aug):
                 features = [{"name_class": name_class, "features": []} for name_class in dataset["name_classes"]]
                 for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
-                    data, target = data.to(args.device), target.to(args.device)
+                    if isinstance(data, dict):
+                        data = data["supervised"]
+                    data, target = to(data, args.device), target.to(args.device)
                     feats = backbone(data).to("cpu")
                     for i in range(feats.shape[0]):
                         features[target[i]]["features"].append(feats[i])
