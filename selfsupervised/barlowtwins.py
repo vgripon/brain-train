@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from PIL import Image, ImageOps, ImageFilter
 import random
 from args import args
 from torchvision import transforms
-from losses import BarlowTwinsLoss
 
 DEFAULT_NCROPS = 2
 DEFAULT_HEAD_HIDDEN_DIM = 2048
@@ -74,7 +74,7 @@ class BARLOWTWINSAugmentation(object):
     def __init__(self,
                  image_size, normalization, s=1.0):
         #s is the color distorsion strength
-        random_resized_crop = transforms.RandomResizedCrop(image_size, scale=global_crops_scale, interpolation=Image.BICUBIC)
+        random_resized_crop = transforms.RandomResizedCrop(image_size, scale=image_size, interpolation=Image.BICUBIC)
         rnd_horizontal_flip = transforms.RandomHorizontalFlip(p=0.5)
         color_jitter = transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.2, hue=0.1)
         rnd_color_jitter = transforms.RandomApply([color_jitter], p=0.8)
@@ -89,14 +89,14 @@ class BARLOWTWINSAugmentation(object):
                                                     rnd_horizontal_flip, 
                                                     color_distort, 
                                                     rnd_gaussian_blur1, 
-                                                    normalize])
+                                                    normalization,])
         # second view
         self.global_transform1 = transforms.Compose([random_resized_crop, 
                                                     rnd_horizontal_flip, 
                                                     color_distort, 
                                                     rnd_gaussian_blur2, 
-                                                    rnd_solarization2
-                                                    normalize])
+                                                    rnd_solarization2,
+                                                    normalization,])
 
     def __call__(self, image):
         crops = []
@@ -133,3 +133,27 @@ class BARLOWTWINS(nn.Module):
         proj2 = self.forward_pass(backbone, self.head, dataStep[1])
         barlowtwins_loss = self.barlowtwins_loss_fn(proj1, proj2)
         return barlowtwins_loss
+
+def off_diagonal(x):
+    # return a flattened view of the off-diagonal elements of a square matrix
+    n, m = x.shape
+    assert n == m
+    return x.flatten()[:-1].view(n - 1, n + 1)[:, 1:].flatten()
+
+class BarlowTwinsLoss(nn.Module):
+    def __init__(self, projector_out=128, lambd=0.0051):
+        super().__init__()
+
+        self.bn = nn.BatchNorm1d(projector_out, affine=False)
+        self.lambd = lambd
+
+    def forward(self, z1, z2):
+
+        c = self.bn(z1).T @ self.bn(z2) #normalization outside the loss function
+        c = z1.T @ z2
+        c.div_(z1.shape[0])
+
+        on_diag = torch.diagonal(c).add_(-1).pow_(2).sum()
+        off_diag = off_diagonal(c).pow_(2).sum()
+        loss = on_diag + self.lambd * off_diag
+        return loss

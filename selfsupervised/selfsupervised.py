@@ -27,6 +27,8 @@ def get_ssl_transform(image_size, supervised_transform, normalization=DEFAULT_NO
             all_transforms['dino'] = DINOAugmentation(image_size, normalization=normalization)
         if 'simclr' in step:
             all_transforms['simclr'] = SIMCLRAugmentation(image_size, normalization=normalization)
+        if 'simclr_supervised' in step:
+            all_transforms['simclr_supervised'] = SIMCLRAugmentation(image_size, normalization=normalization)
         if 'barlowtwins' in step:
             all_transforms['barlowtwins'] = SIMCLRAugmentation(image_size, normalization=normalization)
     return SSLTransform(all_transforms)
