@@ -78,7 +78,7 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
             if 'snr' in proxy:
                 snr.append(SNR(shots)[0])
             if 'fake_acc' in proxy:
-                init_seed(args.seed)
+                #init_seed(args.seed)
                 fake_data = fake_samples2(shots)
                 fake_acc.append(classifiers.evalFewShotRun(shots, fake_data))
             if 'loo' in proxy:
@@ -113,7 +113,7 @@ def fake_samples2(list_distrib, n_sample = 100):
     for i in range(n_ways):
         x= centered[i]
         if x.shape[0]!=1:
-            cov = (torch.matmul(x.T, x) + torch.eye(x.shape[1]) * 0.001).to(args.device) / (x.shape[0]-1)
+            cov = (torch.matmul(x.T, x) + torch.eye(x.shape[1]).to(args.device) * 0.001) / (x.shape[0]-1)
             check = torch.linalg.cholesky_ex(cov).info.eq(0).unsqueeze(0)
             covs.append(cov)
         else:
