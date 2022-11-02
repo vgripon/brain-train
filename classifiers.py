@@ -19,9 +19,11 @@ class LR(nn.Module):
         self.fcRotations = nn.Linear(inputDim, 4)
         self.criterion = nn.CrossEntropyLoss() if args.label_smoothing == 0 else LabelSmoothingLoss(numClasses, args.label_smoothing)
         self.backbone = backbone
-    def forward(self, backbone, dataStep, y, rotation=False, mixup=False, manifold_mixup=False):
+    def forward(self, backbone, dataStep, y, lr=False, rotation=False, mixup=False, manifold_mixup=False):
         lbda, perm, mixupType = None, None, None
+        loss,score, multiplier = 0., torch.zeros(1), 1
         if mixup or manifold_mixup:
+            multiplier = 0.5
             perm = torch.randperm(dataStep.shape[0])
             if mixup:
                 lbda = random.random()
@@ -43,16 +45,18 @@ class LR(nn.Module):
             yRotations = targetRot
 
         x = backbone(dataStep, mixup = mixupType, lbda = lbda, perm = perm)
-        output = self.fc(x)
-        decision = output.argmax(dim = 1)
-        score = (decision - y == 0).float().mean()
-        loss = self.criterion(output, y)
+        if lr or mixup or manifold_mixup:
+            output = self.fc(x)
+            decision = output.argmax(dim = 1)
+            score = (decision - y == 0).float().mean()
+            loss = self.criterion(output, y)
+            multiplier = 0.5
         if lbda is not None:
             loss = lbda * loss + (1 - lbda) * self.criterion(output, y[perm])
             score = lbda * score + (1 - lbda) * (decision - y[perm] == 0).float().mean()
         if yRotations is not None:
             outputRotations = self.fcRotations(x)
-            loss = 0.5 * loss + 0.5 * (self.criterion(outputRotations, yRotations) if lbda == None else (lbda * self.criterion(outputRotations, yRotations) + (1 - lbda) * self.criterion(outputRotations, yRotations[perm])))
+            loss = multiplier * (loss + (self.criterion(outputRotations, yRotations) if lbda == None else (lbda * self.criterion(outputRotations, yRotations) + (1 - lbda) * self.criterion(outputRotations, yRotations[perm]))))
         return loss, score
 
 ### MultiLabel BCE

@@ -1,6 +1,7 @@
 ### file to generate dataloaders
 ### for simplicity, we do not offer the choice to load the whole dataset in VRAM anymore
 
+from matplotlib.transforms import TransformWrapper
 from torchvision import transforms, datasets
 import random
 from args import args
@@ -14,6 +15,7 @@ import copy
 from selfsupervised.selfsupervised import get_ssl_transform
 from utils import *
 ### first define dataholder, which will be used as an argument to dataloaders
+all_steps = [item for sublist in eval(args.steps) for item in sublist]
 class DataHolder():
     def __init__(self, data, targets, transforms, target_transforms=lambda x:x, opener=lambda x: Image.open(x).convert('RGB')):
         self.data = data
@@ -73,7 +75,17 @@ class totensor(object):
 
         img = torch.tensor(np.array(img).astype(np.float32)).permute(2,0,1)
         return img
-
+class TransformWrapper(object):
+    """
+    Wrapper for different transforms.
+    """
+    def __init__(self, all_transforms):
+        self.all_transforms = all_transforms
+    def __call__(self, image):
+        out = {}
+        for name, T in self.all_transforms.items():
+            out[name] = T(image)
+        return out
 def cifar10(dataset):
     pytorchDataset = datasets.CIFAR10(args.dataset_path, train = dataset != "test", download = 'cifar-10-python.tar.gz' not in os.listdir(args.dataset_path))
     data = torch.tensor(pytorchDataset.data).transpose(1,3).transpose(2,3).float() / 256.
@@ -84,7 +96,11 @@ def cifar10(dataset):
 
     if dataset == 'train':
         supervised_transform = transforms.Compose([transforms.RandomCrop(image_size, padding=4), transforms.RandomHorizontalFlip(), normalization]) 
-        trans = get_ssl_transform(image_size, supervised_transform, normalization)
+        all_transforms = {}
+        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+            all_transforms['supervised'] = supervised_transform
+        all_transforms.update(get_ssl_transform(image_size, normalization))
+        trans = TransformWrapper(all_transforms)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([normalization])
@@ -103,7 +119,11 @@ def cifar100(dataset):
 
     if dataset == 'train':
         supervised_transform = transforms.Compose([transforms.RandomCrop(image_size, padding=4), transforms.RandomHorizontalFlip(), normalization]) 
-        trans = get_ssl_transform(image_size, supervised_transform, normalization)
+        all_transforms = {}
+        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+            all_transforms['supervised'] = supervised_transform
+        all_transforms.update(get_ssl_transform(image_size, normalization))
+        trans = TransformWrapper(all_transforms)
 
     else:
         if args.sample_aug == 1:
@@ -124,9 +144,12 @@ def miniimagenet(datasetName):
     normalization = transforms.Normalize([125.3/255, 123.0/255, 113.9/255], [63.0/255, 62.1/255, 66.7/255])
     image_size = args.image_size if args.image_size>0 else 84
     if datasetName == 'train':
-        supervised_transform = transforms.Compose([transforms.ToTensor(), normalization, transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()])
-        trans = get_ssl_transform(image_size, supervised_transform, normalization)
-       
+        supervised_transform = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization])
+        all_transforms = {}
+        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+            all_transforms['supervised'] = supervised_transform
+        all_transforms.update(get_ssl_transform(image_size, normalization))
+        trans = TransformWrapper(all_transforms)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([transforms.Resize(int(image_size*92/84)), transforms.CenterCrop(image_size), transforms.ToTensor(), normalization])
@@ -146,8 +169,12 @@ def tieredimagenet(datasetName):
     normalization = transforms.Normalize([125.3/255, 123.0/255, 113.9/255], [63.0/255, 62.1/255, 66.7/255])
     image_size = args.image_size if args.image_size>0 else 84
     if datasetName == 'train':
-        supervised_transform = transforms.Compose([transforms.ToTensor(), normalization, transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()])
-        trans = get_ssl_transform(image_size, supervised_transform, normalization)
+        supervised_transform = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization])
+        all_transforms = {}
+        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+            all_transforms['supervised'] = supervised_transform
+        all_transforms.update(get_ssl_transform(image_size, normalization))
+        trans = TransformWrapper(all_transforms)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([transforms.Resize(int(image_size*92/84)), transforms.CenterCrop(image_size), transforms.ToTensor(), normalization])
@@ -169,7 +196,11 @@ def cifarfs(datasetName):
 
     if datasetName == 'train':
         supervised_transform = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization])
-        trans = get_ssl_transform(image_size, supervised_transform, normalization)
+        all_transforms = {}
+        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+            all_transforms['supervised'] = supervised_transform
+        all_transforms.update(get_ssl_transform(image_size, normalization))
+        trans = TransformWrapper(all_transforms)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([transforms.Resize([int(1.15*image_size), int(1.15*image_size)]), transforms.CenterCrop(image_size), transforms.ToTensor(), normalization])
@@ -189,7 +220,11 @@ def metadataset_imagenet(datasetName):
     image_size = args.image_size if args.image_size>0 else 126
     if datasetName == 'train':
         supervised_transform = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
-        trans = get_ssl_transform(image_size, supervised_transform, normalization)
+        all_transforms = {}
+        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+            all_transforms['supervised'] = supervised_transform
+        all_transforms.update(get_ssl_transform(image_size, normalization))
+        trans = TransformWrapper(all_transforms)
 
     else:
         if args.sample_aug == 1:
@@ -204,7 +239,11 @@ def imagenet(datasetName):
     image_size = args.image_size if args.image_size>0 else 224
     if datasetName == 'train':
         supervised_transform = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization])
-        trans = get_ssl_transform(image_size, supervised_transform, normalization)
+        all_transforms = {}
+        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+            all_transforms['supervised'] = supervised_transform
+        all_transforms.update(get_ssl_transform(image_size, normalization))
+        trans = TransformWrapper(all_transforms)
 
     else:
         if args.sample_aug == 1:
@@ -215,16 +254,6 @@ def imagenet(datasetName):
     pytorchDataset = datasets.ImageNet(args.dataset_path + "/imagenet", split = "train" if datasetName != "test" else "val", transform = trans)
         
     return {"dataloader": dataLoader(pytorchDataset, shuffle = datasetName == "train"), "name":"imagenet_" + datasetName, "num_classes":1000, "name_classes": pytorchDataset.classes}
-
-
-def metadataset_imagenet_v2():
-    image_size = args.image_size if args.image_size>0 else 126
-    normalization = norm()
-    supervised_transform = transforms.Compose([ totensor(), normalization, bi_resize(target_size=image_size)])
-    trans = get_ssl_transform(image_size, supervised_transform, normalization)
-
-    pytorchDataset = datasets.ImageNet(args.dataset_path + "/imagenet", split = "train", transform = trans)
-    return {"dataloader": dataLoader(pytorchDataset, shuffle = True), "name":"metadataset_imagenet_v2_train", "num_classes":1000, "name_classes": pytorchDataset.classes}
 
 
 def metadataset_imagenet_v2():
@@ -243,7 +272,11 @@ def metadataset_imagenet_v2():
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     image_size = args.image_size if args.image_size>0 else 126
     supervised_transform = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
-    trans = get_ssl_transform(image_size, supervised_transform, normalization)
+    all_transforms = {}
+    if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+        all_transforms['supervised'] = supervised_transform
+    all_transforms.update(get_ssl_transform(image_size, normalization))
+    trans = TransformWrapper(all_transforms)
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = True), "name":"metadataset_imagenet_v2_train", "num_classes":num_classes, "name_classes": dataset_train["name_classes"]+dataset_validation["name_classes"]+dataset_test["name_classes"]}
 
 def mnist(datasetName):
@@ -253,7 +286,11 @@ def mnist(datasetName):
     image_size = args.image_size if args.image_size>0 else 28
     normalization = transforms.Normalize((0.1302,), (0.3069,))
     supervised_transform = transforms.Compose([normalization])
-    trans = get_ssl_transform(image_size, supervised_transform, normalization)
+    all_transforms = {}
+    if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+        all_transforms['supervised'] = supervised_transform
+    all_transforms.update(get_ssl_transform(image_size, normalization))
+    trans = TransformWrapper(all_transforms)
 
 
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name": "mnist_" + datasetName, "num_classes": 10, "name_classes": list(range(10))}
@@ -268,7 +305,11 @@ def fashionMnist(datasetName):
     image_size = args.image_size if args.image_size>0 else 28
     if datasetName == 'train':
         supervised_transform = transforms.Compose([transforms.RandomCrop(image_size, padding=4), transforms.RandomHorizontalFlip(), normalization])
-        trans = get_ssl_transform(image_size, supervised_transform, normalization)
+        all_transforms = {}
+        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+            all_transforms['supervised'] = supervised_transform
+        all_transforms.update(get_ssl_transform(image_size, normalization))
+        trans = TransformWrapper(all_transforms)
 
     else:
         if args.sample_aug == 1:
@@ -290,7 +331,11 @@ def metadataset_dtd(datasetName):
     image_size = args.image_size if args.image_size>0 else 126
     if datasetName == 'train':
         supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
-        trans = get_ssl_transform(image_size, supervised_transform, normalization)
+        all_transforms = {}
+        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+            all_transforms['supervised'] = supervised_transform
+        all_transforms.update(get_ssl_transform(image_size, normalization))
+        trans = TransformWrapper(all_transforms)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
@@ -311,7 +356,11 @@ def metadataset_cub(datasetName):
     image_size = args.image_size if args.image_size>0 else 126
     if datasetName == 'train':
         supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
-        trans = get_ssl_transform(image_size, supervised_transform, normalization)
+        all_transforms = {}
+        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+            all_transforms['supervised'] = supervised_transform
+        all_transforms.update(get_ssl_transform(image_size, normalization))
+        trans = TransformWrapper(all_transforms)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)]) 
@@ -331,7 +380,11 @@ def metadataset_fungi(datasetName):
     image_size = args.image_size if args.image_size>0 else 126
     if datasetName == 'train':
         supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
-        trans = get_ssl_transform(image_size, supervised_transform, normalization)
+        all_transforms = {}
+        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+            all_transforms['supervised'] = supervised_transform
+        all_transforms.update(get_ssl_transform(image_size, normalization))
+        trans = TransformWrapper(all_transforms)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)]) 
@@ -351,7 +404,11 @@ def metadataset_aircraft(datasetName):
     image_size = args.image_size if args.image_size>0 else 126
     if datasetName == 'train':
         supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
-        trans = get_ssl_transform(image_size, supervised_transform, normalization)
+        all_transforms = {}
+        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+            all_transforms['supervised'] = supervised_transform
+        all_transforms.update(get_ssl_transform(image_size, normalization))
+        trans = TransformWrapper(all_transforms)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
@@ -372,7 +429,11 @@ def metadataset_mscoco(datasetName):
     image_size = args.image_size if args.image_size>0 else 126
     if datasetName == 'train':
         supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
-        trans = get_ssl_transform(image_size, supervised_transform, normalization)
+        all_transforms = {}
+        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+            all_transforms['supervised'] = supervised_transform
+        all_transforms.update(get_ssl_transform(image_size, normalization))
+        trans = TransformWrapper(all_transforms)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
@@ -391,7 +452,11 @@ def metadataset_vggflower(datasetName):
     image_size = args.image_size if args.image_size>0 else 126
     if datasetName == 'train':
         supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
-        trans = get_ssl_transform(image_size, supervised_transform, normalization)
+        all_transforms = {}
+        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+            all_transforms['supervised'] = supervised_transform
+        all_transforms.update(get_ssl_transform(image_size, normalization))
+        trans = TransformWrapper(all_transforms)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
@@ -412,7 +477,11 @@ def metadataset_quickdraw(datasetName):
     image_size = args.image_size if args.image_size>0 else 126
     if datasetName == 'train':
         supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
-        trans = get_ssl_transform(image_size, supervised_transform, normalization)
+        all_transforms = {}
+        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+            all_transforms['supervised'] = supervised_transform
+        all_transforms.update(get_ssl_transform(image_size, normalization))
+        trans = TransformWrapper(all_transforms)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
@@ -432,7 +501,11 @@ def metadataset_omniglot(datasetName):
     image_size = args.image_size if args.image_size>0 else 126
     if datasetName == 'train':
         supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
-        trans = get_ssl_transform(image_size, supervised_transform, normalization)
+        all_transforms = {}
+        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+            all_transforms['supervised'] = supervised_transform
+        all_transforms.update(get_ssl_transform(image_size, normalization))
+        trans = TransformWrapper(all_transforms)
 
     else:
         if args.sample_aug == 1:
@@ -453,7 +526,11 @@ def metadataset_traffic_signs(datasetName):
     image_size = args.image_size if args.image_size>0 else 126
     if datasetName == 'train':
         supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
-        trans = get_ssl_transform(image_size, supervised_transform, normalization)
+        all_transforms = {}
+        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+            all_transforms['supervised'] = supervised_transform
+        all_transforms.update(get_ssl_transform(image_size, normalization))
+        trans = TransformWrapper(all_transforms)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
@@ -534,7 +611,11 @@ def metaalbum(source, is_train=False):
     if is_train:
         supervised_transform = transforms.Compose([
             transforms.RandomResizedCrop(image_size), transforms.ToTensor(), normalization, GaussianNoise(0.1533), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip()]) 
-        trans = get_ssl_transform(image_size, supervised_transform, normalization)
+        all_transforms = {}
+        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+            all_transforms['supervised'] = supervised_transform
+        all_transforms.update(get_ssl_transform(image_size, normalization))
+        trans = TransformWrapper(all_transforms)
     else:
         if args.sample_aug == 1:
             trans = transforms.Compose([transforms.Resize(image_size), transforms.CenterCrop(image_size), transforms.ToTensor(), normalization])

@@ -17,7 +17,7 @@ DEFAULT_BOTTELENECK_DIM = 256
 DEFAULT_CENTER_MOMENTUM = 0.9
 DEFAULT_STUDENT_TEMPERATURE = 0.1
 DEFAULT_WARMUP_TEACHER_TEMP = 0.04
-DEFAULT_WARMUP_TEACHER_TEMP_EPOCHS = 30
+DEFAULT_WARMUP_TEACHER_TEMP_EPOCHS = 30 if args.epochs > 30 else int(0.03*args.epochs)
 DEFAULT_TEACHER_TEMPERATURE = 0.04
 DEFAULT_MOMENTUM_TEACHER = 0.996
 
@@ -58,10 +58,6 @@ class DINOAugmentation(object):
     def __init__(self,
                  image_size, normalization, local_crops_number=DEFAULT_NCROPS, global_crops_scale=DEFAULT_GLOBAL_CROPS_SCALE, local_crops_scale=DEFAULT_LOCAL_CROPS_SCALE):
     
-        flip_and_color_jitter = transforms.Compose([
-            transforms.RandomApply([transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.2, hue=0.1)],p=0.8),
-            transforms.RandomGrayscale(p=0.2),
-        ])
         flip_and_color_jitter = transforms.Compose([
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.RandomApply([transforms.ColorJitter(0.8, 0.8, 0.8, 0.2)],p = 0.3),

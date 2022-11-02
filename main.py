@@ -66,27 +66,27 @@ def train(epoch, backbone, teacher, criterion, optimizer, scheduler):
                 data = to(data, args.device)
                 target = target.to(args.device)
 
-                for step in eval(args.steps):
+                for step_idx, step in enumerate(eval(args.steps)):
                     loss, score = 0., torch.zeros(1)
                     if 'lr' in step or 'mixup' in step or 'manifold mixup' in step or 'rotations' in step:
                         dataStep = data['supervised'].clone()
-                        loss_lr, score = criterion['supervised'][trainingSetIdx](backbone, dataStep, target, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
-                        loss += loss_lr
+                        loss_lr, score = criterion['supervised'][trainingSetIdx](backbone, dataStep, target, lr="lr" in step, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
+                        loss += args.step_coefficient[step_idx]*loss_lr
 
                     if 'dino' in step:
                         dataStep = data['dino']
-                        loss_dino = criterion['dino'][trainingSetIdx](backbone, teacher['dino'], dataStep, target, epoch)
-                        loss += loss_dino
+                        loss_dino = criterion['dino'][trainingSetIdx](backbone, teacher['dino'], dataStep, target, epoch-1)
+                        loss += args.step_coefficient[step_idx]*loss_dino
 
                     if 'simclr' in step:
                         dataStep = data['simclr']
                         loss_simclr = criterion['simclr'][trainingSetIdx](backbone, dataStep)
-                        loss += loss_simclr
+                        loss += args.step_coefficient[step_idx]*loss_simclr
 
                     if 'simclr_supervised' in step:
                         dataStep = data['simclr_supervised']
                         loss_simclr_supervised = criterion['simclr_supervised'][trainingSetIdx](backbone, dataStep, target)
-                        loss += loss_simclr_supervised
+                        loss += args.step_coefficient[step_idx]*loss_simclr_supervised
                 
                     loss.backward()
 
@@ -107,7 +107,7 @@ def train(epoch, backbone, teacher, criterion, optimizer, scheduler):
                 for trainingSetIdx in range(len(iterators)):
                     for step in eval(args.steps):
                         if 'dino' in step:
-                            criterion['dino'][trainingSetIdx].update_teacher(backbone, teacher['dino'], epoch, batch_idx_list[trainingSetIdx])
+                            criterion['dino'][trainingSetIdx].update_teacher(backbone, teacher['dino'], epoch-1, batch_idx_list[trainingSetIdx])
                 
         except StopIteration:
             return torch.stack([losses / total_elt, 100 * accuracies / total_elt]).transpose(0,1)
@@ -121,7 +121,8 @@ def test(backbone, datasets, criterion):
         losses, accuracies, total_elt = 0, 0, 0
         with torch.no_grad():
             for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
-                data, target = data.to(args.device), target.to(args.device)
+                data = to(data, args.device)
+                target = target.to(args.device)
                 loss, score = criterion[testSetIdx](backbone, data, target)
                 losses += data.shape[0] * loss.item()
                 accuracies += data.shape[0] * score.item()
@@ -190,7 +191,9 @@ def generateFeatures(backbone, datasets, sample_aug=args.sample_aug):
             for augs in range(n_aug):
                 features = [{"name_class": name_class, "features": []} for name_class in dataset["name_classes"]]
                 for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
-                    data, target = data.to(args.device), target.to(args.device)
+                    if isinstance(data, dict):
+                        data = data["supervised"]
+                    data, target = to(data, args.device), target.to(args.device)
                     feats = backbone(data).to("cpu")
                     for i in range(feats.shape[0]):
                         features[target[i]]["features"].append(feats[i])
@@ -261,6 +264,9 @@ for nRun in range(args.runs):
     if 'simclr_supervised' in all_steps:
         from selfsupervised.simclr import SIMCLR
         criterion['simclr_supervised'] = [SIMCLR(in_dim=outputDim, epochs=args.epochs, nSteps=nSteps, supervised=True) for _ in trainSet]
+    if 'barlowtwins' in all_steps:
+        from selfsupervised.barlowtwins import BARLOWTWINS
+        criterion['barlowtwins'] = [BARLOWTWINS(in_dim=outputDim, epochs=args.epochs, nSteps=nSteps) for _ in trainSet]
 
     numParamsCriterions = 0
     for c in [item for sublist in criterion.values() for item in sublist] :
