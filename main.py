@@ -113,7 +113,7 @@ def test(backbone, datasets, criterion):
             for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
                 data = to(data, args.device)
                 target = target.to(args.device)
-                loss, score = criterion[testSetIdx](backbone, data, target)
+                loss, score = criterion[testSetIdx](backbone, data, target, lr=True)
                 losses += data.shape[0] * loss.item()
                 accuracies += data.shape[0] * score.item()
                 total_elt += data.shape[0]
