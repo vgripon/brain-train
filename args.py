@@ -118,6 +118,13 @@ else:
 if args.epochs not in args.milestones:
     args.milestones.append(args.epochs)
 
+try: 
+    coeff = float(eval(args.steps)[0][-1])
+    args.step_coefficient = [float(step[-1]) for step in eval(args.steps)]
+    args.steps = str([step[:-1] for step in eval(args.steps)])
+except: 
+    args.step_coefficient = [1]*len(eval(args.steps))
+
 print("milestones are " + str(args.milestones))
 
 print(" args,", end = '')
