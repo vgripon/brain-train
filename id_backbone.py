@@ -157,7 +157,8 @@ def print_metric(metric_tensor, name = ''):
     print(name, "\t{:.3f} ±{:.3f} (conf. [{:.3f}, {:.3f}])".format(metric_tensor.mean().item(), metric_tensor.std().item(), low, up))
 
 def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''):
-    N = 50
+    N = args.num_clusters
+    dir_name = str(N) if N ==50 else '10_large'
     init_seed(seed)
     filename_baseline = os.path.join(args.save_features_prefix,'baselinemetadataset_'+dataset+'_test_features.pt')
     res_baseline = testFewShot_proxy(filename_baseline, datasets = dataset,n_shots = n_shots, proxy=proxy, tqdm_verbose = True)
@@ -166,7 +167,7 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
     L[N,1] = np.array(res_baseline[proxy])
     for i in tqdm(range(N)):
         init_seed(seed)
-        filename = os.path.join(args.save_features_prefix,'50/'+str(i)+'metadataset_'+dataset+'_test_features.pt')
+        filename = os.path.join(args.save_features_prefix,dir_name,str(i)+'metadataset_'+dataset+'_test_features.pt')
         res = testFewShot_proxy(filename, datasets = dataset, n_shots = n_shots, proxy = [proxy])
         L[i,0] = np.array(res['acc'])
         L[i,1] = np.array(res[proxy])
