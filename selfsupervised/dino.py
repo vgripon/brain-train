@@ -155,25 +155,32 @@ class DINO(nn.Module):
             param_t.data.mul_(m).add_((1 - m)*param_s.detach().data)
 
     def forward_multicrops(self, backbone, head, x):
+        # forward the backbone on different crops if image size is different
         # convert to list
         if not isinstance(x, list):
             x = [x]
-        idx_crops = torch.cumsum(torch.unique_consecutive(
-            torch.tensor([inp.shape[-1] for inp in x]),
-            return_counts=True,
-        )[1], 0)
-        start_idx, output = 0, torch.empty(0).to(x[0].device)
-        for end_idx in idx_crops:
-            _out = backbone(torch.cat(x[start_idx: end_idx]))
-            # The output is a tuple with XCiT model. See:
-            # https://github.com/facebookresearch/xcit/blob/master/xcit.py#L404-L405
-            if isinstance(_out, tuple):
+        output = torch.empty(0).to(x[0].device)
+        for crop in x:
+            _out = backbone(crop)
+            if isinstance(_out, tuple): # in case of tuple output
                 _out = _out[0]
-            # accumulate outputs
-            output = torch.cat((output, _out))
-            start_idx = end_idx
-        # Run the head forward on the concatenated features.
-        return head(output)
+            _out = head(_out)
+            output = torch.cat((output, _out), dim=0)
+        return output
+        # idx_crops = torch.cumsum(torch.unique_consecutive(
+        #     torch.tensor([inp.shape[-1] for inp in x]),
+        #     return_counts=True,
+        # )[1], 0)
+        # start_idx, output = 0, torch.empty(0).to(x[0].device)
+        # for end_idx in idx_crops: # split to multiple batches if input size is different for different crops
+        #     _out = backbone(torch.cat(x[start_idx: end_idx]))
+        #     if isinstance(_out, tuple): # in case of tuple output
+        #         _out = _out[0]
+        #     # accumulate outputs
+        #     output = torch.cat((output, _out))
+        #     start_idx = end_idx
+        # # Run the head forward on the concatenated features.
+        # return head(output)
 
     def forward(self, student, teacher, dataStep, target, epoch):
         teacher_output = self.forward_multicrops(teacher, self.teacher_head, dataStep[:2]) # only the 2 global views pass through the teacher
