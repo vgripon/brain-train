@@ -67,6 +67,7 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
             Generator = EpisodicGenerator
             generator = Generator(datasetName=None, num_elements_per_class= [len(feat['features']) for feat in feature], dataset_path=args.dataset_path)
         for run in tqdm(range(args.few_shot_runs)) if tqdm_verbose else range(args.few_shot_runs):
+            init_seed(args.seed+run)
             shots = []
             queries = []
             episode = generator.sample_episode(ways=args.few_shot_ways, n_shots=n_shots, n_queries=args.few_shot_queries, unbalanced_queries=args.few_shot_unbalanced_queries)
@@ -166,7 +167,6 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
     L[N,0] = np.array(res_baseline['acc']) 
     L[N,1] = np.array(res_baseline[proxy])
     for i in tqdm(range(N)):
-        init_seed(seed)
         filename = os.path.join(args.save_features_prefix,dir_name,str(i)+'metadataset_'+dataset+'_test_features.pt')
         res = testFewShot_proxy(filename, datasets = dataset, n_shots = n_shots, proxy = [proxy])
         L[i,0] = np.array(res['acc'])
