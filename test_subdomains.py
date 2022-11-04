@@ -34,3 +34,12 @@ for test_set in list_test_sets:
         print("CLUSTER NUMBER  :", i, '/10 (random) \n' )
         os.system('python main.py  --epochs 1 --dataset-path "/users2/libre/datasets/"  --load-backbone /users2/libre/clusters/randomlargeclusters'+str(i)+' --test-dataset ' + test_set + ' --backbone resnet12 --few-shot-queries 0 --few-shot-way 0 --few-shot-shots 0 --few-shot --few-shot-runs 600 --batch-size 128 --save-features-prefix /users2/libre/features/10_large/random'+str(i))
         sleep(1)  # time to exit process
+
+
+N=50
+for test_set in list_test_sets:
+    for i in range(N):
+        #try:
+        print("CLUSTER NUMBER  :", i, '/50 (random) \n' )
+        os.system('python main.py  --epochs 1 --dataset-path "/users2/libre/datasets/"  --load-backbone /users2/libre/randomclusters/randomsmallclusters'+str(i)+' --test-dataset ' + test_set + ' --backbone resnet12 --few-shot-queries 0 --few-shot-way 0 --few-shot-shots 0 --few-shot --few-shot-runs 600 --batch-size 128 --save-features-prefix /users2/libre/features/50/random_small'+str(i))
+        sleep(1)  # time to exit process
