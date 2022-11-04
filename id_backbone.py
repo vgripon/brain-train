@@ -13,6 +13,7 @@ import random
 from utils import *
 from time import time
 import json
+from collections import defaultdict
 
 real_dp = args.dataset_path
 if 'omniglot' in args.target_dataset:
@@ -157,10 +158,9 @@ def print_metric(metric_tensor, name = ''):
     low,up = confInterval(metric_tensor)
     print(name, "\t{:.3f} ±{:.3f} (conf. [{:.3f}, {:.3f}])".format(metric_tensor.mean().item(), metric_tensor.std().item(), low, up))
 
-def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''):
+def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = '', save = False):
     N = args.num_clusters
     dir_name = str(N) if N ==50 else '10_large'
-    init_seed(seed)
     filename_baseline = os.path.join(args.save_features_prefix,'baselinemetadataset_'+dataset+'_test_features.pt')
     res_baseline = testFewShot_proxy(filename_baseline, datasets = dataset,n_shots = n_shots, proxy=proxy, tqdm_verbose = True)
     L = np.zeros((N+1,2,len(res_baseline['acc'])))  #N+A and the two bottom lines are here to add the baseline amongst candidates
@@ -183,7 +183,25 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
     max_possible = np.take_along_axis(L[:,0],L[:,0].argmax(0)[None,:], axis =0)
     print_metric(max_possible.ravel(),'max_possible: ')
     _,_ = plot_norm_correlation(L, plot=False, proxy= proxy)
+    if save:
+        save_results(L, dataset, proxy)
     return res_baseline, L
+
+def save_results(L,datasets, proxy):
+    file = 'results/results_id_backbone.pt'
+    if not os.path.isfile(file):
+        d={}
+        torch.save(d,file)
+    else:
+        d = torch.load(file)
+    if proxy in d.keys() and datasets in d[proxy].keys():
+        print('overwriting', datasets, proxy)
+        torch.save(d,'results/backed.pt')
+    if proxy in d.keys():
+        d[proxy][datasets] = {'data' : torch.from_numpy(L), 'info' : str(args)} 
+    else:
+        d[proxy] = {datasets:{'data' : torch.from_numpy(L), 'info' : str(args)}}
+    torch.save(d, file)
 
 def leave_one_out(shots):
     n_ways = len(shots)
@@ -219,10 +237,10 @@ def leave_one_out_2(shots):
 
 if __name__ == "__main__":
     try:
-        _,_=compare(dataset = args.target_dataset, proxy = args.proxy )
+        _,_=compare(dataset = args.target_dataset, proxy = args.proxy, save = True  )
     except:
         target_dataset = eval(args.target_dataset)
         for dat in  target_dataset:
             print(dat)
-            _,_=compare(dataset = dat, proxy = args.proxy )
+            _,_=compare(dataset = dat, proxy = args.proxy, save = True )
             print('\n')
