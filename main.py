@@ -211,7 +211,8 @@ for nRun in range(args.runs):
         run_wandb = wandb.init(reinit = True, project=args.wandbProjectName, 
             entity=args.wandb, 
             tags=tag, 
-            config=vars(args))
+            config=vars(args),
+            dir=args.wandb_dir)
     if not args.silent:
         print("Preparing backbone... ", end='')
     if args.audio:
