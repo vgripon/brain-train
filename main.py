@@ -245,9 +245,9 @@ for nRun in range(args.runs):
     if 'dino' in all_steps:
         from selfsupervised.dino import DINO
         criterion['dino'] = [DINO(in_dim=outputDim, epochs=args.epochs, nSteps=nSteps) for _ in trainSet]
-        teacher['dino'] = deepcopy(backbone)
+        teacher['dino'] = backbones.prepareBackbone()[0] # Same backbone but with a different init
         
-        for p in teacher['dino'].parameters(): # Freeze teacher
+        for p in teacher['dino'].parameters()+criterion['dino'].teacher_head.parameters(): # Freeze teacher + teacher head
             p.requires_grad = False
 
     numParamsCriterions = 0
