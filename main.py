@@ -113,7 +113,7 @@ def test(backbone, datasets, criterion):
             for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
                 data = to(data, args.device)
                 target = target.to(args.device)
-                loss, score = criterion[testSetIdx](backbone, data, target)
+                loss, score = criterion[testSetIdx](backbone, data, target, lr=True)
                 losses += data.shape[0] * loss.item()
                 accuracies += data.shape[0] * score.item()
                 total_elt += data.shape[0]
@@ -211,7 +211,8 @@ for nRun in range(args.runs):
         run_wandb = wandb.init(reinit = True, project=args.wandbProjectName, 
             entity=args.wandb, 
             tags=tag, 
-            config=vars(args))
+            config=vars(args),
+            dir=args.wandb_dir)
     if not args.silent:
         print("Preparing backbone... ", end='')
     if args.audio:

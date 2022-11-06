@@ -61,6 +61,7 @@ parser.add_argument("--image-size", type=int, default=-1, help="image input size
 parser.add_argument("--audio", action="store_true", help="use audio inputs, so switch back to 1d backbones")
 parser.add_argument("--wandb", type=str, default='', help="Report to wandb, input is the entity name")
 parser.add_argument("--wandbProjectName", type=str, default='few-shot', help="wandb project name")
+parser.add_argument("--wandb-dir", type=str, default='wandb', help="directory where wandb files are stored")
 
 ### backbones parameters
 parser.add_argument("--feature-maps", type=int, default=64, help="initial number of feature maps in first embedding, used as a base downstream convolutions")
