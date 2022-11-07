@@ -16,6 +16,9 @@ parser.add_argument("--skip-epochs", type=int, default=0, help="number of epochs
 parser.add_argument("--seed", type=int, default=random.randint(0, 1000000000), help="initial random seed")
 parser.add_argument("--deterministic", action="store_true", help="force deterministic mode for cuda")
 parser.add_argument("--silent", action="store_true", help="reduce output verbose")
+parser.add_argument("--episodic", action="store_true", help="run episodic training")
+parser.add_argument("--episodic-iterations-per-epoch", type=int, default=600, help="number of iterations per epoch for episodic training")
+
 
 ### optimizer args
 parser.add_argument("--optimizer", type=str, default="SGD", help="can be SGD or Adam")

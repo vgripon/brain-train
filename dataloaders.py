@@ -14,6 +14,7 @@ from PIL import Image
 import copy
 from selfsupervised.selfsupervised import get_ssl_transform
 from utils import *
+from few_shot_evaluation import EpisodicGenerator
 ### first define dataholder, which will be used as an argument to dataloaders
 all_steps = [item for sublist in eval(args.steps) for item in sublist]
 class DataHolder():
@@ -36,8 +37,38 @@ class DataHolder():
         return self.transforms(elt), self.target_transforms(self.targets[idx])
     def __len__(self):
         return self.length
+class CategoriesSampler():
+    """
+        Sampler for episodic training
+    """
+    def __init__(self, datasetName):
+        self.batch_size = args.batch_size
+        self.generator = EpisodicGenerator(datasetName=datasetName, dataset_path=args.dataset_path)
+        self.n_ways = args.few_shot_ways
+        self.n_shots = args.few_shot_shots
+        self.n_queries = args.few_shot_queries
+        self.episodic_iterations_per_epoch = args.episodic_iterations_per_epoch
+    def __len__(self):
+        return self.episodic_iterations_per_epoch
+    
+    def __iter__(self):
+        """
+            Return indices used in one batch
+            data is returned in a sequence of c1c1c1c1c2c2c2c2c3c3c3c3 with shots first then queries
+        """
+        for idx_batch in range(self.episodic_iterations_per_epoch):
+            episode = self.generator.sample_episode(ways=self.n_ways, n_shots=self.n_shots, n_queries=self.n_queries)
+            batch = []
+            for c in episode['choice_classes']:
+                offset = sum([sum(l) for l in self.generator.num_elements_per_class[:c]])
+                batch = batch + [int(c*offset)+s for s in episode['shots_idx']+episode['queries_idx']]
+            batch = torch.stack(batch)
+            yield batch
 
-def dataLoader(dataholder, shuffle):
+def dataLoader(dataholder, shuffle, datasetName, episodic):
+    if episodic : 
+        sampler = CategoriesSampler(datasetName=datasetName)
+        return torch.utils.data.DataLoader(dataholder, num_workers = min(os.cpu_count(), 8), batch_sampler=sampler)
     return torch.utils.data.DataLoader(dataholder, batch_size = args.batch_size, shuffle = shuffle, num_workers = min(os.cpu_count(), 8))
 
 # Define GaussianNoise since it's not part of torch.transforms
@@ -156,7 +187,7 @@ def miniimagenet(datasetName):
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ToTensor(), normalization])
 
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic, datasetName="miniimagenet_"+datasetName), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def tieredimagenet(datasetName):
     f = open(args.dataset_path + "datasets.json")    

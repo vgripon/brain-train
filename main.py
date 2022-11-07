@@ -68,15 +68,19 @@ def train(epoch, backbone, teacher, criterion, optimizer, scheduler):
 
                 for step_idx, step in enumerate(eval(args.steps)):
                     loss, score = 0., torch.zeros(1)
-                    if 'lr' in step or 'mixup' in step or 'manifold mixup' in step or 'rotations' in step:
-                        dataStep = data['supervised'].clone()
-                        loss_lr, score = criterion['supervised'][trainingSetIdx](backbone, dataStep, target, lr="lr" in step, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
-                        loss += args.step_coefficient[step_idx]*loss_lr
+                    if episodic:
+                        if 'prototypical' in step:
+                            pass
+                    else:
+                        if 'lr' in step or 'mixup' in step or 'manifold mixup' in step or 'rotations' in step:
+                            dataStep = data['supervised'].clone()
+                            loss_lr, score = criterion['supervised'][trainingSetIdx](backbone, dataStep, target, lr="lr" in step, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
+                            loss += args.step_coefficient[step_idx]*loss_lr
 
-                    if 'dino' in step:
-                        dataStep = data['dino']
-                        loss_dino = criterion['dino'][trainingSetIdx](backbone, teacher['dino'], dataStep, target, epoch-1)
-                        loss += args.step_coefficient[step_idx]*loss_dino
+                        if 'dino' in step:
+                            dataStep = data['dino']
+                            loss_dino = criterion['dino'][trainingSetIdx](backbone, teacher['dino'], dataStep, target, epoch-1)
+                            loss += args.step_coefficient[step_idx]*loss_dino
                 
                     loss.backward()
 
