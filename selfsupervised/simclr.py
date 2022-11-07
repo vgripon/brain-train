@@ -52,13 +52,13 @@ class SIMCLRHead(nn.Module):
         return x
 
 class SIMCLR(nn.Module):
-    def __init__(self, in_dim, epochs, nSteps, head_hidden_dim=DEFAULT_HEAD_HIDDEN_DIM, out_dim=DEFAULT_OUT_DIM, temperature=DEFAULT_TEMPERATURE, ncrops=DEFAULT_NCROPS, supervised=DEFAULT_SUPERVISED):
+    def __init__(self, in_dim, nSteps, head_hidden_dim=DEFAULT_HEAD_HIDDEN_DIM, out_dim=DEFAULT_OUT_DIM, temperature=DEFAULT_TEMPERATURE, ncrops=DEFAULT_NCROPS, supervised=DEFAULT_SUPERVISED):
         super(SIMCLR, self).__init__()
         self.ncrops = ncrops
         self.nSteps = nSteps
         self.temperature = temperature
         self.head = SIMCLRHead(in_dim, out_dim, head_hidden_dim)
-        self.simclr_loss_fn = SupConLoss()
+        self.simclr_loss_fn = SupConLoss(temperature=DEFAULT_TEMPERATURE, device=args.device)
         self.supervised = supervised
 
     def forward_pass(self, backbone, head, x):

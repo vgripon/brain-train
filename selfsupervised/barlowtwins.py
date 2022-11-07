@@ -118,7 +118,7 @@ class BARLOWTWINSHead(nn.Module):
         return x # standardization done in the loss function
 
 class BARLOWTWINS(nn.Module):
-    def __init__(self, in_dim, epochs, nSteps, head_hidden_dim=DEFAULT_HEAD_HIDDEN_DIM, out_dim=DEFAULT_OUT_DIM, ncrops=DEFAULT_NCROPS):
+    def __init__(self, in_dim, nSteps, head_hidden_dim=DEFAULT_HEAD_HIDDEN_DIM, out_dim=DEFAULT_OUT_DIM, ncrops=DEFAULT_NCROPS):
         super(BARLOWTWINS, self).__init__()
         self.ncrops = ncrops
         self.nSteps = nSteps

@@ -260,7 +260,7 @@ for nRun in range(args.runs):
             p.requires_grad = False
     if 'simclr' in all_steps:
         from selfsupervised.simclr import SIMCLR
-        criterion['simclr'] = [SIMCLR(in_dim=outputDim, epochs=args.epochs, nSteps=nSteps) for _ in trainSet]
+        criterion['simclr'] = [SIMCLR(in_dim=outputDim, epochs=args.epochs, nSteps=nSteps, supervised=False) for _ in trainSet]
     if 'simclr_supervised' in all_steps:
         from selfsupervised.simclr import SIMCLR
         criterion['simclr_supervised'] = [SIMCLR(in_dim=outputDim, epochs=args.epochs, nSteps=nSteps, supervised=True) for _ in trainSet]
