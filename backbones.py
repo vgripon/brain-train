@@ -186,7 +186,7 @@ class ResNet12(nn.Module):
         y = y.mean(dim = list(range(2, len(y.shape))))
         return y
 from vit import ViT
-from vit_dino import vit_small
+from vit_dino import vit_small, vit_base
 def prepareBackbone():
     large = False
     patch_size = 0
@@ -216,5 +216,7 @@ def prepareBackbone():
         "vit_large": lambda: (ViT(image_size = args.image_size, patch_size = patch_size, channels = 3, dim_head=64, dim = 1024, depth = 24, heads = 16, mlp_dim = 1024*4, pool=False, projection=projection, dropout=args.dropout, emb_dropout=args.dropout, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6)), 1024),
         "vit_huge": lambda: (ViT(image_size = args.image_size, patch_size = patch_size, channels = 3, dim_head=64, dim = 1280, depth = 32, heads = 16, mlp_dim = 1280*4, pool=False, projection=projection, dropout=args.dropout, emb_dropout=args.dropout, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6)), 1280),
         "dino_vit_small": lambda: (vit_small(patch_size=patch_size, drop_path_rate=args.dropout), 384),
+        "dino_vit_base": lambda: (vit_base(patch_size=patch_size, drop_path_rate=args.dropout), 768),
+
         }[args.backbone.lower()]()
 print(" backbones,", end='')
