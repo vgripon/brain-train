@@ -68,20 +68,22 @@ def train(epoch, backbone, teacher, criterion, optimizer, scheduler):
 
                 for step_idx, step in enumerate(eval(args.steps)):
                     loss, score = 0., torch.zeros(1)
-                    if episodic:
-                        if 'prototypical' in step:
-                            pass
-                    else:
-                        if 'lr' in step or 'mixup' in step or 'manifold mixup' in step or 'rotations' in step:
-                            dataStep = data['supervised'].clone()
-                            loss_lr, score = criterion['supervised'][trainingSetIdx](backbone, dataStep, target, lr="lr" in step, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
-                            loss += args.step_coefficient[step_idx]*loss_lr
+                    if 'prototypical' in step:
+                        dataStep = data['supervised'].clone()
+                        loss_proto, score_proto = criterion['prototypical'][trainingSetIdx](backbone, dataStep)
+                        loss += args.step_coefficient[step_idx] * loss_proto
+                        score += args.step_coefficient[step_idx] * score_proto
+                        
+                    if 'lr' in step or 'mixup' in step or 'manifold mixup' in step or 'rotations' in step:
+                        dataStep = data['supervised'].clone()
+                        loss_lr, score = criterion['supervised'][trainingSetIdx](backbone, dataStep, target, lr="lr" in step, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
+                        loss += args.step_coefficient[step_idx]*loss_lr
 
-                        if 'dino' in step:
-                            dataStep = data['dino']
-                            loss_dino = criterion['dino'][trainingSetIdx](backbone, teacher['dino'], dataStep, target, epoch-1)
-                            loss += args.step_coefficient[step_idx]*loss_dino
-                
+                    if 'dino' in step:
+                        dataStep = data['dino']
+                        loss_dino = criterion['dino'][trainingSetIdx](backbone, teacher['dino'], dataStep, target, epoch-1)
+                        loss += args.step_coefficient[step_idx]*loss_dino
+            
                     loss.backward()
 
                 losses[trainingSetIdx] += args.batch_size * loss.item()
@@ -246,14 +248,19 @@ for nRun in range(args.runs):
     all_steps = [item for sublist in eval(args.steps) for item in sublist]
     if 'lr' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or 'rotations' in all_steps:
         criterion['supervised'] = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in trainSet]
+    if args.episodic and 'prototypical' in all_steps:
+        criterion['prototypical'] = [classifiers.ProtoNet() for dataset in trainSet]
     if 'dino' in all_steps:
         from selfsupervised.dino import DINO
         criterion['dino'] = [DINO(in_dim=outputDim, epochs=args.epochs, nSteps=nSteps) for _ in trainSet]
-        teacher['dino'] = backbones.prepareBackbone()[0] # Same backbone but with a different init
-        
-        for p in teacher['dino'].parameters()+criterion['dino'].teacher_head.parameters(): # Freeze teacher + teacher head
+        teacher['dino'] = backbones.prepareBackbone()[0].to(args.device) # Same backbone but with a different init
+         
+        for p in teacher['dino'].parameters(): # Freeze teacher + teacher head
             p.requires_grad = False
-
+        for crit in criterion['dino']:
+            for p in crit.teacher_head.parameters():
+                p.requires_grad = False
+    
     numParamsCriterions = 0
     for c in [item for sublist in criterion.values() for item in sublist] :
         c.to(args.device)

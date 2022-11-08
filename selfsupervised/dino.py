@@ -151,7 +151,9 @@ class DINO(nn.Module):
     def update_teacher(self, student, teacher, epoch, batchIdx):
         # EMA update for the teacher
         m = self.momentum_schedule[self.nSteps*epoch+batchIdx]
-        for param_t, param_s in zip(teacher.parameters()+teacher_head.parameters(), student.parameters()+student_head.parameters()):
+        for param_t, param_s in zip(teacher.parameters(), student.parameters()):
+            param_t.data.mul_(m).add_((1 - m)*param_s.detach().data)
+        for param_t, param_s in zip(self.teacher_head.parameters(), self.student_head.parameters()):
             param_t.data.mul_(m).add_((1 - m)*param_s.detach().data)
 
     def forward_multicrops(self, backbone, head, x):
