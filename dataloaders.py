@@ -309,7 +309,7 @@ def metadataset_imagenet_v2():
         all_transforms['supervised'] = supervised_transform
     all_transforms.update(get_ssl_transform(image_size, normalization))
     trans = TransformWrapper(all_transforms)
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = True, episodic=args.episodic, datasetName="metadataset_imagenet_train"), "name":"metadataset_imagenet_v2_train", "num_classes":num_classes, "name_classes": dataset_train["name_classes"]+dataset_validation["name_classes"]+dataset_test["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = True, episodic=args.episodic, datasetName="metadataset_imagenet_train_v2"), "name":"metadataset_imagenet_v2_train", "num_classes":num_classes, "name_classes": dataset_train["name_classes"]+dataset_validation["name_classes"]+dataset_test["name_classes"]}
 
 def mnist(datasetName):
     pytorchDataset = datasets.MNIST(args.dataset_path, train = datasetName != "test", download = 'MNIST' not in os.listdir(args.dataset_path))
