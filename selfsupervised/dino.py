@@ -99,7 +99,7 @@ class DINOAugmentation(object):
         return crops
 
 class DINOHead(nn.Module):
-    def __init__(self, in_dim, out_dim, norm_last_layer, head_hidden_dim, bottleneck_dim):
+    def __init__(self, in_dim, out_dim, head_hidden_dim, bottleneck_dim, norm_last_layer=True):
         super(DINOHead, self).__init__()
         layers = [nn.Linear(in_dim, head_hidden_dim), nn.BatchNorm1d(head_hidden_dim)]
         for i in range(2):
@@ -144,14 +144,16 @@ class DINO(nn.Module):
                 np.ones(epochs - warmup_teacher_temp_epochs) * teacher_temperature
             ))
         self.register_buffer("center", torch.zeros(1, out_dim)) # won't be updated by optimizer, not returned by model.parameters()
-        self.teacher_head = DINOHead(in_dim, out_dim, norm_last_layer, head_hidden_dim, bottleneck_dim)
-        self.student_head = DINOHead(in_dim, out_dim, norm_last_layer, head_hidden_dim, bottleneck_dim)
+        self.teacher_head = DINOHead(in_dim, out_dim, head_hidden_dim, bottleneck_dim)
+        self.student_head = DINOHead(in_dim, out_dim, head_hidden_dim, bottleneck_dim, norm_last_layer=norm_last_layer)
 
     @torch.no_grad()
     def update_teacher(self, student, teacher, epoch, batchIdx):
         # EMA update for the teacher
         m = self.momentum_schedule[self.nSteps*epoch+batchIdx]
         for param_t, param_s in zip(teacher.parameters(), student.parameters()):
+            param_t.data.mul_(m).add_((1 - m)*param_s.detach().data)
+        for param_t, param_s in zip(self.teacher_head.parameters(), self.student_head.parameters()):
             param_t.data.mul_(m).add_((1 - m)*param_s.detach().data)
 
     def forward_multicrops(self, backbone, head, x):
