@@ -127,7 +127,7 @@ def ncm(shots, queries):
             pass
         else:
             distances = torch.norm(queriesClass.unsqueeze(1) - centroids.unsqueeze(0), dim = 2)
-            score += (distances.argmin(dim = 1) - i == 0).float().sum()
+            score += (distances.argmin(dim = 1) - i == 0).float().sum().cpu()
             total += queriesClass.shape[0]
     return score / total
 

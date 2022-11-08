@@ -50,7 +50,7 @@ def SNR_mean_couple(list_distrib):
     noise = np.array(l_noise).mean()
     return margin/noise , margin , noise
 
-def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_verbose = False ):
+def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_verbose = False, QR = args.QR ):
     features = [torch.load(filename, map_location=args.device)]
     for i in range(len(features)):
         accs = []
@@ -59,6 +59,7 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
         feature = features[i]
         chance = []
         loo = []
+        soft,hard = [],[] 
         if datasets=='omniglot':
             Generator = OmniglotGenerator
             generator = Generator(datasetName=None, num_elements_per_class= [len(feat['features']) for feat in feature], dataset_path=args.dataset_path)
@@ -76,22 +77,59 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
             shots, queries = generator.get_features_from_indices(feature, episode)
             #print('1st shot', shots[0][0], '1st query' , queries[0][0])
             chance.append(1/len(shots)) # = 1/n_ways
-            accs.append(classifiers.evalFewShotRun(shots, queries))
+            perf = classifiers.evalFewShotRun(shots, queries)
+            accs.append(perf)
             if 'snr' in proxy:
                 snr.append(SNR(shots)[0])
             if 'fake_acc' in proxy:
                 #init_seed(args.seed)
-                fake_data = fake_samples2(shots)
-                fake_acc.append(classifiers.evalFewShotRun(shots, fake_data))
+                if QR:
+                    fake_acc.append(QRsamplingtest(shots, queries, perf))
+                else:
+                    fake_data = fake_samples2(shots)
+                    fake_acc.append(classifiers.evalFewShotRun(shots, fake_data))
             if 'loo' in proxy:
                 loo.append(leave_one_out_2(shots))
+            if 'hard' in proxy:
+                hard.append(classifiers.evalFewShotRun(shots, shots))
+            if 'soft' in proxy:
+                soft.append(confidence(shots))
         accs = 100 * torch.tensor(accs)
         fake_acc = 100 * torch.tensor(fake_acc)
         chance = 100 * torch.tensor(chance)
         snr = torch.tensor(snr)
         loo = 100*torch.tensor(loo)
-        return {'acc' : accs,'snr': snr, 'fake_acc' : fake_acc, 'chance' : chance, 'loo' : loo}
+        return {'acc' : accs,'snr': snr, 'fake_acc' : fake_acc, 'chance' : chance, 'loo' : loo, 'soft' : soft, 'hard': hard}
 
+def confidence(shots):
+    n_ways = len(shots)
+    centroids = torch.stack([shotClass.mean(dim = 0) for shotClass in shots])
+    score = 0
+    total = 0
+    for i, queriesClass in enumerate(shots):
+        distances = torch.norm(queriesClass.unsqueeze(1) - centroids.unsqueeze(0), dim = 2)
+        sims = torch.softmax((-5 * distances).reshape(-1, n_ways), dim = 1)
+        score += torch.max(sims, dim = 1)[0].mean().cpu()
+    return score
+
+
+def QRsamplingtest(shots, queries_for_sanity_check, perf_for_sanity_check):
+    n_ways = len(shots)
+    means = torch.stack([shots[i].mean(0) for i in range(n_ways)])
+    Q = dimReduction(means)
+    reduced = [torch.einsum('nd, wd -> nw',shots[i], Q) for i in range(n_ways)]
+    reduced_queries_for_sanity_check = [torch.einsum('nd, wd -> nw',queries_for_sanity_check[i], Q) for i in range(n_ways)]
+    if not perf_for_sanity_check == classifiers.evalFewShotRun(reduced, reduced_queries_for_sanity_check):
+        print(perf_for_sanity_check.item() ,classifiers.evalFewShotRun(reduced, reduced_queries_for_sanity_check).item(), 'should be same')
+    fake_samples = fake_samples2(reduced)
+    perf = classifiers.evalFewShotRun(reduced, fake_samples)
+    return perf
+
+def dimReduction(means):
+    perm = torch.arange(means.shape[0])-1
+    LDAdirections = (means-means[perm])[:-1]
+    Q, R = torch.linalg.qr(LDAdirections.T)
+    return Q.T
 
 def fake_samples(list_distrib, n_sample = 100):
     n_ways = len(list_distrib)
@@ -106,7 +144,7 @@ def fake_samples(list_distrib, n_sample = 100):
     fake_samples = [torch.from_numpy(np.random.multivariate_normal(means[i], covs[i], n_sample)) for i in range(n_ways)]
     return fake_samples
 
-def fake_samples2(list_distrib, n_sample = 100):
+def fake_samples2(list_distrib, n_sample = 100, alpha = 0.2):
     n_ways = len(list_distrib)
     means = torch.stack([list_distrib[i].mean(0) for i in range(n_ways)])
     centered = [list_distrib[i]-means[i] for i in range(n_ways)]
@@ -116,10 +154,12 @@ def fake_samples2(list_distrib, n_sample = 100):
         x= centered[i]
         if x.shape[0]!=1:
             cov = (torch.matmul(x.T, x) + torch.eye(x.shape[1]).to(args.device) * 0.001) / (x.shape[0]-1)
-            check = torch.linalg.cholesky_ex(cov).info.eq(0).unsqueeze(0)
+            #check = torch.linalg.cholesky_ex(cov).info.eq(0).unsqueeze(0)
+            if args.isotropic:
+                cov = torch.diag(x.std(dim=0))
             covs.append(cov)
         else:
-            cov = torch.eye(x.shape[1])
+            cov = torch.eye(x.shape[1])*alpha
             covs.append(cov)
         dist = torch.distributions.MultivariateNormal(loc  = means[i].float().to(device  = args.device), covariance_matrix= cov.float().to(device  = args.device))
         fake_samples.append(dist.rsample(torch.Size([n_sample])))
@@ -139,6 +179,7 @@ def plot_norm_correlation(L, plot=True, proxy= ''):
     stds = np.std(L,axis = 0)
     means = np.mean(L,axis = 0)
     norm_L = (L-means)/stds
+    norm_L = np.nan_to_num(norm_L, nan=0)
     y = norm_L[:,0].ravel()
     x = norm_L[:,1].ravel()
     rho = np.corrcoef(x,y)
@@ -188,7 +229,8 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
     return res_baseline, L
 
 def save_results(L,datasets, proxy):
-    file = 'results/results_id_backbone.pt'
+    N = args.num_clusters
+    file = 'results/results[test]_id_backbone'+str(N)+'.pt'
     if not os.path.isfile(file):
         d={}
         torch.save(d,file)
@@ -196,7 +238,7 @@ def save_results(L,datasets, proxy):
         d = torch.load(file)
     if proxy in d.keys() and datasets in d[proxy].keys():
         print('overwriting', datasets, proxy)
-        torch.save(d,'results/backed.pt')
+        torch.save(d,'results/backed'+str(N)+'.pt')
     if proxy in d.keys():
         d[proxy][datasets] = {'data' : torch.from_numpy(L), 'info' : str(args)} 
     else:

@@ -17,6 +17,7 @@ parser.add_argument("--seed", type=int, default=random.randint(0, 1000000000), h
 parser.add_argument("--deterministic", action="store_true", help="force deterministic mode for cuda")
 parser.add_argument("--silent", action="store_true", help="reduce output verbose")
 
+
 ### optimizer args
 parser.add_argument("--optimizer", type=str, default="SGD", help="can be SGD or Adam")
 parser.add_argument("--lr", type=float, default=-1., help="initial learning rate, defaut to 0.1 for SGD and 0.001 for Adam")
@@ -69,6 +70,8 @@ parser.add_argument("--feature-processing", type=str, default="", help="feature 
 parser.add_argument("--leaky", action="store_true", help="use leaky relu instead of relu for intermediate activations")
 parser.add_argument("--dropout", type=float, default=0., help="dropout rate")
 parser.add_argument("--num-clusters", type=int, default=50, help="number of clusters")
+parser.add_argument("--QR", action="store_true", help="reduce dim to n_ways-1")
+parser.add_argument("--isotropic", action="store_true", help="reduce dim to n_ways-1")
 
 
 ### criterion
