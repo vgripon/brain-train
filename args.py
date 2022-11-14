@@ -84,6 +84,7 @@ parser.add_argument("--gamma", type=float, default=0.1, help="learning rate mult
 parser.add_argument("--cosine", action="store_true", help="use cosine annealing instead of multisteplr")
 
 ### few shot evaluation
+parser.add_argument("--max-queries", action="store_true", help="use as much queries as possible")
 parser.add_argument("--few-shot", action="store_true", help="evaluation using few shot tasks")
 parser.add_argument("--few-shot-runs", type=int, default=10000, help="total number of few shot runs")
 parser.add_argument("--few-shot-ways", type=int, default=5, help="number of classes in generated few shot tasks")
