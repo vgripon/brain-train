@@ -148,7 +148,13 @@ def fake_samples(list_distrib, n_sample = 100):
     fake_samples = [torch.from_numpy(np.random.multivariate_normal(means[i], covs[i], n_sample)) for i in range(n_ways)]
     return fake_samples
 
-def fake_samples2(list_distrib, n_sample = 100, alpha = 1.0 if args.QR else 0.35 ):
+def fake_samples2(list_distrib, n_sample = 100 ):
+    if args.isotropic and args.QR:
+        alpha = 0.9
+    elif args.QR:
+         alpha = 0.6
+    else:
+        alpha = 1.2
     if args.num_clusters == 50:
         alpha*=0.7
     n_ways = len(list_distrib)
