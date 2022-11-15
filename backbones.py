@@ -186,20 +186,23 @@ class ResNet12(nn.Module):
         y = y.mean(dim = list(range(2, len(y.shape))))
         return y
 from vit import ViT
-from vit_dino import vit_small, vit_base
+from vit_dino import vit_small, vit_base, vit_tiny
 def prepareBackbone():
     large = False
     patch_size = 0
     projection = 'conv'
+    backbone = args.backbone
     if args.backbone.lower()[-6:] == "_large":
         large = True
-        args.backbone = args.backbone[:-6]
+        backbone = args.backbone[:-6]
     if 'vit' in args.backbone:
         if '_linear' in args.backbone:
             projection = 'linear'
-            args.backbone = args.backbone[:-7]
-        patch_size = int(args.backbone.split('_')[-1])
-        args.backbone = '_'.join(args.backbone.split('_')[:-1])
+            backbone = args.backbone[:-7]
+        else:
+            backbone = args.backbone
+        patch_size = int(backbone.split('_')[-1])
+        backbone = '_'.join(backbone.split('_')[:-1])
     return {
         "resnet18": lambda: (ResNet(BasicBlock, [(2, 1, 1), (2, 2, 2), (2, 2, 4), (2, 2, 8)], args.feature_maps, large = large), 8 * args.feature_maps),
         "resnet20": lambda: (ResNet(BasicBlock, [(3, 1, 1), (3, 2, 2), (3, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
@@ -215,8 +218,8 @@ def prepareBackbone():
         "vit_base": lambda: (ViT(image_size = args.image_size, patch_size = patch_size, channels = 3, dim_head=64, dim = 768, depth = 12, heads = 12, mlp_dim = 768*4, pool=False, projection=projection, dropout=args.dropout, emb_dropout=args.dropout, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6)), 768),
         "vit_large": lambda: (ViT(image_size = args.image_size, patch_size = patch_size, channels = 3, dim_head=64, dim = 1024, depth = 24, heads = 16, mlp_dim = 1024*4, pool=False, projection=projection, dropout=args.dropout, emb_dropout=args.dropout, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6)), 1024),
         "vit_huge": lambda: (ViT(image_size = args.image_size, patch_size = patch_size, channels = 3, dim_head=64, dim = 1280, depth = 32, heads = 16, mlp_dim = 1280*4, pool=False, projection=projection, dropout=args.dropout, emb_dropout=args.dropout, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6)), 1280),
+        "dino_vit_tiny": lambda: (vit_tiny(patch_size=patch_size, drop_path_rate=args.dropout), 192),
         "dino_vit_small": lambda: (vit_small(patch_size=patch_size, drop_path_rate=args.dropout), 384),
-        "dino_vit_base": lambda: (vit_base(patch_size=patch_size, drop_path_rate=args.dropout), 768),
-
-        }[args.backbone.lower()]()
+        "dino_vit_base": lambda: (vit_base(patch_size=patch_size, drop_path_rate=args.dropout), 768)
+        }[backbone.lower()]()
 print(" backbones,", end='')

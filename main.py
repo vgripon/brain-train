@@ -13,7 +13,6 @@ from utils import *
 from dataloaders import trainSet, validationSet, testSet
 import classifiers
 from few_shot_evaluation import EpisodicGenerator, ImageNetGenerator, OmniglotGenerator
-from copy import deepcopy
 
 if args.wandb!='':
     import wandb
@@ -282,8 +281,6 @@ for nRun in range(args.runs):
     tick = time.time()
     best_val = 1e10 if not args.few_shot else 0
     lr = args.lr
-
-
 
     for epoch in range(args.epochs):
         if (epoch % 30 == 0 and not args.silent) or epoch == 0 or epoch == args.skip_epochs:
