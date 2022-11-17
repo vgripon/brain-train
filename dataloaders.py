@@ -14,8 +14,10 @@ from PIL import Image
 import copy
 from selfsupervised.selfsupervised import get_ssl_transform
 from utils import *
+from few_shot_evaluation import EpisodicGenerator
 ### first define dataholder, which will be used as an argument to dataloaders
 all_steps = [item for sublist in eval(args.steps) for item in sublist]
+supervised = 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "" or args.episodic
 class DataHolder():
     def __init__(self, data, targets, transforms, target_transforms=lambda x:x, opener=lambda x: Image.open(x).convert('RGB')):
         self.data = data
@@ -36,8 +38,38 @@ class DataHolder():
         return self.transforms(elt), self.target_transforms(self.targets[idx])
     def __len__(self):
         return self.length
+class CategoriesSampler():
+    """
+        Sampler for episodic training
+    """
+    def __init__(self, datasetName):
+        self.batch_size = args.batch_size
+        self.generator = EpisodicGenerator(datasetName=datasetName, dataset_path=args.dataset_path)
+        self.n_ways = args.few_shot_ways
+        self.n_shots = args.few_shot_shots
+        self.n_queries = args.few_shot_queries
+        self.episodic_iterations_per_epoch = args.episodic_iterations_per_epoch
+    def __len__(self):
+        return self.episodic_iterations_per_epoch
+    
+    def __iter__(self):
+        """
+            Return indices used in one batch
+            data is returned in a sequence of c1c1c1c1c2c2c2c2c3c3c3c3 with shots first then queries
+        """
+        for _ in range(self.episodic_iterations_per_epoch):
+            episode = self.generator.sample_episode(ways=self.n_ways, n_shots=self.n_shots, n_queries=self.n_queries)
+            batch = []
+            for c, class_idx in enumerate(episode['choice_classes']):
+                offset = sum(self.generator.num_elements_per_class[:class_idx])
+                batch = batch + [offset+s for s in episode['shots_idx'][c]+episode['queries_idx'][c]]
+            batch = torch.tensor(batch)
+            yield batch
 
-def dataLoader(dataholder, shuffle):
+def dataLoader(dataholder, shuffle, datasetName, episodic):
+    if episodic : 
+        sampler = CategoriesSampler(datasetName=datasetName)
+        return torch.utils.data.DataLoader(dataholder, num_workers = min(os.cpu_count(), 8), batch_sampler=sampler)
     return torch.utils.data.DataLoader(dataholder, batch_size = args.batch_size, shuffle = shuffle, num_workers = min(os.cpu_count(), 8))
 
 # Define GaussianNoise since it's not part of torch.transforms
@@ -97,7 +129,7 @@ def cifar10(dataset):
     if dataset == 'train':
         supervised_transform = transforms.Compose([transforms.RandomCrop(image_size, padding=4), transforms.RandomHorizontalFlip(), normalization]) 
         all_transforms = {}
-        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+        if supervised:
             all_transforms['supervised'] = supervised_transform
         all_transforms.update(get_ssl_transform(image_size, normalization))
         trans = TransformWrapper(all_transforms)
@@ -120,7 +152,7 @@ def cifar100(dataset):
     if dataset == 'train':
         supervised_transform = transforms.Compose([transforms.RandomCrop(image_size, padding=4), transforms.RandomHorizontalFlip(), normalization]) 
         all_transforms = {}
-        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+        if supervised:
             all_transforms['supervised'] = supervised_transform
         all_transforms.update(get_ssl_transform(image_size, normalization))
         trans = TransformWrapper(all_transforms)
@@ -146,7 +178,7 @@ def miniimagenet(datasetName):
     if datasetName == 'train':
         supervised_transform = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization])
         all_transforms = {}
-        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+        if supervised:
             all_transforms['supervised'] = supervised_transform
         all_transforms.update(get_ssl_transform(image_size, normalization))
         trans = TransformWrapper(all_transforms)
@@ -156,7 +188,7 @@ def miniimagenet(datasetName):
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ToTensor(), normalization])
 
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="miniimagenet_"+datasetName), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def tieredimagenet(datasetName):
     f = open(args.dataset_path + "datasets.json")    
@@ -171,7 +203,7 @@ def tieredimagenet(datasetName):
     if datasetName == 'train':
         supervised_transform = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization])
         all_transforms = {}
-        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+        if supervised:
             all_transforms['supervised'] = supervised_transform
         all_transforms.update(get_ssl_transform(image_size, normalization))
         trans = TransformWrapper(all_transforms)
@@ -181,7 +213,7 @@ def tieredimagenet(datasetName):
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ToTensor(), normalization])
 
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="tieredimagenet_"+datasetName), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def cifarfs(datasetName):
     f = open(args.dataset_path + "datasets.json")    
@@ -197,7 +229,7 @@ def cifarfs(datasetName):
     if datasetName == 'train':
         supervised_transform = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization])
         all_transforms = {}
-        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
+        if supervised:
             all_transforms['supervised'] = supervised_transform
         all_transforms.update(get_ssl_transform(image_size, normalization))
         trans = TransformWrapper(all_transforms)
@@ -207,7 +239,7 @@ def cifarfs(datasetName):
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ToTensor(), normalization])
 
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="cifarfs_"+datasetName), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def metadataset_imagenet(datasetName):
     f = open(args.dataset_path + "datasets.json")    
@@ -232,7 +264,7 @@ def metadataset_imagenet(datasetName):
         else:
             trans = transforms.Compose([totensor(), norm(), transforms.RandomResizedCrop(image_size)])
 
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="metadataset_imagenet_"+datasetName), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def imagenet(datasetName):
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -253,7 +285,7 @@ def imagenet(datasetName):
 
     pytorchDataset = datasets.ImageNet(args.dataset_path + "/imagenet", split = "train" if datasetName != "test" else "val", transform = trans)
         
-    return {"dataloader": dataLoader(pytorchDataset, shuffle = datasetName == "train"), "name":"imagenet_" + datasetName, "num_classes":1000, "name_classes": pytorchDataset.classes}
+    return {"dataloader": dataLoader(pytorchDataset, shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="imagenet_"+datasetName), "name":"imagenet_" + datasetName, "num_classes":1000, "name_classes": pytorchDataset.classes}
 
 
 def metadataset_imagenet_v2():
@@ -277,7 +309,7 @@ def metadataset_imagenet_v2():
         all_transforms['supervised'] = supervised_transform
     all_transforms.update(get_ssl_transform(image_size, normalization))
     trans = TransformWrapper(all_transforms)
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = True), "name":"metadataset_imagenet_v2_train", "num_classes":num_classes, "name_classes": dataset_train["name_classes"]+dataset_validation["name_classes"]+dataset_test["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = True, episodic=args.episodic, datasetName="metadataset_imagenet_train_v2"), "name":"metadataset_imagenet_v2_train", "num_classes":num_classes, "name_classes": dataset_train["name_classes"]+dataset_validation["name_classes"]+dataset_test["name_classes"]}
 
 def mnist(datasetName):
     pytorchDataset = datasets.MNIST(args.dataset_path, train = datasetName != "test", download = 'MNIST' not in os.listdir(args.dataset_path))
@@ -293,7 +325,7 @@ def mnist(datasetName):
     trans = TransformWrapper(all_transforms)
 
 
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name": "mnist_" + datasetName, "num_classes": 10, "name_classes": list(range(10))}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="mnist_"+datasetName), "name": "mnist_" + datasetName, "num_classes": 10, "name_classes": list(range(10))}
 
 def fashionMnist(datasetName):
     pytorchDataset = datasets.FashionMNIST(args.dataset_path, train = datasetName != "test", download = 'FashionMNIST' not in os.listdir(args.dataset_path))
@@ -317,7 +349,7 @@ def fashionMnist(datasetName):
         else:
             trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ToTensor(), normalization])
 
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name": "fashion-mnist_" + datasetName, "num_classes": 10, "name_classes": pytorchDataset.classes}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="fashionmnist_"+datasetName), "name": "fashion-mnist_" + datasetName, "num_classes": 10, "name_classes": pytorchDataset.classes}
 
 
 def metadataset_dtd(datasetName):
@@ -342,7 +374,7 @@ def metadataset_dtd(datasetName):
         else:
             trans = transforms.Compose([totensor(), norm(), transforms.RandomResizedCrop(image_size)])
 
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="metadataset_imagenet_dtd_"+datasetName), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 
 def metadataset_cub(datasetName):
@@ -366,7 +398,7 @@ def metadataset_cub(datasetName):
             trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)]) 
         else:
             trans = transforms.Compose([totensor(), norm(), transforms.RandomResizedCrop(image_size)])
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="metadataset_cub_"+datasetName), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 
 def metadataset_fungi(datasetName):
@@ -391,7 +423,7 @@ def metadataset_fungi(datasetName):
         else:
             trans = transforms.Compose([totensor(), norm(), transforms.RandomResizedCrop(image_size)])
 
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="metadataset_fungi_"+datasetName), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def metadataset_aircraft(datasetName):
     f = open(args.dataset_path + "datasets.json")    
@@ -414,7 +446,7 @@ def metadataset_aircraft(datasetName):
             trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
         else:
             trans = transforms.Compose([totensor(), norm(), transforms.RandomResizedCrop(image_size)])
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="metadataset_aircraft_"+datasetName), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def metadataset_mscoco(datasetName):
     if datasetName=='train':
@@ -439,7 +471,7 @@ def metadataset_mscoco(datasetName):
             trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
         else:
             trans = transforms.Compose([totensor(), norm(), transforms.RandomResizedCrop(image_size)])
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="metadataset_mscoco_"+datasetName), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def metadataset_vggflower(datasetName):
     f = open(args.dataset_path + "datasets.json")    
@@ -463,7 +495,7 @@ def metadataset_vggflower(datasetName):
         else:
             trans = transforms.Compose([totensor(), norm(), transforms.RandomResizedCrop(image_size)])
 
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="metadataset_vgg_flower_"+datasetName), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 
 def metadataset_quickdraw(datasetName):
@@ -487,7 +519,7 @@ def metadataset_quickdraw(datasetName):
             trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
         else:
             trans = transforms.Compose([totensor(), norm(), transforms.RandomResizedCrop(image_size)])
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="metadataset_quickdraw_"+datasetName), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 
 def metadataset_omniglot(datasetName):
@@ -512,7 +544,7 @@ def metadataset_omniglot(datasetName):
             trans = transforms.Compose([ totensor(), norm(change_sign = -1), bi_resize(target_size=image_size)])
         else:
             trans = transforms.Compose([totensor(), norm(), transforms.RandomResizedCrop(image_size)])
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="metadataset_omniglot_"+datasetName), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 
 def metadataset_traffic_signs(datasetName):
@@ -536,7 +568,7 @@ def metadataset_traffic_signs(datasetName):
             trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
         else:
             trans = transforms.Compose([totensor(), norm(), transforms.RandomResizedCrop(image_size)])
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="metadataset_traffic_signs_"+datasetName), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def audioset(datasetName):
     def randcrop(tensor, duration):

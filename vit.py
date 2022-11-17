@@ -9,13 +9,13 @@ def pair(t):
     return t if isinstance(t, tuple) else (t, t)
 
 class Attention(nn.Module):
-    def __init__(self, dim, heads, dim_head, dropout) -> None:
+    def __init__(self, dim, heads, dim_head, dropout, qkv_bias=False) -> None:
         super(Attention, self).__init__()
         inner_dim = dim_head *  heads   
         self.heads = heads
         self.scale = dim_head ** -0.5 # 1/sqrt(dim_head)
         self.dropout = nn.Dropout(dropout)
-        self.to_qkv = nn.Linear(dim, inner_dim*3, bias=False) # One linear for all Q, K, V for all heads
+        self.to_qkv = nn.Linear(dim, inner_dim*3, bias=qkv_bias) # One linear for all Q, K, V for all heads
         self.softmax = nn.Softmax(dim=-1) # Softmax over num_patches for each head separately
         self.to_out = nn.Sequential(nn.Linear(inner_dim, dim), nn.Dropout(dropout))
     
@@ -30,10 +30,10 @@ class Attention(nn.Module):
         return self.to_out(out) #(batch, num_patches, dim)
 
 class TransformerBlock(nn.Module):
-    def __init__(self, dim, heads, dim_head, mlp_dim, dropout) -> None:
+    def __init__(self, dim, heads, dim_head, mlp_dim, dropout, qkv_bias=False, norm_layer=nn.LayerNorm) -> None:
         super().__init__()
-        self.attention = Attention(dim, heads, dim_head, dropout)
-        self.norm1 = nn.LayerNorm(dim)
+        self.attention = Attention(dim, heads, dim_head, dropout, qkv_bias=qkv_bias)
+        self.norm1 = norm_layer(dim)
         self.mlp = nn.Sequential(
             nn.Linear(dim, mlp_dim),
             nn.Dropout(dropout),
@@ -41,7 +41,7 @@ class TransformerBlock(nn.Module):
             nn.Linear(mlp_dim, dim),
             nn.Dropout(dropout)
         )
-        self.norm2 = nn.LayerNorm(dim)
+        self.norm2 = norm_layer(dim)
     
     def forward(self, x) -> torch.Tensor:
         x = self.norm1(x)
@@ -75,7 +75,9 @@ class ViT(nn.Module):
                 pool=False, 
                 projection='linear', # if not linear use a convolution instead (in original paper they use linear)
                 dropout=0.,
-                emb_dropout = 0.
+                emb_dropout = 0.,
+                qkv_bias = False,
+                norm_layer = nn.LayerNorm,
                 ) -> None:
         super(ViT, self).__init__()
         image_height, image_width = pair(image_size)
@@ -93,9 +95,9 @@ class ViT(nn.Module):
         self.pos_embedding = nn.Parameter(torch.randn(1, num_patches + 1, dim)) # Trainable parameter Add 1 for cls token
         self.cls_token = nn.Parameter(torch.randn(1, 1, dim)) # Trainable parameter for the class token, refers to the task at hand used for training the transformer.
         self.dropout = nn.Dropout(emb_dropout)
-        self.layers = nn.ModuleList([TransformerBlock(dim, heads, dim_head, mlp_dim, dropout) for _ in range(depth)])
+        self.layers = nn.ModuleList([TransformerBlock(dim, heads, dim_head, mlp_dim, dropout, qkv_bias=qkv_bias) for _ in range(depth)])
         self.pool = pool
-        self.norm = nn.LayerNorm(dim)
+        self.norm = norm_layer(dim)
 
     def interpolate_pos_encoding(self, x, w, h) -> torch.Tensor:
         """
@@ -132,7 +134,6 @@ class ViT(nn.Module):
         x = self.dropout(x)
         for layer in self.layers: # Pass through transformer layers
             x = layer(x)
-
+        if norm: x = self.norm(x)
         features = x.mean(dim=1) if self.pool else x[:,0]# Average pooling for features
-        if norm: features = self.norm(features)
         return features

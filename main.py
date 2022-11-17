@@ -68,6 +68,12 @@ def train(epoch, backbone, teacher, criterion, optimizer, scheduler):
 
                 for step_idx, step in enumerate(eval(args.steps)):
                     loss, score = 0., torch.zeros(1)
+                    if 'prototypical' in step:
+                        dataStep = data['supervised'].clone()
+                        loss_proto, score_proto = criterion['prototypical'][trainingSetIdx](backbone, dataStep)
+                        loss += args.step_coefficient[step_idx] * loss_proto
+                        score += args.step_coefficient[step_idx] * score_proto
+                        
                     if 'lr' in step or 'mixup' in step or 'manifold mixup' in step or 'rotations' in step:
                         dataStep = data['supervised'].clone()
                         loss_lr, score = criterion['supervised'][trainingSetIdx](backbone, dataStep, target, lr="lr" in step, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
@@ -97,7 +103,7 @@ def train(epoch, backbone, teacher, criterion, optimizer, scheduler):
                         dataStep = data['barlowtwins']
                         loss_barlowtwins = criterion['barlowtwins'][trainingSetIdx](backbone, dataStep)
                         loss += args.step_coefficient[step_idx]*loss_barlowtwins
-                
+               
                     loss.backward()
 
                 losses[trainingSetIdx] += args.batch_size * loss.item()
@@ -133,7 +139,7 @@ def test(backbone, datasets, criterion):
             for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
                 data = to(data, args.device)
                 target = target.to(args.device)
-                loss, score = criterion[testSetIdx](backbone, data, target)
+                loss, score = criterion[testSetIdx](backbone, data, target, lr=True)
                 losses += data.shape[0] * loss.item()
                 accuracies += data.shape[0] * score.item()
                 total_elt += data.shape[0]
@@ -231,7 +237,8 @@ for nRun in range(args.runs):
         run_wandb = wandb.init(reinit = True, project=args.wandbProjectName, 
             entity=args.wandb, 
             tags=tag, 
-            config=vars(args))
+            config=vars(args),
+            dir=args.wandb_dir)
     if not args.silent:
         print("Preparing backbone... ", end='')
     if args.audio:
@@ -261,13 +268,20 @@ for nRun in range(args.runs):
     all_steps = [item for sublist in eval(args.steps) for item in sublist]
     if 'lr' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or 'rotations' in all_steps:
         criterion['supervised'] = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in trainSet]
+    if args.episodic and 'prototypical' in all_steps:
+        criterion['prototypical'] = [classifiers.ProtoNet() for dataset in trainSet]
     if 'dino' in all_steps:
         from selfsupervised.dino import DINO
         criterion['dino'] = [DINO(in_dim=outputDim, epochs=args.epochs, nSteps=nSteps) for _ in trainSet]
-        teacher['dino'] = deepcopy(backbone)
-        
-        for p in teacher['dino'].parameters(): # Freeze teacher
+        teacher['dino'] = backbones.prepareBackbone()[0].to(args.device) # Same backbone but with a different init
+         
+        for p in teacher['dino'].parameters(): # Freeze teacher + teacher head
             p.requires_grad = False
+         
+        for crit in criterion['dino']:
+            for p in crit.teacher_head.parameters():
+                p.requires_grad = False
+  
     if 'simclr' in all_steps:
         from selfsupervised.simclr import SIMCLR
         criterion['simclr'] = [SIMCLR(in_dim=outputDim, supervised=False) for _ in trainSet]
@@ -280,7 +294,7 @@ for nRun in range(args.runs):
     if 'barlowtwins' in all_steps:
         from selfsupervised.barlowtwins import BARLOWTWINS
         criterion['barlowtwins'] = [BARLOWTWINS(in_dim=outputDim) for _ in trainSet]
-
+        
     numParamsCriterions = 0
     for c in [item for sublist in criterion.values() for item in sublist] :
         c.to(args.device)

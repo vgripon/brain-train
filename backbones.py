@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from args import args
 import random # for manifold mixup
+from functools import partial
 
 class ConvBN2d(nn.Module):
     def __init__(self, in_f, out_f, kernel_size = 3, stride = 1, padding = 1, groups = 1, outRelu = False, leaky = args.leaky):
@@ -185,6 +186,7 @@ class ResNet12(nn.Module):
         y = y.mean(dim = list(range(2, len(y.shape))))
         return y
 from vit import ViT
+from vit_dino import vit_small, vit_base
 def prepareBackbone():
     large = False
     patch_size = 0
@@ -208,11 +210,13 @@ def prepareBackbone():
         "resnet12": lambda: (ResNet12(args.feature_maps), 10 * args.feature_maps),
         "wrn28_10": lambda: (ResNet(BasicBlock, [(4, 1, 10), (4, 2, 20), (4, 2, 40)], args.feature_maps, large = large), 40 * args.feature_maps),
         "wrn16_16": lambda: (ResNet(BasicBlock, [(2, 1, 16), (2, 2, 32), (2, 2, 64)], args.feature_maps, large = large), 64 * args.feature_maps),
-        "vit_tiny": lambda: (ViT(image_size = args.image_size, patch_size = patch_size, channels = 3, dim_head=64, dim = 192, depth = 12, heads = 3, mlp_dim = 192*4, pool=False, projection=projection, dropout=args.dropout, emb_dropout=args.dropout), 192),
-        "vit_small": lambda: (ViT(image_size = args.image_size, patch_size = patch_size, channels = 3, dim_head=64, dim = 384, depth = 12, heads = 6, mlp_dim = 384*4, pool=False, projection=projection, dropout=args.dropout, emb_dropout=args.dropout), 384),
-        "vit_base": lambda: (ViT(image_size = args.image_size, patch_size = patch_size, channels = 3, dim_head=64, dim = 768, depth = 12, heads = 12, mlp_dim = 768*4, pool=False, projection=projection, dropout=args.dropout, emb_dropout=args.dropout), 768),
-        "vit_large": lambda: (ViT(image_size = args.image_size, patch_size = patch_size, channels = 3, dim_head=64, dim = 1024, depth = 24, heads = 16, mlp_dim = 1024*4, pool=False, projection=projection, dropout=args.dropout, emb_dropout=args.dropout), 1024),
-        "vit_huge": lambda: (ViT(image_size = args.image_size, patch_size = patch_size, channels = 3, dim_head=64, dim = 1280, depth = 32, heads = 16, mlp_dim = 1280*4, pool=False, projection=projection, dropout=args.dropout, emb_dropout=args.dropout), 1280)
-        }[args.backbone.lower()]()
+        "vit_tiny": lambda: (ViT(image_size = args.image_size, patch_size = patch_size, channels = 3, dim_head=64, dim = 192, depth = 12, heads = 3, mlp_dim = 192*4, pool=False, projection=projection, dropout=args.dropout, emb_dropout=args.dropout, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6)), 192),
+        "vit_small": lambda: (ViT(image_size = args.image_size, patch_size = patch_size, channels = 3, dim_head=64, dim = 384, depth = 12, heads = 6, mlp_dim = 384*4, pool=False, projection=projection, dropout=args.dropout, emb_dropout=args.dropout, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6)), 384),
+        "vit_base": lambda: (ViT(image_size = args.image_size, patch_size = patch_size, channels = 3, dim_head=64, dim = 768, depth = 12, heads = 12, mlp_dim = 768*4, pool=False, projection=projection, dropout=args.dropout, emb_dropout=args.dropout, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6)), 768),
+        "vit_large": lambda: (ViT(image_size = args.image_size, patch_size = patch_size, channels = 3, dim_head=64, dim = 1024, depth = 24, heads = 16, mlp_dim = 1024*4, pool=False, projection=projection, dropout=args.dropout, emb_dropout=args.dropout, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6)), 1024),
+        "vit_huge": lambda: (ViT(image_size = args.image_size, patch_size = patch_size, channels = 3, dim_head=64, dim = 1280, depth = 32, heads = 16, mlp_dim = 1280*4, pool=False, projection=projection, dropout=args.dropout, emb_dropout=args.dropout, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6)), 1280),
+        "dino_vit_small": lambda: (vit_small(patch_size=patch_size, drop_path_rate=args.dropout), 384),
+        "dino_vit_base": lambda: (vit_base(patch_size=patch_size, drop_path_rate=args.dropout), 768),
 
+        }[args.backbone.lower()]()
 print(" backbones,", end='')

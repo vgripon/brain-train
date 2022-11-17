@@ -16,6 +16,9 @@ parser.add_argument("--skip-epochs", type=int, default=0, help="number of epochs
 parser.add_argument("--seed", type=int, default=random.randint(0, 1000000000), help="initial random seed")
 parser.add_argument("--deterministic", action="store_true", help="force deterministic mode for cuda")
 parser.add_argument("--silent", action="store_true", help="reduce output verbose")
+parser.add_argument("--episodic", action="store_true", help="run episodic training")
+parser.add_argument("--episodic-iterations-per-epoch", type=int, default=600, help="number of iterations per epoch for episodic training")
+
 
 ### optimizer args
 parser.add_argument("--optimizer", type=str, default="SGD", help="can be SGD or Adam")
@@ -61,6 +64,7 @@ parser.add_argument("--image-size", type=int, default=-1, help="image input size
 parser.add_argument("--audio", action="store_true", help="use audio inputs, so switch back to 1d backbones")
 parser.add_argument("--wandb", type=str, default='', help="Report to wandb, input is the entity name")
 parser.add_argument("--wandbProjectName", type=str, default='few-shot', help="wandb project name")
+parser.add_argument("--wandb-dir", type=str, default='wandb', help="directory where wandb files are stored")
 
 ### backbones parameters
 parser.add_argument("--feature-maps", type=int, default=64, help="initial number of feature maps in first embedding, used as a base downstream convolutions")
