@@ -72,6 +72,7 @@ parser.add_argument("--dropout", type=float, default=0., help="dropout rate")
 parser.add_argument("--num-clusters", type=int, default=50, help="number of clusters")
 parser.add_argument("--QR", action="store_true", help="reduce dim to n_ways-1")
 parser.add_argument("--isotropic", action="store_true", help="reduce dim to n_ways-1")
+parser.add_argument("--centroids", action="store_true", help="reduce output verbose")
 
 
 ### criterion
