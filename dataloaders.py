@@ -214,11 +214,11 @@ def metadataset(datasetName, name):
         image_size = args.training_image_size if args.training_image_size>0 else 126
     else:
         image_size = args.test_image_size if args.test_image_size>0 else 126
-    default_train_transforms = ['metadatasettotensor','metadatasetnorm', 'biresize']
+    default_train_transforms = ['metadatasettotensor', 'biresize', 'metadatasetnorm']
     if args.sample_aug == 1:
-        default_test_transforms = ['metadatasettotensor', 'metadatasetnorm', 'biresize']
+        default_test_transforms = ['metadatasettotensor', 'biresize', 'metadatasetnorm']
     else:
-        default_test_transforms = ['metadatasettotensor', 'metadatasetnorm', 'randomresizedcrop', 'biresize']
+        default_test_transforms = ['metadatasettotensor', 'randomresizedcrop', 'biresize', 'metadatasetnorm']
     trans = get_transforms(image_size, datasetName, default_train_transforms, default_test_transforms)
     return {"dataloader": dataLoader(DataHolder(dataset["data"], dataset["targets"], trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName=name+"_"+datasetName), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
