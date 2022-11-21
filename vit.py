@@ -76,8 +76,8 @@ class TransformerBlock(nn.Module):
         self.attention = Attention(dim, heads, dim_head, dropout, qkv_bias=qkv_bias)
         self.mlp = nn.Sequential(
             nn.Linear(dim, mlp_dim),
-            nn.Dropout(dropout),
             nn.GELU(),
+            nn.Dropout(dropout),
             nn.Linear(mlp_dim, dim),
             nn.Dropout(dropout)
         )
