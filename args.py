@@ -60,7 +60,10 @@ parser.add_argument("--training-dataset", type=str, default="", help="training d
 parser.add_argument("--validation-dataset", type=str, default="", help="validation dataset, overriden by --dataset")
 parser.add_argument("--test-dataset", type=str, default="", help="test dataset, overriden by --dataset")
 parser.add_argument("--dataset-size", type=int, default=0, help="defines a maximum of samples considered at each epoch, 0 means it is ignored")
-parser.add_argument("--image-size", type=int, default=-1, help="image input size")
+parser.add_argument("--training-image-size", type=int, default=-1, help="train image input size")
+parser.add_argument("--test-image-size", type=int, default=-1, help="test image input size")
+parser.add_argument("--training-transforms", type=str, default="[]", help="list of transforms to apply to training data")
+parser.add_argument("--test-transforms", type=str, default="[]", help="list of transforms to apply to test data")
 parser.add_argument("--audio", action="store_true", help="use audio inputs, so switch back to 1d backbones")
 parser.add_argument("--wandb", type=str, default='', help="Report to wandb, input is the entity name")
 parser.add_argument("--wandbProjectName", type=str, default='few-shot', help="wandb project name")
@@ -129,6 +132,8 @@ try:
 except: 
     args.step_coefficient = [1]*len(eval(args.steps))
 
+args.training_transforms = eval(args.training_transforms)
+args.test_transforms = eval(args.test_transforms)
 print("milestones are " + str(args.milestones))
 
 print(" args,", end = '')

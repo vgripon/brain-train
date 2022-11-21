@@ -1,7 +1,6 @@
 ### file to generate dataloaders
 ### for simplicity, we do not offer the choice to load the whole dataset in VRAM anymore
 
-from matplotlib.transforms import TransformWrapper
 from torchvision import transforms, datasets
 import random
 from args import args
@@ -15,6 +14,7 @@ import copy
 from selfsupervised.selfsupervised import get_ssl_transform
 from utils import *
 from few_shot_evaluation import EpisodicGenerator
+from augmentations import parse_transforms
 ### first define dataholder, which will be used as an argument to dataloaders
 all_steps = [item for sublist in eval(args.steps) for item in sublist]
 supervised = 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "" or args.episodic
@@ -72,41 +72,6 @@ def dataLoader(dataholder, shuffle, datasetName, episodic):
         return torch.utils.data.DataLoader(dataholder, num_workers = min(os.cpu_count(), 8), batch_sampler=sampler)
     return torch.utils.data.DataLoader(dataholder, batch_size = args.batch_size, shuffle = shuffle, num_workers = min(os.cpu_count(), 8))
 
-# Define GaussianNoise since it's not part of torch.transforms
-class GaussianNoise(object):
-    def __init__(self, noise_std):
-        self.noise_std = noise_std
-
-    def __call__(self, img):
-        img += self.noise_std * torch.randn(img.size())
-        return img
-
-class norm(object):
-    def __init__(self, max_val=255, change_sign = 1):
-        self.max_val = max_val
-        self.change_sign = change_sign
-    def __call__(self, img):
-        img /= self.max_val
-        img-= 0.5
-        img*=2
-        return self.change_sign * img
-    
-class bi_resize(object):
-    def __init__(self, align_corners=True,target_size =126):
-        self.align_corners = align_corners
-        self.target_size = target_size
-
-    def __call__(self, img):
-        img = torch.nn.functional.interpolate(img.unsqueeze(0),size=(self.target_size,self.target_size),mode='bilinear',align_corners=self.align_corners).squeeze(0)
-        return img
-
-class totensor(object):
-    def __init__(self, normalize=True):
-        self.normalize = normalize
-    def __call__(self, img):
-
-        img = torch.tensor(np.array(img).astype(np.float32)).permute(2,0,1)
-        return img
 class TransformWrapper(object):
     """
     Wrapper for different transforms.
@@ -118,175 +83,144 @@ class TransformWrapper(object):
         for name, T in self.all_transforms.items():
             out[name] = T(image)
         return out
-def cifar10(dataset):
-    pytorchDataset = datasets.CIFAR10(args.dataset_path, train = dataset != "test", download = 'cifar-10-python.tar.gz' not in os.listdir(args.dataset_path))
+
+def get_transforms(image_size, datasetName, default_train_transforms, default_test_transforms):
+    if datasetName == 'train':
+        supervised_transform_str = args.training_transforms if len(args.training_transforms) > 0 else default_train_transforms
+        supervised_transform = parse_transforms(supervised_transform_str, image_size) 
+        all_transforms = {}
+        if supervised:
+            all_transforms['supervised'] = transforms.Compose(supervised_transform)
+        all_transforms.update(get_ssl_transform(image_size, normalization=supervised_transform[-1]))
+        trans = TransformWrapper(all_transforms)
+    else:
+        trans = transforms.Compose(parse_transforms(args.test_transforms if len(args.test_transforms) > 0 else default_test_transforms, image_size))
+    return trans
+
+def cifar10(datasetName):
+    pytorchDataset = datasets.CIFAR10(args.dataset_path, train = datasetName != "test", download = 'cifar-10-python.tar.gz' not in os.listdir(args.dataset_path))
+    data = torch.tensor(pytorchDataset.data).transpose(1,3).transpose(2,3).float() / 256.
+    targets = pytorchDataset.targets
+    if datasetName == "train":
+        image_size = args.training_image_size if args.training_image_size>0 else 32
+    else:
+        image_size = args.test_image_size if args.test_image_size>0 else 32
+    default_train_transforms = ['randomcrop','randomhorizontalflip', 'totensor', 'cifar10norm']
+    if args.sample_aug == 1:
+        default_test_transforms = ['centercrop','totensor', 'cifar10norm']
+    else:
+        default_test_transforms = ['randomresizecrop', 'totensor', 'cifar10norm']
+    trans = get_transforms(image_size, datasetName, default_train_transforms, default_test_transforms)
+   
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":"cifar10_" + datasetName, "num_classes":10, "name_classes": pytorchDataset.classes}
+
+def cifar100(datasetName):
+    pytorchDataset = datasets.CIFAR100(args.dataset_path, train = datasetName != "test", download = 'cifar-100-python.tar.gz' not in os.listdir(args.dataset_path))
     data = torch.tensor(pytorchDataset.data).transpose(1,3).transpose(2,3).float() / 256.
     targets = pytorchDataset.targets
 
-    normalization = transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616))
-    image_size = args.image_size if args.image_size>0 else 32
-
-    if dataset == 'train':
-        supervised_transform = transforms.Compose([transforms.RandomCrop(image_size, padding=4), transforms.RandomHorizontalFlip(), normalization]) 
-        all_transforms = {}
-        if supervised:
-            all_transforms['supervised'] = supervised_transform
-        all_transforms.update(get_ssl_transform(image_size, normalization))
-        trans = TransformWrapper(all_transforms)
+    if datasetName == "train":
+        image_size = args.training_image_size if args.training_image_size>0 else 32
     else:
-        if args.sample_aug == 1:
-            trans = transforms.Compose([normalization])
-        else:
-            trans = torch.nn.Sequential(transforms.RandomResizedCrop(image_size), normalization)
-
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset == "train"), "name":"cifar10_" + dataset, "num_classes":10, "name_classes": pytorchDataset.classes}
-
-def cifar100(dataset):
-    pytorchDataset = datasets.CIFAR100(args.dataset_path, train = dataset != "test", download = 'cifar-100-python.tar.gz' not in os.listdir(args.dataset_path))
-    data = torch.tensor(pytorchDataset.data).transpose(1,3).transpose(2,3).float() / 256.
-    targets = pytorchDataset.targets
-
-    normalization = transforms.Normalize((0.5071, 0.4865, 0.4409), (0.2673, 0.2564, 0.2762))
-    image_size = args.image_size if args.image_size>0 else 32
-
-    if dataset == 'train':
-        supervised_transform = transforms.Compose([transforms.RandomCrop(image_size, padding=4), transforms.RandomHorizontalFlip(), normalization]) 
-        all_transforms = {}
-        if supervised:
-            all_transforms['supervised'] = supervised_transform
-        all_transforms.update(get_ssl_transform(image_size, normalization))
-        trans = TransformWrapper(all_transforms)
-
+        image_size = args.test_image_size if args.test_image_size>0 else 32
+    default_train_transforms = ['randomcrop','randomhorizontalflip', 'totensor', 'cifar100norm']
+    if args.sample_aug == 1:
+        default_test_transforms = ['centercrop','totensor', 'cifar100norm']
     else:
-        if args.sample_aug == 1:
-            trans = transforms.Compose([normalization])
-        else:
-            trans = torch.nn.Sequential(transforms.RandomResizedCrop(image_size), normalization)
+        default_test_transforms = ['randomresizecrop', 'totensor', 'cifar100norm']
+    trans = get_transforms(image_size, datasetName, default_train_transforms, default_test_transforms)
 
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = dataset == "train"), "name":"cifar100_" + dataset, "num_classes":100, "name_classes": pytorchDataset.classes}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":"cifar100_" + datasetName, "num_classes":100, "name_classes": pytorchDataset.classes}
 
 def miniimagenet(datasetName):
     f = open(args.dataset_path + "datasets.json")    
     all_datasets = json.loads(f.read())
     f.close()
     dataset = all_datasets["miniimagenet_" + datasetName]
-    data = dataset["data"]
-    targets = dataset["targets"]
-
-    normalization = transforms.Normalize([125.3/255, 123.0/255, 113.9/255], [63.0/255, 62.1/255, 66.7/255])
-    image_size = args.image_size if args.image_size>0 else 84
-    if datasetName == 'train':
-        supervised_transform = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization])
-        all_transforms = {}
-        if supervised:
-            all_transforms['supervised'] = supervised_transform
-        all_transforms.update(get_ssl_transform(image_size, normalization))
-        trans = TransformWrapper(all_transforms)
+    if datasetName == "train":
+        image_size = args.training_image_size if args.training_image_size>0 else 84
     else:
-        if args.sample_aug == 1:
-            trans = transforms.Compose([transforms.Resize(int(image_size*92/84)), transforms.CenterCrop(image_size), transforms.ToTensor(), normalization])
-        else:
-            trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ToTensor(), normalization])
+        image_size = args.test_image_size if args.test_image_size>0 else 84
+    default_train_transforms = ['randomresizedcrop','colorjitter', 'randomhorizontalflip', 'totensor', 'miniimagenetnorm']
+    if args.sample_aug == 1:
+        default_test_transforms = ['resize_92/84', 'centercrop', 'totensor', 'miniimagenetnorm']
+    else:
+        default_test_transforms = ['randomresizecrop', 'totensor', 'miniimagenetnorm']
+    trans = get_transforms(image_size, datasetName, default_train_transforms, default_test_transforms)
 
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="miniimagenet_"+datasetName), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(dataset["data"], dataset["targets"], trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="miniimagenet_"+datasetName), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def tieredimagenet(datasetName):
     f = open(args.dataset_path + "datasets.json")    
     all_datasets = json.loads(f.read())
     f.close()
     dataset = all_datasets["tieredimagenet_" + datasetName]
-    data = dataset["data"]
-    targets = dataset["targets"]
-
-    normalization = transforms.Normalize([125.3/255, 123.0/255, 113.9/255], [63.0/255, 62.1/255, 66.7/255])
-    image_size = args.image_size if args.image_size>0 else 84
-    if datasetName == 'train':
-        supervised_transform = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization])
-        all_transforms = {}
-        if supervised:
-            all_transforms['supervised'] = supervised_transform
-        all_transforms.update(get_ssl_transform(image_size, normalization))
-        trans = TransformWrapper(all_transforms)
+    if datasetName == "train":
+        image_size = args.training_image_size if args.training_image_size>0 else 84
     else:
-        if args.sample_aug == 1:
-            trans = transforms.Compose([transforms.Resize(int(image_size*92/84)), transforms.CenterCrop(image_size), transforms.ToTensor(), normalization])
-        else:
-            trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ToTensor(), normalization])
+        image_size = args.test_image_size if args.test_image_size>0 else 84
+    default_train_transforms = ['randomresizedcrop','colorjitter', 'randomhorizontalflip', 'totensor', 'miniimagenetnorm']
+    if args.sample_aug == 1:
+        default_test_transforms = ['resize_92/84', 'centercrop', 'totensor', 'miniimagenetnorm']
+    else:
+        default_test_transforms = ['randomresizecrop', 'totensor', 'miniimagenetnorm']
+    trans = get_transforms(image_size, datasetName, default_train_transforms, default_test_transforms)
 
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="tieredimagenet_"+datasetName), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(dataset["data"], dataset["targets"], trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="tieredimagenet_"+datasetName), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def cifarfs(datasetName):
     f = open(args.dataset_path + "datasets.json")    
     all_datasets = json.loads(f.read())
     f.close()
     dataset = all_datasets["cifarfs_" + datasetName]
-    data = dataset["data"]
-    targets = dataset["targets"]
-
-    normalization = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
-    image_size = args.image_size if args.image_size>0 else 32
-
-    if datasetName == 'train':
-        supervised_transform = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization])
-        all_transforms = {}
-        if supervised:
-            all_transforms['supervised'] = supervised_transform
-        all_transforms.update(get_ssl_transform(image_size, normalization))
-        trans = TransformWrapper(all_transforms)
+    if datasetName == "train":
+        image_size = args.training_image_size if args.training_image_size>0 else 32
     else:
-        if args.sample_aug == 1:
-            trans = transforms.Compose([transforms.Resize([int(1.15*image_size), int(1.15*image_size)]), transforms.CenterCrop(image_size), transforms.ToTensor(), normalization])
-        else:
-            trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ToTensor(), normalization])
+        image_size = args.test_image_size if args.test_image_size>0 else 32
 
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="cifarfs_"+datasetName), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
-
-def metadataset_imagenet(datasetName):
-    f = open(args.dataset_path + "datasets.json")    
-    all_datasets = json.loads(f.read())
-    f.close()
-    dataset = all_datasets["metadataset_imagenet_" + datasetName]
-    data = dataset["data"]
-    targets = dataset["targets"]
-    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    image_size = args.image_size if args.image_size>0 else 126
-    if datasetName == 'train':
-        supervised_transform = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
-        all_transforms = {}
-        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
-            all_transforms['supervised'] = supervised_transform
-        all_transforms.update(get_ssl_transform(image_size, normalization))
-        trans = TransformWrapper(all_transforms)
-
+    default_train_transforms = ['randomresizedcrop','colorjitter', 'randomhorizontalflip', 'totensor', 'imagenetnorm']
+    if args.sample_aug == 1:
+        default_test_transforms = ['resize_115/100', 'centercrop', 'totensor', 'imagenetnorm']
     else:
-        if args.sample_aug == 1:
-            trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
-        else:
-            trans = transforms.Compose([totensor(), norm(), transforms.RandomResizedCrop(image_size)])
-
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="metadataset_imagenet_"+datasetName), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+        default_test_transforms = ['randomresizecrop', 'totensor', 'imagenetnorm']
+    trans = get_transforms(image_size, datasetName, default_train_transforms, default_test_transforms)
+    
+    return {"dataloader": dataLoader(DataHolder(dataset["data"], dataset["targets"], trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="cifarfs_"+datasetName), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def imagenet(datasetName):
-    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    image_size = args.image_size if args.image_size>0 else 224
-    if datasetName == 'train':
-        supervised_transform = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalization])
-        all_transforms = {}
-        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
-            all_transforms['supervised'] = supervised_transform
-        all_transforms.update(get_ssl_transform(image_size, normalization))
-        trans = TransformWrapper(all_transforms)
-
+    if datasetName == "train":
+        image_size = args.training_image_size if args.training_image_size>0 else 224
     else:
-        if args.sample_aug == 1:
-            trans = transforms.Compose([transforms.Resize(int(image_size*256/224)), transforms.CenterCrop(image_size), transforms.ToTensor(), normalization])
-        else:
-            trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ToTensor(), normalization])
-
+        image_size = args.test_image_size if args.test_image_size>0 else 224
+    default_train_transforms = ['randomresizedcrop','randomhorizontalflip', 'totensor', 'imagenetnorm']
+    if args.sample_aug == 1:
+        default_test_transforms = ['resize_256/224', 'centercrop', 'totensor', 'imagenetnorm']
+    else:
+        default_test_transforms = ['randomresizedcrop', 'totensor', 'imagenetnorm'] 
+    trans = get_transforms(image_size, datasetName, default_train_transforms, default_test_transforms)
     pytorchDataset = datasets.ImageNet(args.dataset_path + "/imagenet", split = "train" if datasetName != "test" else "val", transform = trans)
         
     return {"dataloader": dataLoader(pytorchDataset, shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="imagenet_"+datasetName), "name":"imagenet_" + datasetName, "num_classes":1000, "name_classes": pytorchDataset.classes}
 
+def metadataset(datasetName, name):
+    """
+    Generic function to load a dataset from the Meta-Dataset v1.0
+    """
+    f = open(args.dataset_path + "datasets.json")    
+    all_datasets = json.loads(f.read())
+    f.close()
+    dataset = all_datasets[name+"_" + datasetName]
+    if datasetName == "train":
+        image_size = args.training_image_size if args.training_image_size>0 else 126
+    else:
+        image_size = args.test_image_size if args.test_image_size>0 else 126
+    default_train_transforms = ['metadatasettotensor', 'biresize', 'metadatasetnorm']
+    if args.sample_aug == 1:
+        default_test_transforms = ['metadatasettotensor', 'biresize', 'metadatasetnorm']
+    else:
+        default_test_transforms = ['metadatasettotensor', 'randomresizedcrop', 'biresize', 'metadatasetnorm']
+    trans = get_transforms(image_size, datasetName, default_train_transforms, default_test_transforms)
+    return {"dataloader": dataLoader(DataHolder(dataset["data"], dataset["targets"], trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName=name+"_"+datasetName), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def metadataset_imagenet_v2():
     f = open(args.dataset_path + "datasets.json")    
@@ -301,30 +235,22 @@ def metadataset_imagenet_v2():
     test_classes = dataset_test["num_classes"]
     num_classes = train_classes + validation_classes + test_classes
     targets = dataset_train["targets"] + [t + train_classes for t in dataset_validation["targets"]] + [t + train_classes + validation_classes for t in dataset_test["targets"]]
-    normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    image_size = args.image_size if args.image_size>0 else 126
-    supervised_transform = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
-    all_transforms = {}
-    if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
-        all_transforms['supervised'] = supervised_transform
-    all_transforms.update(get_ssl_transform(image_size, normalization))
-    trans = TransformWrapper(all_transforms)
+
+    image_size = args.training_image_size if args.training_image_size>0 else 126
+    default_train_transforms = ['metadatasettotensor','metadatasetnorm', 'beresize']
+    trans = get_transforms(image_size, "train", default_train_transforms, [])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = True, episodic=args.episodic, datasetName="metadataset_imagenet_train_v2"), "name":"metadataset_imagenet_v2_train", "num_classes":num_classes, "name_classes": dataset_train["name_classes"]+dataset_validation["name_classes"]+dataset_test["name_classes"]}
 
 def mnist(datasetName):
     pytorchDataset = datasets.MNIST(args.dataset_path, train = datasetName != "test", download = 'MNIST' not in os.listdir(args.dataset_path))
     data = pytorchDataset.data.clone().unsqueeze(1).float() / 256.
     targets = pytorchDataset.targets
-    image_size = args.image_size if args.image_size>0 else 28
-    normalization = transforms.Normalize((0.1302,), (0.3069,))
-    supervised_transform = transforms.Compose([normalization])
-    all_transforms = {}
-    if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
-        all_transforms['supervised'] = supervised_transform
-    all_transforms.update(get_ssl_transform(image_size, normalization))
-    trans = TransformWrapper(all_transforms)
-
-
+    if datasetName == "train":
+        image_size = args.training_image_size if args.training_image_size>0 else 28
+    else:
+        image_size = args.test_image_size if args.test_image_size>0 else 28
+    default_transform = ['totensor', 'mnistnorm']
+    trans = get_transforms(image_size, datasetName, default_transform, default_transform)
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="mnist_"+datasetName), "name": "mnist_" + datasetName, "num_classes": 10, "name_classes": list(range(10))}
 
 def fashionMnist(datasetName):
@@ -333,242 +259,13 @@ def fashionMnist(datasetName):
     targets = pytorchDataset.targets
 
     normalization = transforms.Normalize((0.2849,), (0.3516,))
-
-    image_size = args.image_size if args.image_size>0 else 28
-    if datasetName == 'train':
-        supervised_transform = transforms.Compose([transforms.RandomCrop(image_size, padding=4), transforms.RandomHorizontalFlip(), normalization])
-        all_transforms = {}
-        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
-            all_transforms['supervised'] = supervised_transform
-        all_transforms.update(get_ssl_transform(image_size, normalization))
-        trans = TransformWrapper(all_transforms)
-
+    if datasetName == "train":
+        image_size = args.training_image_size if args.training_image_size>0 else 28
     else:
-        if args.sample_aug == 1:
-            trans = transforms.Compose([normalization])
-        else:
-            trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ToTensor(), normalization])
-
+        image_size = args.test_image_size if args.test_image_size>0 else 28
+    default_transform = ['totensor', 'mnistnorm']
+    trans = get_transforms(image_size, datasetName, default_transform, default_transform)
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="fashionmnist_"+datasetName), "name": "fashion-mnist_" + datasetName, "num_classes": 10, "name_classes": pytorchDataset.classes}
-
-
-def metadataset_dtd(datasetName):
-    f = open(args.dataset_path + "datasets.json")    
-    all_datasets = json.loads(f.read())
-    f.close()
-    dataset = all_datasets["metadataset_dtd_" + datasetName]
-    data = dataset["data"]
-    targets = dataset["targets"]
-    normalization = norm()#transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    image_size = args.image_size if args.image_size>0 else 126
-    if datasetName == 'train':
-        supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
-        all_transforms = {}
-        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
-            all_transforms['supervised'] = supervised_transform
-        all_transforms.update(get_ssl_transform(image_size, normalization))
-        trans = TransformWrapper(all_transforms)
-    else:
-        if args.sample_aug == 1:
-            trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
-        else:
-            trans = transforms.Compose([totensor(), norm(), transforms.RandomResizedCrop(image_size)])
-
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="metadataset_imagenet_dtd_"+datasetName), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
-
-
-def metadataset_cub(datasetName):
-    f = open(args.dataset_path + "datasets.json")    
-    all_datasets = json.loads(f.read())
-    f.close()
-    dataset = all_datasets["metadataset_cub_" + datasetName]
-    data = dataset["data"]
-    targets = dataset["targets"]
-    normalization = norm()#transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    image_size = args.image_size if args.image_size>0 else 126
-    if datasetName == 'train':
-        supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
-        all_transforms = {}
-        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
-            all_transforms['supervised'] = supervised_transform
-        all_transforms.update(get_ssl_transform(image_size, normalization))
-        trans = TransformWrapper(all_transforms)
-    else:
-        if args.sample_aug == 1:
-            trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)]) 
-        else:
-            trans = transforms.Compose([totensor(), norm(), transforms.RandomResizedCrop(image_size)])
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="metadataset_cub_"+datasetName), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
-
-
-def metadataset_fungi(datasetName):
-    f = open(args.dataset_path + "datasets.json")    
-    all_datasets = json.loads(f.read())
-    f.close()
-    dataset = all_datasets["metadataset_fungi_" + datasetName]
-    data = dataset["data"]
-    targets = dataset["targets"]
-    normalization = norm()#transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    image_size = args.image_size if args.image_size>0 else 126
-    if datasetName == 'train':
-        supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
-        all_transforms = {}
-        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
-            all_transforms['supervised'] = supervised_transform
-        all_transforms.update(get_ssl_transform(image_size, normalization))
-        trans = TransformWrapper(all_transforms)
-    else:
-        if args.sample_aug == 1:
-            trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)]) 
-        else:
-            trans = transforms.Compose([totensor(), norm(), transforms.RandomResizedCrop(image_size)])
-
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="metadataset_fungi_"+datasetName), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
-
-def metadataset_aircraft(datasetName):
-    f = open(args.dataset_path + "datasets.json")    
-    all_datasets = json.loads(f.read())
-    f.close()
-    dataset = all_datasets["metadataset_aircraft_" + datasetName]
-    data = dataset["data"]
-    targets = dataset["targets"]
-    normalization = norm()#transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    image_size = args.image_size if args.image_size>0 else 126
-    if datasetName == 'train':
-        supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
-        all_transforms = {}
-        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
-            all_transforms['supervised'] = supervised_transform
-        all_transforms.update(get_ssl_transform(image_size, normalization))
-        trans = TransformWrapper(all_transforms)
-    else:
-        if args.sample_aug == 1:
-            trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
-        else:
-            trans = transforms.Compose([totensor(), norm(), transforms.RandomResizedCrop(image_size)])
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="metadataset_aircraft_"+datasetName), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
-
-def metadataset_mscoco(datasetName):
-    if datasetName=='train':
-        return 'mscoco is not a train dataset in metadataset (see official split)'
-    f = open(args.dataset_path + "datasets.json")    
-    all_datasets = json.loads(f.read())
-    f.close()
-    dataset = all_datasets["metadataset_mscoco_" + datasetName]
-    data = dataset["data"]
-    targets = dataset["targets"]
-    normalization = norm()#transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    image_size = args.image_size if args.image_size>0 else 126
-    if datasetName == 'train':
-        supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
-        all_transforms = {}
-        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
-            all_transforms['supervised'] = supervised_transform
-        all_transforms.update(get_ssl_transform(image_size, normalization))
-        trans = TransformWrapper(all_transforms)
-    else:
-        if args.sample_aug == 1:
-            trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
-        else:
-            trans = transforms.Compose([totensor(), norm(), transforms.RandomResizedCrop(image_size)])
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="metadataset_mscoco_"+datasetName), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
-
-def metadataset_vggflower(datasetName):
-    f = open(args.dataset_path + "datasets.json")    
-    all_datasets = json.loads(f.read())
-    f.close()
-    dataset = all_datasets["metadataset_vgg_flower_" + datasetName]
-    data = dataset["data"]
-    targets = dataset["targets"]
-    normalization = norm()#transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    image_size = args.image_size if args.image_size>0 else 126
-    if datasetName == 'train':
-        supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
-        all_transforms = {}
-        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
-            all_transforms['supervised'] = supervised_transform
-        all_transforms.update(get_ssl_transform(image_size, normalization))
-        trans = TransformWrapper(all_transforms)
-    else:
-        if args.sample_aug == 1:
-            trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
-        else:
-            trans = transforms.Compose([totensor(), norm(), transforms.RandomResizedCrop(image_size)])
-
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="metadataset_vgg_flower_"+datasetName), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
-
-
-def metadataset_quickdraw(datasetName):
-    f = open(args.dataset_path + "datasets.json")    
-    all_datasets = json.loads(f.read())
-    f.close()
-    dataset = all_datasets["metadataset_quickdraw_" + datasetName]
-    data = dataset["data"]
-    targets = dataset["targets"]
-    normalization = norm()#transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    image_size = args.image_size if args.image_size>0 else 126
-    if datasetName == 'train':
-        supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
-        all_transforms = {}
-        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
-            all_transforms['supervised'] = supervised_transform
-        all_transforms.update(get_ssl_transform(image_size, normalization))
-        trans = TransformWrapper(all_transforms)
-    else:
-        if args.sample_aug == 1:
-            trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
-        else:
-            trans = transforms.Compose([totensor(), norm(), transforms.RandomResizedCrop(image_size)])
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="metadataset_quickdraw_"+datasetName), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
-
-
-def metadataset_omniglot(datasetName):
-    f = open(args.dataset_path + "datasets.json")    
-    all_datasets = json.loads(f.read())
-    f.close()
-    dataset = all_datasets["metadataset_omniglot_" + datasetName]
-    data = dataset["data"]
-    targets = dataset["targets"]
-    normalization = norm(change_sign=-1)#transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    image_size = args.image_size if args.image_size>0 else 126
-    if datasetName == 'train':
-        supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
-        all_transforms = {}
-        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
-            all_transforms['supervised'] = supervised_transform
-        all_transforms.update(get_ssl_transform(image_size, normalization))
-        trans = TransformWrapper(all_transforms)
-
-    else:
-        if args.sample_aug == 1:
-            trans = transforms.Compose([ totensor(), norm(change_sign = -1), bi_resize(target_size=image_size)])
-        else:
-            trans = transforms.Compose([totensor(), norm(), transforms.RandomResizedCrop(image_size)])
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="metadataset_omniglot_"+datasetName), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
-
-
-def metadataset_traffic_signs(datasetName):
-    f = open(args.dataset_path + "datasets.json")    
-    all_datasets = json.loads(f.read())
-    f.close()
-    dataset = all_datasets["metadataset_traffic_signs_" + datasetName]
-    data = dataset["data"]
-    targets = dataset["targets"]
-    normalization = norm()#transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    image_size = args.image_size if args.image_size>0 else 126
-    if datasetName == 'train':
-        supervised_transform = transforms.Compose([totensor(), normalization, bi_resize(target_size=image_size)]) 
-        all_transforms = {}
-        if 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
-            all_transforms['supervised'] = supervised_transform
-        all_transforms.update(get_ssl_transform(image_size, normalization))
-        trans = TransformWrapper(all_transforms)
-    else:
-        if args.sample_aug == 1:
-            trans = transforms.Compose([ totensor(), norm(), bi_resize(target_size=image_size)])
-        else:
-            trans = transforms.Compose([totensor(), norm(), transforms.RandomResizedCrop(image_size)])
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="metadataset_traffic_signs_"+datasetName), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def audioset(datasetName):
     def randcrop(tensor, duration):
@@ -600,20 +297,6 @@ def audioset(datasetName):
     return {"dataloader": dataLoader(DataHolder(data, targets, trans if datasetName == "train" else test_trans, target_transforms=target_trans, opener=opener), shuffle = datasetName == "train"), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def esc50(datasetName):
-    def randcrop(tensor, duration,sr=44100):
-        nsamples = sr * duration
-        N = tensor.shape[0]
-        if N<nsamples:
-            new_tensor = torch.zeros(nsamples)
-            new_tensor[:N] = tensor
-            return new_tensor
-        
-        if N > nsamples:
-            i = random.randint(0,N - nsamples - 1)
-        else:
-            i = 0
-        return tensor[i:i+nsamples]
-
     f = open(args.dataset_path + "datasets.json")
     all_datasets = json.loads(f.read())
     f.close()
@@ -621,7 +304,6 @@ def esc50(datasetName):
     data = dataset["data"]
     targets = dataset["targets"]
     
-    #trans = transforms.Compose([lambda x : randcrop(x, duration = 3).unsqueeze(0), lambda x: x + 0.1 * torch.randn_like(x), lambda x: -1 * x if random.random() < 0.5 else x])
     trans = lambda x : x.unsqueeze(0)
     test_trans = lambda x : x.unsqueeze(0)
     opener = lambda x: torch.load(x, map_location='cpu')
@@ -685,39 +367,39 @@ def prepareDataLoader(name, is_train=False):
             "cifarfs_train": lambda: cifarfs("train"),
             "cifarfs_validation": lambda: cifarfs("validation"),
             "cifarfs_test": lambda: cifarfs("test"),
-            "metadataset_imagenet_train": lambda: metadataset_imagenet("train"),
-            "metadataset_imagenet_validation": lambda: metadataset_imagenet("validation"),
-            "metadataset_imagenet_test": lambda: metadataset_imagenet("test"),
-            "metadataset_cub_train": lambda: metadataset_cub("train"),
-            "metadataset_cub_validation": lambda: metadataset_cub("validation"),
-            "metadataset_cub_test": lambda: metadataset_cub("test"),
-            "metadataset_dtd_train": lambda: metadataset_dtd("train"),
-            "metadataset_dtd_validation": lambda: metadataset_dtd("validation"),
-            "metadataset_dtd_test": lambda: metadataset_dtd("test"),
-            "metadataset_fungi_train": lambda: metadataset_fungi("train"),
-            "metadataset_fungi_validation": lambda: metadataset_fungi("validation"),
-            "metadataset_fungi_test": lambda: metadataset_fungi("test"),
-            "metadataset_aircraft_train": lambda: metadataset_aircraft("train"),
-            "metadataset_aircraft_validation": lambda: metadataset_aircraft("validation"),
-            "metadataset_aircraft_test": lambda: metadataset_aircraft("test"),
-            "metadataset_mscoco_train": lambda: metadataset_mscoco("train"),
-            "metadataset_mscoco_validation": lambda: metadataset_mscoco("validation"),
-            "metadataset_mscoco_test": lambda: metadataset_mscoco("test"),
-            "metadataset_cub_train": lambda: metadataset_cub("train"),
-            "metadataset_cub_validation": lambda: metadataset_cub("validation"),
-            "metadataset_cub_test": lambda: metadataset_cub("test"),
-            "metadataset_omniglot_train": lambda: metadataset_omniglot("train"),
-            "metadataset_omniglot_validation": lambda: metadataset_omniglot("validation"),
-            "metadataset_omniglot_test": lambda: metadataset_omniglot("test"),
-            "metadataset_quickdraw_train": lambda: metadataset_quickdraw("train"),
-            "metadataset_quickdraw_validation": lambda: metadataset_quickdraw("validation"),
-            "metadataset_quickdraw_test": lambda: metadataset_quickdraw("test"),
-            "metadataset_vgg_flower_train": lambda: metadataset_vggflower("train"),
-            "metadataset_vgg_flower_validation": lambda: metadataset_vggflower("validation"),
-            "metadataset_vgg_flower_test": lambda: metadataset_vggflower("test"),
-            "metadataset_traffic_signs_train": lambda: metadataset_traffic_signs("train"),
-            "metadataset_traffic_signs_validation": lambda: metadataset_traffic_signs("validation"),
-            "metadataset_traffic_signs_test": lambda: metadataset_traffic_signs("test"),
+            "metadataset_imagenet_train": lambda: metadataset("train", "metadataset_imagenet"),
+            "metadataset_imagenet_validation": lambda: metadataset("validation", "metadataset_imagenet"),
+            "metadataset_imagenet_test": lambda: metadataset("test", "metadataset_imagenet"),
+            "metadataset_cub_train": lambda: metadataset("train", "metadataset_cub"),
+            "metadataset_cub_validation": lambda: metadataset("validation", "metadataset_cub"),
+            "metadataset_cub_test": lambda: metadataset("test", "metadataset_cub"),
+            "metadataset_dtd_train": lambda: metadataset("train", "metadataset_dtd"),
+            "metadataset_dtd_validation": lambda: metadataset("validation", "metadataset_dtd"),
+            "metadataset_dtd_test": lambda: metadataset("test", "metadataset_dtd"),
+            "metadataset_fungi_train": lambda: metadataset("train", "metadataset_fungi"),
+            "metadataset_fungi_validation": lambda: metadataset("validation", "metadataset_fungi"),
+            "metadataset_fungi_test": lambda: metadataset("test", "metadataset_fungi"),
+            "metadataset_aircraft_train": lambda: metadataset("train", "metadataset_aircraft"),
+            "metadataset_aircraft_validation": lambda: metadataset("validation", "metadataset_aircraft"),
+            "metadataset_aircraft_test": lambda: metadataset("test", "metadataset_aircraft"),
+            "metadataset_mscoco_train": lambda: metadataset("train", "metadataset_mscoco"),
+            "metadataset_mscoco_validation": lambda: metadataset("validation", "metadataset_mscoco"),
+            "metadataset_mscoco_test": lambda: metadataset("test", "metadataset_mscoco"),
+            "metadataset_cub_train": lambda: metadataset("train", "metadataset_cub"),
+            "metadataset_cub_validation": lambda: metadataset("validation", "metadataset_cub"),
+            "metadataset_cub_test": lambda: metadataset("test", "metadataset_cub"),
+            "metadataset_omniglot_train": lambda: metadataset("train", "metadataset_omniglot"),
+            "metadataset_omniglot_validation": lambda: metadataset("validation", "metadataset_omniglot"),
+            "metadataset_omniglot_test": lambda: metadataset("test", "metadataset_omniglot"),
+            "metadataset_quickdraw_train": lambda: metadataset("train", "metadataset_quickdraw"),
+            "metadataset_quickdraw_validation": lambda: metadataset("validation", "metadataset_quickdraw"),
+            "metadataset_quickdraw_test": lambda: metadataset("test", "metadataset_quickdraw"),
+            "metadataset_vgg_flower_train": lambda: metadataset("train", "metadataset_vgg_flower"),
+            "metadataset_vgg_flower_validation": lambda: metadataset("validation", "metadataset_vgg_flower"),
+            "metadataset_vgg_flower_test": lambda: metadataset("test", "metadataset_vgg_flower"),
+            "metadataset_traffic_signs_train": lambda: metadataset("train", "metadataset_traffic_signs"),
+            "metadataset_traffic_signs_validation": lambda: metadataset("validation", "metadataset_traffic_signs"),
+            "metadataset_traffic_signs_test": lambda: metadataset("test", "metadataset_traffic_signs"),
             "metadataset_imagenet_v2_train": lambda: metadataset_imagenet_v2(),
             "audioset_train":lambda: audioset("train"),
             "audioset_test":lambda: audioset("test"), 
@@ -742,7 +424,7 @@ def checkSize(dataset):
             image_size = 32
         elif 'mnist' in dataset or 'omniglot' in dataset:
             image_size = 28
-        elif 'imagenet' in dataset and 'metadataset' not in dataset:
+        elif 'imagenet' in dataset and 'metadataset' not in dataset and 'miniimagenet' not in dataset:
             image_size = 224
         elif 'metadataset' in dataset: 
             image_size = 126
@@ -754,24 +436,24 @@ if args.training_dataset != "":
     try:
         eval(args.training_dataset)
         trainSet = prepareDataLoader(eval(args.training_dataset), is_train=True)
-        if args.image_size == -1:
-            args.image_size = checkSize(eval(args.training_dataset)[0])
+        if args.training_image_size == -1:
+            args.training_image_size = checkSize(eval(args.training_dataset)[0])
     except NameError:
         trainSet = prepareDataLoader(args.training_dataset, is_train=True)
-        if args.image_size == -1:
-            args.image_size = checkSize(args.training_dataset)
+        if args.training_image_size == -1:
+            args.training_image_size = checkSize(args.training_dataset)
 else:
     trainSet = []
 if args.validation_dataset != "":
     try:
         eval(args.validation_dataset)
         validationSet = prepareDataLoader(eval(args.validation_dataset), is_train=False)
-        if args.image_size == -1:
-            args.image_size = checkSize(eval(args.validation_dataset)[0])
+        if args.test_image_size == -1:
+            args.test_image_size = checkSize(eval(args.validation_dataset)[0])
     except NameError:
         validationSet = prepareDataLoader(args.validation_dataset, is_train=False)
-        if args.image_size == -1:
-            args.image_size = checkSize(args.validation_dataset)
+        if args.test_image_size == -1:
+            args.test_image_size = checkSize(args.validation_dataset)
 else:
     validationSet = []
 
@@ -779,12 +461,12 @@ if args.test_dataset != "":
     try:
         eval(args.test_dataset)
         testSet = prepareDataLoader(eval(args.test_dataset), is_train=False)
-        if args.image_size == -1:
-            args.image_size = checkSize(eval(args.test_dataset)[0])
+        if args.test_image_size == -1:
+            args.test_image_size = checkSize(eval(args.test_dataset)[0])
     except NameError:
         testSet = prepareDataLoader(args.test_dataset, is_train=False)
-        if args.image_size == -1:
-            args.image_size = checkSize(args.test_dataset)
+        if args.test_image_size == -1:
+            args.test_image_size = checkSize(args.test_dataset)
 else:
     testSet = []
 
