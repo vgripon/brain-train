@@ -60,7 +60,7 @@ parser.add_argument("--training-dataset", type=str, default="", help="training d
 parser.add_argument("--validation-dataset", type=str, default="", help="validation dataset, overriden by --dataset")
 parser.add_argument("--test-dataset", type=str, default="", help="test dataset, overriden by --dataset")
 parser.add_argument("--dataset-size", type=int, default=0, help="defines a maximum of samples considered at each epoch, 0 means it is ignored")
-parser.add_argument("--train-image-size", type=int, default=-1, help="train image input size")
+parser.add_argument("--training-image-size", type=int, default=-1, help="train image input size")
 parser.add_argument("--test-image-size", type=int, default=-1, help="test image input size")
 parser.add_argument("--training-transforms", type=str, default="[]", help="list of transforms to apply to training data")
 parser.add_argument("--test-transforms", type=str, default="[]", help="list of transforms to apply to test data")

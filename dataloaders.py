@@ -102,7 +102,7 @@ def cifar10(datasetName):
     data = torch.tensor(pytorchDataset.data).transpose(1,3).transpose(2,3).float() / 256.
     targets = pytorchDataset.targets
     if datasetName == "train":
-        image_size = args.train_image_size if args.train_image_size>0 else 32
+        image_size = args.training_image_size if args.training_image_size>0 else 32
     else:
         image_size = args.test_image_size if args.test_image_size>0 else 32
     default_train_transforms = ['randomcrop','randomhorizontalflip', 'totensor', 'cifar10norm']
@@ -120,7 +120,7 @@ def cifar100(datasetName):
     targets = pytorchDataset.targets
 
     if datasetName == "train":
-        image_size = args.train_image_size if args.train_image_size>0 else 32
+        image_size = args.training_image_size if args.training_image_size>0 else 32
     else:
         image_size = args.test_image_size if args.test_image_size>0 else 32
     default_train_transforms = ['randomcrop','randomhorizontalflip', 'totensor', 'cifar100norm']
@@ -138,7 +138,7 @@ def miniimagenet(datasetName):
     f.close()
     dataset = all_datasets["miniimagenet_" + datasetName]
     if datasetName == "train":
-        image_size = args.train_image_size if args.train_image_size>0 else 84
+        image_size = args.training_image_size if args.training_image_size>0 else 84
     else:
         image_size = args.test_image_size if args.test_image_size>0 else 84
     default_train_transforms = ['randomresizedcrop','colorjitter', 'randomhorizontalflip', 'totensor', 'miniimagenetnorm']
@@ -156,7 +156,7 @@ def tieredimagenet(datasetName):
     f.close()
     dataset = all_datasets["tieredimagenet_" + datasetName]
     if datasetName == "train":
-        image_size = args.train_image_size if args.train_image_size>0 else 84
+        image_size = args.training_image_size if args.training_image_size>0 else 84
     else:
         image_size = args.test_image_size if args.test_image_size>0 else 84
     default_train_transforms = ['randomresizedcrop','colorjitter', 'randomhorizontalflip', 'totensor', 'miniimagenetnorm']
@@ -174,7 +174,7 @@ def cifarfs(datasetName):
     f.close()
     dataset = all_datasets["cifarfs_" + datasetName]
     if datasetName == "train":
-        image_size = args.train_image_size if args.train_image_size>0 else 32
+        image_size = args.training_image_size if args.training_image_size>0 else 32
     else:
         image_size = args.test_image_size if args.test_image_size>0 else 32
 
@@ -189,7 +189,7 @@ def cifarfs(datasetName):
 
 def imagenet(datasetName):
     if datasetName == "train":
-        image_size = args.train_image_size if args.train_image_size>0 else 224
+        image_size = args.training_image_size if args.training_image_size>0 else 224
     else:
         image_size = args.test_image_size if args.test_image_size>0 else 224
     default_train_transforms = ['randomresizedcrop','randomhorizontalflip', 'totensor', 'imagenetnorm']
@@ -211,7 +211,7 @@ def metadataset(datasetName, name):
     f.close()
     dataset = all_datasets[name+"_" + datasetName]
     if datasetName == "train":
-        image_size = args.train_image_size if args.train_image_size>0 else 126
+        image_size = args.training_image_size if args.training_image_size>0 else 126
     else:
         image_size = args.test_image_size if args.test_image_size>0 else 126
     default_train_transforms = ['metadatasettotensor','metadatasetnorm', 'biresize']
@@ -236,7 +236,7 @@ def metadataset_imagenet_v2():
     num_classes = train_classes + validation_classes + test_classes
     targets = dataset_train["targets"] + [t + train_classes for t in dataset_validation["targets"]] + [t + train_classes + validation_classes for t in dataset_test["targets"]]
 
-    image_size = args.train_image_size if args.train_image_size>0 else 126
+    image_size = args.training_image_size if args.training_image_size>0 else 126
     default_train_transforms = ['metadatasettotensor','metadatasetnorm', 'beresize']
     trans = get_transforms(image_size, "train", default_train_transforms, [])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = True, episodic=args.episodic, datasetName="metadataset_imagenet_train_v2"), "name":"metadataset_imagenet_v2_train", "num_classes":num_classes, "name_classes": dataset_train["name_classes"]+dataset_validation["name_classes"]+dataset_test["name_classes"]}
@@ -246,7 +246,7 @@ def mnist(datasetName):
     data = pytorchDataset.data.clone().unsqueeze(1).float() / 256.
     targets = pytorchDataset.targets
     if datasetName == "train":
-        image_size = args.train_image_size if args.train_image_size>0 else 28
+        image_size = args.training_image_size if args.training_image_size>0 else 28
     else:
         image_size = args.test_image_size if args.test_image_size>0 else 28
     default_transform = ['totensor', 'mnistnorm']
@@ -260,7 +260,7 @@ def fashionMnist(datasetName):
 
     normalization = transforms.Normalize((0.2849,), (0.3516,))
     if datasetName == "train":
-        image_size = args.train_image_size if args.train_image_size>0 else 28
+        image_size = args.training_image_size if args.training_image_size>0 else 28
     else:
         image_size = args.test_image_size if args.test_image_size>0 else 28
     default_transform = ['totensor', 'mnistnorm']
@@ -436,12 +436,12 @@ if args.training_dataset != "":
     try:
         eval(args.training_dataset)
         trainSet = prepareDataLoader(eval(args.training_dataset), is_train=True)
-        if args.train_image_size == -1:
-            args.train_image_size = checkSize(eval(args.training_dataset)[0])
+        if args.training_image_size == -1:
+            args.training_image_size = checkSize(eval(args.training_dataset)[0])
     except NameError:
         trainSet = prepareDataLoader(args.training_dataset, is_train=True)
-        if args.train_image_size == -1:
-            args.train_image_size = checkSize(args.training_dataset)
+        if args.training_image_size == -1:
+            args.training_image_size = checkSize(args.training_dataset)
 else:
     trainSet = []
 if args.validation_dataset != "":
