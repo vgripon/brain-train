@@ -2,7 +2,13 @@ numpy
 pandas
 tqdm
 scipy
+matplotlib
+wandb
+einops
+PythonTurtle
 
-# pytorch for cpu linux 
-torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cpu
+#pytorch for cuda 11.7 linux
+torch 
+torchvision 
+torchaudio
 
