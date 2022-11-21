@@ -14,6 +14,7 @@ from utils import *
 from time import time
 import json
 from collections import defaultdict
+import hashlib
 
 real_dp = args.dataset_path
 if 'omniglot' in args.target_dataset:
@@ -63,7 +64,7 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
         loo = []
         soft,hard = [],[] 
         rankme, rankme_t = [],[]
-        episodes = []
+        episodes = {'shots_idx' : [], 'queries_idx' : [], 'choice_classes' : []}
         if datasets=='omniglot':
             Generator = OmniglotGenerator
             generator = Generator(datasetName=None, num_elements_per_class= [len(feat['features']) for feat in feature], dataset_path=args.dataset_path)
@@ -73,11 +74,13 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
             Generator = EpisodicGenerator
             generator = Generator(datasetName=None, num_elements_per_class= [len(feat['features']) for feat in feature], dataset_path=args.dataset_path)
         for run in tqdm(range(args.few_shot_runs)) if tqdm_verbose else range(args.few_shot_runs):
-            init_seed(args.seed+run)
             shots = []
             queries = []
+            init_seed(args.seed+run)
             episode = generator.sample_episode(ways=args.few_shot_ways, n_shots=n_shots, n_queries=args.few_shot_queries, unbalanced_queries=args.few_shot_unbalanced_queries, max_queries = args.max_queries)
-            #print('1st shot', episode['shots_idx'][0][0])
+            #if run ==1:
+            #    print('1st run shot', episode['shots_idx'][0])
+            #    print('1st run classes', episode['choice_classes'])
             shots, queries = generator.get_features_from_indices(feature, episode)
             #print('1st shot', shots[0][0], '1st query' , queries[0][0])
             chance.append(1/len(shots)) # = 1/n_ways
@@ -103,7 +106,8 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
                 rankme.append(Rankme(shots))
             if 'rankme_t' in proxy:
                 rankme_t.append(Rankme(shots, queries))
-            episodes.append(episode)
+            for epi in episode.items():
+                episodes[epi[0]].append(epi[1])
         accs = 100 * torch.tensor(accs)
         fake_acc = 100 * torch.tensor(fake_acc)
         chance = 100 * torch.tensor(chance)
@@ -272,17 +276,23 @@ def save_results(L,dataset, proxy, chance, episodes):
     N = args.num_clusters
     file = '/users2/local/r21lafar/results/results_test_id_backbone'+str(N)+'.pt'
     if not os.path.isfile(file):
-        d={}
+        d={'episodes': {}, 'hash_episode' : {}}
         torch.save(d,file)
     else:
         d = torch.load(file)
+    h = len(str(episodes))
+    h = hashlib.md5(str(episodes).encode('utf-8')).hexdigest()
+    print(h)
+    if (dataset not in d['episodes'].keys()) or (dataset in  d['episodes'].keys() and len(str(d['episodes'][dataset])) != h) :
+        d['episodes'][dataset] = episodes
+        d['hash_episode'][dataset] = h
     if proxy in d.keys() and dataset in d[proxy].keys():
         print('overwriting',dataset, proxy)
         torch.save(d,'/users2/local/r21lafar/results/backed'+str(N)+'.pt')
     if proxy in d.keys():
-        d[proxy][dataset] = {'data' : torch.from_numpy(L), 'info' : str(args), 'nb_runs' : args.few_shot_runs, 'chance' : chance, 'episodes' : episodes}
+        d[proxy][dataset] = {'data' : torch.from_numpy(L), 'info' : str(args), 'nb_runs' : args.few_shot_runs, 'chance' : chance, 'hash_episode' : h}
     else:
-        d[proxy] = {dataset:{'data' : torch.from_numpy(L), 'info' : str(args), 'nb_runs' : args.few_shot_runs,'chance' : chance, 'episodes' : episodes}}
+        d[proxy] = {dataset:{'data' : torch.from_numpy(L), 'info' : str(args), 'nb_runs' : args.few_shot_runs,'chance' : chance, 'hash_episode' : h}}
     torch.save(d, file)
 
 def leave_one_out(shots):
