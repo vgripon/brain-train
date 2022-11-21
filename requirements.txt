@@ -1,0 +1,14 @@
+numpy 
+pandas
+tqdm
+scipy
+matplotlib
+wandb
+einops
+PythonTurtle
+
+#pytorch for cuda 11.7 linux
+torch 
+torchvision 
+torchaudio
+
