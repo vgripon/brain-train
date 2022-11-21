@@ -82,7 +82,27 @@ def train(epoch, backbone, teacher, criterion, optimizer, scheduler):
                         dataStep = data['dino']
                         loss_dino = criterion['dino'][trainingSetIdx](backbone, teacher['dino'], dataStep, target, epoch-1)
                         loss += args.step_coefficient[step_idx]*loss_dino
-            
+
+                    if 'simclr' in step:
+                        dataStep = data['simclr']
+                        loss_simclr = criterion['simclr'][trainingSetIdx](backbone, dataStep, target)
+                        loss += args.step_coefficient[step_idx]*loss_simclr
+
+                    if 'simclr_supervised' in step:
+                        dataStep = data['simclr_supervised']
+                        loss_simclr_supervised = criterion['simclr_supervised'][trainingSetIdx](backbone, dataStep, target)
+                        loss += args.step_coefficient[step_idx]*loss_simclr_supervised
+
+                    if 'simsiam' in step:
+                        dataStep = data['simsiam']
+                        loss_simsiam = criterion['simsiam'][trainingSetIdx](backbone, dataStep)
+                        loss += args.step_coefficient[step_idx]*loss_simsiam
+
+                    if 'barlowtwins' in step:
+                        dataStep = data['barlowtwins']
+                        loss_barlowtwins = criterion['barlowtwins'][trainingSetIdx](backbone, dataStep)
+                        loss += args.step_coefficient[step_idx]*loss_barlowtwins
+               
                     loss.backward()
 
                 losses[trainingSetIdx] += args.batch_size * loss.item()
@@ -256,10 +276,24 @@ for nRun in range(args.runs):
          
         for p in teacher['dino'].parameters(): # Freeze teacher + teacher head
             p.requires_grad = False
+         
         for crit in criterion['dino']:
             for p in crit.teacher_head.parameters():
                 p.requires_grad = False
-    
+  
+    if 'simclr' in all_steps:
+        from selfsupervised.simclr import SIMCLR
+        criterion['simclr'] = [SIMCLR(in_dim=outputDim, supervised=False) for _ in trainSet]
+    if 'simclr_supervised' in all_steps:
+        from selfsupervised.simclr import SIMCLR
+        criterion['simclr_supervised'] = [SIMCLR(in_dim=outputDim, supervised=True) for _ in trainSet]
+    if 'simsiam' in all_steps:
+        from selfsupervised.simsiam import SIMSIAM
+        criterion['simsiam'] = [SIMSIAM(in_dim=outputDim) for _ in trainSet]
+    if 'barlowtwins' in all_steps:
+        from selfsupervised.barlowtwins import BARLOWTWINS
+        criterion['barlowtwins'] = [BARLOWTWINS(in_dim=outputDim) for _ in trainSet]
+        
     numParamsCriterions = 0
     for c in [item for sublist in criterion.values() for item in sublist] :
         c.to(args.device)
