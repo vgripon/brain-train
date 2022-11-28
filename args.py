@@ -99,6 +99,8 @@ parser.add_argument("--test-features", type=str, default="", help="test few-shot
 
 parser.add_argument("--proxy", type=str, default="", help="proxy metric to identify the best backbone")
 parser.add_argument("--target-dataset", type=str, default="", help="target_dataset")
+parser.add_argument("--temperature", type=float, default=5, help="temperature softmax rankme and confidence")
+
 
 args = parser.parse_args()
 

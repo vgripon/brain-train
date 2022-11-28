@@ -15,6 +15,7 @@ from time import time
 import json
 from collections import defaultdict
 import hashlib
+import torch.nn as nn
 
 real_dp = args.dataset_path
 if 'omniglot' in args.target_dataset:
@@ -129,6 +130,8 @@ def Rankme(shots , queries = None, centroids = args.centroids):
         Z = torch.cat((Z1,Z2),dim =1)
     u, s, v = torch.svd(Z,compute_uv = False)
     pk = s/torch.sum(s) + 1e-7
+    m = nn.Softmax(dim=1)
+    pk = m(pk*args.temperature)
     pk = pk[:min(u.shape[1], v.shape[1])]
     entropy = -torch.sum(pk*torch.log(pk))
     return torch.exp(entropy).item()
@@ -141,7 +144,7 @@ def confidence(shots):
     total = 0
     for i, queriesClass in enumerate(shots):
         distances = torch.norm(queriesClass.unsqueeze(1) - centroids.unsqueeze(0), dim = 2)
-        sims = torch.softmax((-5 * distances).reshape(-1, n_ways), dim = 1)
+        sims = torch.softmax((- distances * args.temperature).reshape(-1, n_ways), dim = 1)
         score += torch.max(sims, dim = 1)[0].mean().cpu()
     return score
 
