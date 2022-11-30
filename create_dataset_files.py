@@ -135,8 +135,8 @@ try:
             result["num_classes"] = i + 1   
             all_results["metadataset_imagenet_" + dataset] = result
             print("Done for metadataset_imagenet_" + dataset + " with " + str(i+1) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
-except:
-    pass
+except Exception as e:
+    print(e)
 def split_fn(json_path):
     with open(json_path) as jsonFile:
         split = json.load(jsonFile)

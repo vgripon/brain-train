@@ -105,14 +105,14 @@ def cifar10(datasetName):
         image_size = args.training_image_size if args.training_image_size>0 else 32
     else:
         image_size = args.test_image_size if args.test_image_size>0 else 32
-    default_train_transforms = ['randomcrop','randomhorizontalflip', 'totensor', 'cifar10norm']
+    default_train_transforms = ['randomresizedcrop','randomhorizontalflip','cifar10norm']
     if args.sample_aug == 1:
-        default_test_transforms = ['centercrop','totensor', 'cifar10norm']
+        default_test_transforms = ['centercrop', 'cifar10norm']
     else:
-        default_test_transforms = ['randomresizecrop', 'totensor', 'cifar10norm']
+        default_test_transforms = ['randomresizedcrop','cifar10norm']
     trans = get_transforms(image_size, datasetName, default_train_transforms, default_test_transforms)
    
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":"cifar10_" + datasetName, "num_classes":10, "name_classes": pytorchDataset.classes}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans, opener=lambda x:x), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="cifar10_"+datasetName), "name":"cifar10_" + datasetName, "num_classes":10, "name_classes": pytorchDataset.classes}
 
 def cifar100(datasetName):
     pytorchDataset = datasets.CIFAR100(args.dataset_path, train = datasetName != "test", download = 'cifar-100-python.tar.gz' not in os.listdir(args.dataset_path))
@@ -123,14 +123,14 @@ def cifar100(datasetName):
         image_size = args.training_image_size if args.training_image_size>0 else 32
     else:
         image_size = args.test_image_size if args.test_image_size>0 else 32
-    default_train_transforms = ['randomcrop','randomhorizontalflip', 'totensor', 'cifar100norm']
+    default_train_transforms = ['randomresizedcrop','randomhorizontalflip', 'cifar100norm']
     if args.sample_aug == 1:
-        default_test_transforms = ['centercrop','totensor', 'cifar100norm']
+        default_test_transforms = ['centercrop', 'cifar100norm']
     else:
-        default_test_transforms = ['randomresizecrop', 'totensor', 'cifar100norm']
+        default_test_transforms = ['randomresizedcrop', 'cifar100norm']
     trans = get_transforms(image_size, datasetName, default_train_transforms, default_test_transforms)
 
-    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train"), "name":"cifar100_" + datasetName, "num_classes":100, "name_classes": pytorchDataset.classes}
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans, opener=lambda x:x), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="cifar100_"+datasetName), "name":"cifar100_" + datasetName, "num_classes":100, "name_classes": pytorchDataset.classes}
 
 def miniimagenet(datasetName):
     f = open(args.dataset_path + "datasets.json")    
