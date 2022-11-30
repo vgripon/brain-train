@@ -23,6 +23,7 @@ parser.add_argument("--episodic-iterations-per-epoch", type=int, default=600, he
 ### optimizer args
 parser.add_argument("--optimizer", type=str, default="SGD", help="can be SGD or Adam")
 parser.add_argument("--lr", type=float, default=-1., help="initial learning rate, defaut to 0.1 for SGD and 0.001 for Adam")
+parser.add_argument("--end-lr-factor", type=float, default=1e-3, help="end learning rate is lr * end_lr_factor at each milestone")
 parser.add_argument("--wd", type=float, default=-1., help="weight decay, default to 5e-4 for SGD and 0 for Adam")
 parser.add_argument("--steps", type=str, default="[['lr']]", help="describe what steps during training are made of, is a list of lists containing 'rotations', 'mixup' or 'manifold mixup', for example \"[['manifold mixup'],['rotations']]\" does two steps: first with manifold mixup then with rotations as additional self-supervision. Last list is used to compute losses and scores")
 parser.add_argument("--label-smoothing", type=float, default=0, help="use label smoothing with given smoothing factor. 0 means no smoothing")
@@ -81,9 +82,12 @@ parser.add_argument("--classifier", type=str, default="lr", help="define which c
 
 ### scheduler parameters
 parser.add_argument("--epochs", type=int, default=350, help="total number of training epochs")
+parser.add_argument("--warmup-epochs", type=int, default=0, help="number of warmup epochs, starts with a learning rate of 0 and ends with initial learning rate")
 parser.add_argument("--milestones", type=str, default="100", help="milestones for scheduler")
 parser.add_argument("--gamma", type=float, default=0.1, help="learning rate multiplier after each milestone")
 parser.add_argument("--cosine", action="store_true", help="use cosine annealing instead of multisteplr")
+parser.add_argument("--scheduler", type=str, default="cosine", help="scheduler to use, can be any of multistep or cosine or linear")
+
 
 ### few shot evaluation
 parser.add_argument("--few-shot", action="store_true", help="evaluation using few shot tasks")
@@ -119,9 +123,9 @@ if isinstance(eval(args.milestones), int):
     if eval(args.milestones) <= 0:
         args.milestones = []
     else:
-        args.milestones = [eval(args.milestones) * i for i in range(1, 1 + args.epochs // eval(args.milestones))]
+        args.milestones = [min(args.epochs, args.warmup_epochs+eval(args.milestones) * i) for i in range(1, 1 + args.epochs // eval(args.milestones))]
 else:
-    args.milestones = eval(args.milestones)
+    args.milestones = [min(m+args.warmup_epochs, args.epochs) for m in eval(args.milestones)]
 if args.epochs not in args.milestones:
     args.milestones.append(args.epochs)
 
@@ -131,7 +135,8 @@ try:
     args.steps = str([step[:-1] for step in eval(args.steps)])
 except: 
     args.step_coefficient = [1]*len(eval(args.steps))
-
+if args.cosine:
+    args.scheduler = "cosine"
 args.training_transforms = eval(args.training_transforms)
 args.test_transforms = eval(args.test_transforms)
 print("milestones are " + str(args.milestones))

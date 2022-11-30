@@ -8,7 +8,7 @@ from PIL import Image
 from PIL import ImageFilter, ImageOps
 import numpy as np
 
-DEFAULT_NCROPS = 8
+DEFAULT_NCROPS = 10
 DEFAULT_GLOBAL_CROPS_SCALE = (0.5,1)
 DEFAULT_LOCAL_CROPS_SCALE = (0.05, 0.4)
 DEFAULT_HEAD_HIDDEN_DIM = 2048

@@ -200,7 +200,15 @@ def generateFeatures(backbone, datasets, sample_aug=args.sample_aug):
 
         results.append([{"name_class": allFeatures[i]["name_class"], "features": allFeatures[i]["features"]} for i in range(len(allFeatures))])
     return results
-
+def get_optimizer(parameters, name, lr, weight_decay):
+    if name == 'sgd':
+        return torch.optim.SGD(parameters, lr=lr, weight_decay=weight_decay, momentum=0.9, nesterov=True)
+    elif name == 'adam':
+        return torch.optim.Adam(parameters, lr=lr, weight_decay=weight_decay)
+    elif name == 'adamw':
+        return torch.optim.AdamW(parameters, lr=lr, weight_decay=weight_decay)
+    else:
+        raise ValueError(f'Optimizer {name} not supported')
 if args.test_features != "":
     features = [torch.load(args.test_features, map_location=args.device)]
     print(testFewShot(features))
@@ -281,7 +289,6 @@ for nRun in range(args.runs):
     tick = time.time()
     best_val = 1e10 if not args.few_shot else 0
     lr = args.lr
-
     for epoch in range(args.epochs):
         if (epoch % 30 == 0 and not args.silent) or epoch == 0 or epoch == args.skip_epochs:
             if epoch > 0 and args.silent:
@@ -295,20 +302,29 @@ for nRun in range(args.runs):
                 for dataset in testSet:
                     print(Back.RED + " {:>16s} ".format(dataset["name"]) + Style.RESET_ALL, end='')
             print()
-        if epoch == 0 and not args.cosine and len(parameters)>0:
-            optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.wd)
-            if not args.cosine:
-                scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer = optimizer, milestones = [n * nSteps for n in args.milestones], gamma = args.gamma)
-        if args.cosine and (epoch in args.milestones or epoch == 0) and len(parameters)>0:
-            optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.wd)
-            if epoch == 0:
-                interval = nSteps * args.milestones[0]
-            else:
-                index = args.milestones.index(epoch)
-                interval = nSteps * (args.milestones[index + 1] - args.milestones[index])
-            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimizer, T_max = interval, eta_min = lr * 1e-3)
-            lr = lr * args.gamma
         
+        if epoch == 0 and args.warmup_epochs>0:
+            optimizer = get_optimizer(parameters, args.optimizer.lower(), lr=lr, weight_decay=args.wd)
+            scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1/(args.warmup_epochs+1), end_factor=1, total_iters=args.warmup_epochs*nSteps, last_epoch=-1) # warmup scheduler (linear)
+        if (epoch == args.warmup_epochs or (epoch in args.milestones)) and len(parameters)>0:
+            if args.scheduler == "multistep" and epoch == args.warmup_epochs:
+                optimizer = get_optimizer(parameters, args.optimizer.lower(), lr=lr, weight_decay=args.wd)
+                scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer = optimizer, milestones = [(n-args.warmup_epochs) * nSteps for n in args.milestones], gamma = args.gamma)
+            if args.scheduler != "multistep":
+                optimizer = get_optimizer(parameters, args.optimizer.lower(), lr=lr, weight_decay=args.wd)
+                if epoch == args.warmup_epochs:
+                    interval = nSteps * (args.milestones[0]-args.warmup_epochs-1)
+                else:
+                    index = args.milestones.index(epoch)
+                    interval = nSteps * (args.milestones[index + 1] - args.milestones[index]-1)
+                if args.scheduler == "cosine":                
+                    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimizer, T_max = interval, eta_min = lr * args.end_lr_factor)
+                elif args.scheduler == "linear":
+                    scheduler = torch.optim.lr_scheduler.LinearLR(optimizer = optimizer, start_factor = 1, end_factor = args.end_lr_factor, total_iters = interval, last_epoch=-1)
+                else:
+                    raise ValueError(f"Unknown scheduler {args.scheduler}")
+                lr = lr * args.gamma
+
         continueTest = False
         meanVector = None
         trainStats = None
@@ -319,7 +335,6 @@ for nRun in range(args.runs):
                 updateCSV(trainStats, epoch = epoch)
             if (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
                 if epoch >= args.skip_epochs:
-                    #print('Generating Train Features')
                     featuresTrain = generateFeatures(backbone, trainSet)
                     meanVector = computeMean(featuresTrain)
                     featuresTrain = process(featuresTrain, meanVector)
@@ -327,7 +342,6 @@ for nRun in range(args.runs):
         if validationSet != [] and epoch >= args.skip_epochs:
             opener = Fore.GREEN
             if args.few_shot or args.save_features_prefix != "":
-                #print('Generating Validation Features')
                 featuresValidation = generateFeatures(backbone, validationSet)
                 featuresValidation = process(featuresValidation, meanVector)
                 tempValidationStats = testFewShot(featuresValidation, validationSet)
