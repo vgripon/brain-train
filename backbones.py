@@ -92,9 +92,6 @@ class ResNet(nn.Module):
                 first = False
                 lastMult = multiplier
         self.blocks = nn.ModuleList(blocks)
-        print("blocks")
-        print(self.blocks)
-        print("fin blocks")
 
     def forward(self, x, mixup = None, lbda = None, perm = None):
         mixup_layer = -1
