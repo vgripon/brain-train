@@ -96,6 +96,12 @@ parser.add_argument("--few-shot-classifier", type=str, default="ncm", help="clas
 parser.add_argument("--sample-aug", type=int, default=1, help="number of versions of support/query samples (using random crop) 1 means no augmentation")
 parser.add_argument("--test-features", type=str, default="", help="test few-shot runs on saved features")
 
+
+### reda args
+parser.add_argument("--blocks", type=str, help="list of blocks defining the architecture")
+parser.add_argument("--stride_normalize", type=int)
+
+
 args = parser.parse_args()
 
 if args.dataset != "":
@@ -137,3 +143,5 @@ args.test_transforms = eval(args.test_transforms)
 print("milestones are " + str(args.milestones))
 
 print(" args,", end = '')
+
+args.blocks = eval(args.blocks)

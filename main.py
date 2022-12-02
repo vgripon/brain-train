@@ -246,6 +246,7 @@ for nRun in range(args.runs):
     else:
         import backbones
         backbone, outputDim = backbones.prepareBackbone()
+    print(f"outputDim is {outputDim}")
     if args.load_backbone != "":
         backbone.load_state_dict(torch.load(args.load_backbone))
     backbone = backbone.to(args.device)

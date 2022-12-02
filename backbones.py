@@ -88,10 +88,13 @@ class ResNet(nn.Module):
         first = True
         for (nBlocks, stride, multiplier) in blockList:
             for i in range(nBlocks):
-                blocks.append(block(int(featureMaps * lastMult), int(featureMaps * multiplier), in_expansion = 1 if first else 4, stride = 1 if i > 0 else stride))
+                blocks.append(block(int(featureMaps * lastMult), int(featureMaps * multiplier), in_expansion = 1 if first else 4, stride = stride if i > 0 else stride))
                 first = False
                 lastMult = multiplier
         self.blocks = nn.ModuleList(blocks)
+        print("blocks")
+        print(self.blocks)
+        print("fin blocks")
 
     def forward(self, x, mixup = None, lbda = None, perm = None):
         mixup_layer = -1
@@ -213,6 +216,7 @@ def prepareBackbone():
         backbone = '_'.join(backbone.split('_')[:-1])
 
     return {
+        "custom_resnet": lambda: (ResNet(BasicBlock, args.blocks, args.feature_maps, large = large), args.stride_normalize * args.feature_maps),
         "resnet18": lambda: (ResNet(BasicBlock, [(2, 1, 1), (2, 2, 2), (2, 2, 4), (2, 2, 8)], args.feature_maps, large = large), 8 * args.feature_maps),
         "resnet20": lambda: (ResNet(BasicBlock, [(3, 1, 1), (3, 2, 2), (3, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
         "resnet56": lambda: (ResNet(BasicBlock, [(9, 1, 1), (9, 2, 2), (9, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
