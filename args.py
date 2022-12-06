@@ -10,8 +10,12 @@ parser.add_argument("--runs", type=int, default=1, help="how many times to repea
 parser.add_argument("--csv", type=str, default="", help="name of csv file to write as output, will erase existing file if it exists")
 parser.add_argument("--save-features-prefix", type=str, default="", help="save features of validation and test sets to hard drive, use this parameter as prefix to file names")
 parser.add_argument("--save-backbone", type=str, default="", help="save backbone to hard drive at the specified location")
+parser.add_argument("--save-classifier", type=str, default="", help="save classifier to hard drive at the specified location")
+parser.add_argument("--save-logits", type=str, default="", help="save logits to hard drive at the specified location")
 parser.add_argument("--load-backbone", type=str, default="", help="load backbone from hard drive at the specified location")
+parser.add_argument("--load-classifier", type=str, default="", help="load classifier from hard drive at the specified location")
 parser.add_argument("--freeze-backbone", action="store_true", help="freeze the backbone during training, can be useful in conjonction with load-backbone")
+parser.add_argument("--freeze-classifier", action="store_true", help="freeze the classifier during training, can be useful in conjonction with load-classifier")
 parser.add_argument("--skip-epochs", type=int, default=0, help="number of epochs for which validation and test are ignored")
 parser.add_argument("--seed", type=int, default=random.randint(0, 1000000000), help="initial random seed")
 parser.add_argument("--deterministic", action="store_true", help="force deterministic mode for cuda")
@@ -100,6 +104,7 @@ parser.add_argument("--test-features", type=str, default="", help="test few-shot
 parser.add_argument("--proxy", type=str, default="", help="proxy metric to identify the best backbone")
 parser.add_argument("--target-dataset", type=str, default="", help="target_dataset")
 parser.add_argument("--temperature", type=float, default=5, help="temperature softmax rankme and confidence")
+parser.add_argument("--force-train", action="store_true", help="reduce output verbose")
 
 
 args = parser.parse_args()

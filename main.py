@@ -48,9 +48,11 @@ def to(obj, device):
         return obj.to(device)
 
 def train(epoch, backbone, teacher, criterion, optimizer, scheduler):
-    backbone.train()
-    for c in [item for sublist in criterion.values() for item in sublist] :
-        c.train()
+    if not args.freeze_backbone:
+        backbone.train()
+    if not  args.freeze_classifier:
+        for c in [item for sublist in criterion.values() for item in sublist]:
+            c.train()
     iterators = [enumerate(dataset["dataloader"]) for dataset in trainSet]
     losses, accuracies, total_elt = torch.zeros(len(iterators)), torch.zeros(len(iterators)), torch.zeros(len(iterators))
     while True:
@@ -109,13 +111,24 @@ def test(backbone, datasets, criterion):
     results = []
     for testSetIdx, dataset in enumerate(datasets):
         losses, accuracies, total_elt = 0, 0, 0
+        alloutputs = [{"name_class": name_class, "logits": []} for name_class in dataset["name_classes"]]
         with torch.no_grad():
             for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
                 data, target = data.to(args.device), target.to(args.device)
-                loss, score = criterion[testSetIdx](backbone, data, target)
+                if args.save_logits =='':
+                    loss, score = criterion[testSetIdx](backbone, data, target)
+                else:
+                    loss, score, output = criterion[testSetIdx](backbone, data, target)
+                    output = output.to("cpu")
+                    for i in range(output.shape[0]):
+                        alloutputs[target[i]]["logits"].append(output[i])
                 losses += data.shape[0] * loss.item()
                 accuracies += data.shape[0] * score.item()
                 total_elt += data.shape[0]
+        if args.save_logits != '':
+            for c in range(len(alloutputs)):
+                alloutputs[c]["logits"] = torch.stack(alloutputs[c]["logits"])
+            torch.save(alloutputs, args.save_logits)
         results.append((losses / total_elt, 100 * accuracies / total_elt))
         if args.wandb!='':
             wandb.log({ "test_loss_{}".format(dataset["name"]) : losses / total_elt, "test_acc_{}".format(dataset["name"]) : accuracies / total_elt})
@@ -180,8 +193,8 @@ def generateFeatures(backbone, datasets, sample_aug=args.sample_aug):
             for augs in range(n_aug):
                 features = [{"name_class": name_class, "features": []} for name_class in dataset["name_classes"]]
                 for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
-                    data, target = data.to(args.device), target.to(args.device)
-                    feats = backbone(data).to("cpu")
+                    data, target = data['supervised'].to(args.device), target.to(args.device)
+                    feats = backbone(data['supervised']).to("cpu")
                     for i in range(feats.shape[0]):
                         features[target[i]]["features"].append(feats[i])
                 for c in range(len(allFeatures)):
@@ -260,6 +273,8 @@ for nRun in range(args.runs):
         parameters = []
     for c in [item for sublist in criterion.values() for item in sublist] :
         parameters += list(c.parameters())
+        if args.load_classifier!= '':
+            c.load_state_dict(torch.load(args.load_classifier))
     if not args.silent:
         print(" done.")
         print()
@@ -302,9 +317,13 @@ for nRun in range(args.runs):
         trainStats = None
         if trainSet != []:
             opener = Fore.CYAN
-            if not args.freeze_backbone:
+            if not args.freeze_backbone or args.force_train:
                 trainStats = train(epoch + 1, backbone, teacher, criterion, optimizer, scheduler)
                 updateCSV(trainStats, epoch = epoch)
+            if args.save_classifier:
+                for i,c in enumerate([item for sublist in criterion.values() for item in sublist]):
+                    torch.save(c.cpu().state_dict(), args.save_classifier+str(i)+'_'+str(epoch))
+                    c.to(args.device)
             if (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
                 if epoch >= args.skip_epochs:
                     #print('Generating Train Features')
@@ -320,6 +339,7 @@ for nRun in range(args.runs):
                 featuresValidation = process(featuresValidation, meanVector)
                 tempValidationStats = testFewShot(featuresValidation, validationSet)
             else:
+                print(criterion)
                 tempValidationStats = test(backbone, validationSet, criterion['supervised'])
             updateCSV(tempValidationStats)
             if (tempValidationStats[:,0].mean().item() < best_val and not args.few_shot) or (args.few_shot and tempValidationStats[:,0].mean().item() > best_val):

@@ -53,7 +53,10 @@ class LR(nn.Module):
         if yRotations is not None:
             outputRotations = self.fcRotations(x)
             loss = 0.5 * loss + 0.5 * (self.criterion(outputRotations, yRotations) if lbda == None else (lbda * self.criterion(outputRotations, yRotations) + (1 - lbda) * self.criterion(outputRotations, yRotations[perm])))
-        return loss, score
+        if args.save_logits != '':
+            return loss, score , output
+        else:
+            return loss, score
 
 ### MultiLabel BCE
 class MultiLabelBCE(nn.Module):
