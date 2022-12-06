@@ -13,7 +13,6 @@ from utils import *
 from dataloaders import trainSet, validationSet, testSet
 import classifiers
 from few_shot_evaluation import EpisodicGenerator, ImageNetGenerator, OmniglotGenerator
-from copy import deepcopy
 
 if args.wandb!='':
     import wandb
@@ -68,18 +67,44 @@ def train(epoch, backbone, teacher, criterion, optimizer, scheduler):
                 data = to(data, args.device)
                 target = target.to(args.device)
 
-                for step in eval(args.steps):
+                for step_idx, step in enumerate(eval(args.steps)):
                     loss, score = 0., torch.zeros(1)
+                    if 'prototypical' in step:
+                        dataStep = data['supervised'].clone()
+                        loss_proto, score_proto = criterion['prototypical'][trainingSetIdx](backbone, dataStep)
+                        loss += args.step_coefficient[step_idx] * loss_proto
+                        score += args.step_coefficient[step_idx] * score_proto
+                        
                     if 'lr' in step or 'mixup' in step or 'manifold mixup' in step or 'rotations' in step:
                         dataStep = data['supervised'].clone()
-                        loss_lr, score = criterion['supervised'][trainingSetIdx](backbone, dataStep, target, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
-                        loss += loss_lr
+                        loss_lr, score = criterion['supervised'][trainingSetIdx](backbone, dataStep, target, lr="lr" in step, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
+                        loss += args.step_coefficient[step_idx]*loss_lr
 
                     if 'dino' in step:
                         dataStep = data['dino']
-                        loss_dino = criterion['dino'][trainingSetIdx](backbone, teacher['dino'], dataStep, target, epoch)
-                        loss += loss_dino
-                
+                        loss_dino = criterion['dino'][trainingSetIdx](backbone, teacher['dino'], dataStep, target, epoch-1)
+                        loss += args.step_coefficient[step_idx]*loss_dino
+
+                    if 'simclr' in step:
+                        dataStep = data['simclr']
+                        loss_simclr = criterion['simclr'][trainingSetIdx](backbone, dataStep, target)
+                        loss += args.step_coefficient[step_idx]*loss_simclr
+
+                    if 'simclr_supervised' in step:
+                        dataStep = data['simclr_supervised']
+                        loss_simclr_supervised = criterion['simclr_supervised'][trainingSetIdx](backbone, dataStep, target)
+                        loss += args.step_coefficient[step_idx]*loss_simclr_supervised
+
+                    if 'simsiam' in step:
+                        dataStep = data['simsiam']
+                        loss_simsiam = criterion['simsiam'][trainingSetIdx](backbone, dataStep)
+                        loss += args.step_coefficient[step_idx]*loss_simsiam
+
+                    if 'barlowtwins' in step:
+                        dataStep = data['barlowtwins']
+                        loss_barlowtwins = criterion['barlowtwins'][trainingSetIdx](backbone, dataStep)
+                        loss += args.step_coefficient[step_idx]*loss_barlowtwins
+               
                     loss.backward()
 
                 losses[trainingSetIdx] += args.batch_size * loss.item()
@@ -99,7 +124,7 @@ def train(epoch, backbone, teacher, criterion, optimizer, scheduler):
                 for trainingSetIdx in range(len(iterators)):
                     for step in eval(args.steps):
                         if 'dino' in step:
-                            criterion['dino'][trainingSetIdx].update_teacher(backbone, teacher['dino'], epoch, batch_idx_list[trainingSetIdx])
+                            criterion['dino'][trainingSetIdx].update_teacher(backbone, teacher['dino'], epoch-1, batch_idx_list[trainingSetIdx])
                 
         except StopIteration:
             return torch.stack([losses / total_elt, 100 * accuracies / total_elt]).transpose(0,1)
@@ -114,14 +139,9 @@ def test(backbone, datasets, criterion):
         alloutputs = [{"name_class": name_class, "logits": []} for name_class in dataset["name_classes"]]
         with torch.no_grad():
             for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
-                data, target = data.to(args.device), target.to(args.device)
-                if args.save_logits =='':
-                    loss, score = criterion[testSetIdx](backbone, data, target)
-                else:
-                    loss, score, output = criterion[testSetIdx](backbone, data, target)
-                    output = output.to("cpu")
-                    for i in range(output.shape[0]):
-                        alloutputs[target[i]]["logits"].append(output[i])
+                data = to(data, args.device)
+                target = target.to(args.device)
+                loss, score = criterion[testSetIdx](backbone, data, target, lr=True)
                 losses += data.shape[0] * loss.item()
                 accuracies += data.shape[0] * score.item()
                 total_elt += data.shape[0]
@@ -193,8 +213,8 @@ def generateFeatures(backbone, datasets, sample_aug=args.sample_aug):
             for augs in range(n_aug):
                 features = [{"name_class": name_class, "features": []} for name_class in dataset["name_classes"]]
                 for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
-                    data, target = data['supervised'].to(args.device), target.to(args.device)
-                    feats = backbone(data['supervised']).to("cpu")
+                    data, target = data.to(args.device), target.to(args.device)
+                    feats = backbone(data).to("cpu")
                     for i in range(feats.shape[0]):
                         features[target[i]]["features"].append(feats[i])
                 for c in range(len(allFeatures)):
@@ -205,7 +225,15 @@ def generateFeatures(backbone, datasets, sample_aug=args.sample_aug):
 
         results.append([{"name_class": allFeatures[i]["name_class"], "features": allFeatures[i]["features"]} for i in range(len(allFeatures))])
     return results
-
+def get_optimizer(parameters, name, lr, weight_decay):
+    if name == 'sgd':
+        return torch.optim.SGD(parameters, lr=lr, weight_decay=weight_decay, momentum=0.9, nesterov=True)
+    elif name == 'adam':
+        return torch.optim.Adam(parameters, lr=lr, weight_decay=weight_decay)
+    elif name == 'adamw':
+        return torch.optim.AdamW(parameters, lr=lr, weight_decay=weight_decay)
+    else:
+        raise ValueError(f'Optimizer {name} not supported')
 if args.test_features != "":
     features = [torch.load(args.test_features, map_location=args.device)]
     print(testFewShot(features))
@@ -221,7 +249,8 @@ for nRun in range(args.runs):
         run_wandb = wandb.init(reinit = True, project=args.wandbProjectName, 
             entity=args.wandb, 
             tags=tag, 
-            config=vars(args))
+            config=vars(args),
+            dir=args.wandb_dir)
     if not args.silent:
         print("Preparing backbone... ", end='')
     if args.audio:
@@ -251,14 +280,33 @@ for nRun in range(args.runs):
     all_steps = [item for sublist in eval(args.steps) for item in sublist]
     if 'lr' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or 'rotations' in all_steps:
         criterion['supervised'] = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in trainSet]
+    if args.episodic and 'prototypical' in all_steps:
+        criterion['prototypical'] = [classifiers.ProtoNet() for dataset in trainSet]
     if 'dino' in all_steps:
         from selfsupervised.dino import DINO
         criterion['dino'] = [DINO(in_dim=outputDim, epochs=args.epochs, nSteps=nSteps) for _ in trainSet]
-        teacher['dino'] = deepcopy(backbone)
-        
-        for p in teacher['dino'].parameters(): # Freeze teacher
+        teacher['dino'] = backbones.prepareBackbone()[0].to(args.device) # Same backbone but with a different init
+         
+        for p in teacher['dino'].parameters(): # Freeze teacher + teacher head
             p.requires_grad = False
-
+         
+        for crit in criterion['dino']:
+            for p in crit.teacher_head.parameters():
+                p.requires_grad = False
+  
+    if 'simclr' in all_steps:
+        from selfsupervised.simclr import SIMCLR
+        criterion['simclr'] = [SIMCLR(in_dim=outputDim, supervised=False) for _ in trainSet]
+    if 'simclr_supervised' in all_steps:
+        from selfsupervised.simclr import SIMCLR
+        criterion['simclr_supervised'] = [SIMCLR(in_dim=outputDim, supervised=True) for _ in trainSet]
+    if 'simsiam' in all_steps:
+        from selfsupervised.simsiam import SIMSIAM
+        criterion['simsiam'] = [SIMSIAM(in_dim=outputDim) for _ in trainSet]
+    if 'barlowtwins' in all_steps:
+        from selfsupervised.barlowtwins import BARLOWTWINS
+        criterion['barlowtwins'] = [BARLOWTWINS(in_dim=outputDim) for _ in trainSet]
+        
     numParamsCriterions = 0
     for c in [item for sublist in criterion.values() for item in sublist] :
         c.to(args.device)
@@ -282,9 +330,6 @@ for nRun in range(args.runs):
     tick = time.time()
     best_val = 1e10 if not args.few_shot else 0
     lr = args.lr
-
-
-
     for epoch in range(args.epochs):
         if (epoch % 30 == 0 and not args.silent) or epoch == 0 or epoch == args.skip_epochs:
             if epoch > 0 and args.silent:
@@ -298,20 +343,29 @@ for nRun in range(args.runs):
                 for dataset in testSet:
                     print(Back.RED + " {:>16s} ".format(dataset["name"]) + Style.RESET_ALL, end='')
             print()
-        if epoch == 0 and not args.cosine and len(parameters)>0:
-            optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.wd)
-            if not args.cosine:
-                scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer = optimizer, milestones = [n * nSteps for n in args.milestones], gamma = args.gamma)
-        if args.cosine and (epoch in args.milestones or epoch == 0) and len(parameters)>0:
-            optimizer = torch.optim.SGD(parameters, lr = lr, weight_decay = args.wd, momentum = 0.9, nesterov = True) if args.optimizer.lower() == "sgd" else torch.optim.Adam(parameters, lr = lr, weight_decay = args.wd)
-            if epoch == 0:
-                interval = nSteps * args.milestones[0]
-            else:
-                index = args.milestones.index(epoch)
-                interval = nSteps * (args.milestones[index + 1] - args.milestones[index])
-            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimizer, T_max = interval, eta_min = lr * 1e-3)
-            lr = lr * args.gamma
         
+        if epoch == 0 and args.warmup_epochs>0:
+            optimizer = get_optimizer(parameters, args.optimizer.lower(), lr=lr, weight_decay=args.wd)
+            scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1/(args.warmup_epochs+1), end_factor=1, total_iters=args.warmup_epochs*nSteps, last_epoch=-1) # warmup scheduler (linear)
+        if (epoch == args.warmup_epochs or (epoch in args.milestones)) and len(parameters)>0:
+            if args.scheduler == "multistep" and epoch == args.warmup_epochs:
+                optimizer = get_optimizer(parameters, args.optimizer.lower(), lr=lr, weight_decay=args.wd)
+                scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer = optimizer, milestones = [(n-args.warmup_epochs) * nSteps for n in args.milestones], gamma = args.gamma)
+            if args.scheduler != "multistep":
+                optimizer = get_optimizer(parameters, args.optimizer.lower(), lr=lr, weight_decay=args.wd)
+                if epoch == args.warmup_epochs:
+                    interval = nSteps * (args.milestones[0]-args.warmup_epochs-1)
+                else:
+                    index = args.milestones.index(epoch)
+                    interval = nSteps * (args.milestones[index + 1] - args.milestones[index]-1)
+                if args.scheduler == "cosine":                
+                    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimizer, T_max = interval, eta_min = lr * args.end_lr_factor)
+                elif args.scheduler == "linear":
+                    scheduler = torch.optim.lr_scheduler.LinearLR(optimizer = optimizer, start_factor = 1, end_factor = args.end_lr_factor, total_iters = interval, last_epoch=-1)
+                else:
+                    raise ValueError(f"Unknown scheduler {args.scheduler}")
+                lr = lr * args.gamma
+
         continueTest = False
         meanVector = None
         trainStats = None
@@ -326,7 +380,6 @@ for nRun in range(args.runs):
                     c.to(args.device)
             if (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
                 if epoch >= args.skip_epochs:
-                    #print('Generating Train Features')
                     featuresTrain = generateFeatures(backbone, trainSet)
                     meanVector = computeMean(featuresTrain)
                     featuresTrain = process(featuresTrain, meanVector)
@@ -334,7 +387,6 @@ for nRun in range(args.runs):
         if validationSet != [] and epoch >= args.skip_epochs:
             opener = Fore.GREEN
             if args.few_shot or args.save_features_prefix != "":
-                #print('Generating Validation Features')
                 featuresValidation = generateFeatures(backbone, validationSet)
                 featuresValidation = process(featuresValidation, meanVector)
                 tempValidationStats = testFewShot(featuresValidation, validationSet)

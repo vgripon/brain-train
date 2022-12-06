@@ -20,11 +20,15 @@ parser.add_argument("--skip-epochs", type=int, default=0, help="number of epochs
 parser.add_argument("--seed", type=int, default=random.randint(0, 1000000000), help="initial random seed")
 parser.add_argument("--deterministic", action="store_true", help="force deterministic mode for cuda")
 parser.add_argument("--silent", action="store_true", help="reduce output verbose")
+parser.add_argument("--episodic", action="store_true", help="run episodic training")
+parser.add_argument("--episodic-iterations-per-epoch", type=int, default=600, help="number of iterations per epoch for episodic training")
+
 
 
 ### optimizer args
 parser.add_argument("--optimizer", type=str, default="SGD", help="can be SGD or Adam")
 parser.add_argument("--lr", type=float, default=-1., help="initial learning rate, defaut to 0.1 for SGD and 0.001 for Adam")
+parser.add_argument("--end-lr-factor", type=float, default=1e-3, help="end learning rate is lr * end_lr_factor at each milestone")
 parser.add_argument("--wd", type=float, default=-1., help="weight decay, default to 5e-4 for SGD and 0 for Adam")
 parser.add_argument("--steps", type=str, default="[['lr']]", help="describe what steps during training are made of, is a list of lists containing 'rotations', 'mixup' or 'manifold mixup', for example \"[['manifold mixup'],['rotations']]\" does two steps: first with manifold mixup then with rotations as additional self-supervision. Last list is used to compute losses and scores")
 parser.add_argument("--label-smoothing", type=float, default=0, help="use label smoothing with given smoothing factor. 0 means no smoothing")
@@ -62,10 +66,14 @@ parser.add_argument("--training-dataset", type=str, default="", help="training d
 parser.add_argument("--validation-dataset", type=str, default="", help="validation dataset, overriden by --dataset")
 parser.add_argument("--test-dataset", type=str, default="", help="test dataset, overriden by --dataset")
 parser.add_argument("--dataset-size", type=int, default=0, help="defines a maximum of samples considered at each epoch, 0 means it is ignored")
-parser.add_argument("--image-size", type=int, default=-1, help="image input size")
+parser.add_argument("--training-image-size", type=int, default=-1, help="train image input size")
+parser.add_argument("--test-image-size", type=int, default=-1, help="test image input size")
+parser.add_argument("--training-transforms", type=str, default="[]", help="list of transforms to apply to training data")
+parser.add_argument("--test-transforms", type=str, default="[]", help="list of transforms to apply to test data")
 parser.add_argument("--audio", action="store_true", help="use audio inputs, so switch back to 1d backbones")
 parser.add_argument("--wandb", type=str, default='', help="Report to wandb, input is the entity name")
 parser.add_argument("--wandbProjectName", type=str, default='few-shot', help="wandb project name")
+parser.add_argument("--wandb-dir", type=str, default='wandb', help="directory where wandb files are stored")
 
 ### backbones parameters
 parser.add_argument("--feature-maps", type=int, default=64, help="initial number of feature maps in first embedding, used as a base downstream convolutions")
@@ -84,9 +92,12 @@ parser.add_argument("--classifier", type=str, default="lr", help="define which c
 
 ### scheduler parameters
 parser.add_argument("--epochs", type=int, default=350, help="total number of training epochs")
+parser.add_argument("--warmup-epochs", type=int, default=0, help="number of warmup epochs, starts with a learning rate of 0 and ends with initial learning rate")
 parser.add_argument("--milestones", type=str, default="100", help="milestones for scheduler")
 parser.add_argument("--gamma", type=float, default=0.1, help="learning rate multiplier after each milestone")
 parser.add_argument("--cosine", action="store_true", help="use cosine annealing instead of multisteplr")
+parser.add_argument("--scheduler", type=str, default="cosine", help="scheduler to use, can be any of multistep or cosine or linear")
+
 
 ### few shot evaluation
 parser.add_argument("--max-queries", action="store_true", help="use as much queries as possible")
@@ -130,12 +141,22 @@ if isinstance(eval(args.milestones), int):
     if eval(args.milestones) <= 0:
         args.milestones = []
     else:
-        args.milestones = [eval(args.milestones) * i for i in range(1, 1 + args.epochs // eval(args.milestones))]
+        args.milestones = [min(args.epochs, args.warmup_epochs+eval(args.milestones) * i) for i in range(1, 1 + args.epochs // eval(args.milestones))]
 else:
-    args.milestones = eval(args.milestones)
+    args.milestones = [min(m+args.warmup_epochs, args.epochs) for m in eval(args.milestones)]
 if args.epochs not in args.milestones:
     args.milestones.append(args.epochs)
 
+try: 
+    coeff = float(eval(args.steps)[0][-1])
+    args.step_coefficient = [float(step[-1]) for step in eval(args.steps)]
+    args.steps = str([step[:-1] for step in eval(args.steps)])
+except: 
+    args.step_coefficient = [1]*len(eval(args.steps))
+if args.cosine:
+    args.scheduler = "cosine"
+args.training_transforms = eval(args.training_transforms)
+args.test_transforms = eval(args.test_transforms)
 print("milestones are " + str(args.milestones))
 
 print(" args,", end = '')

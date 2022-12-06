@@ -19,9 +19,11 @@ class LR(nn.Module):
         self.fcRotations = nn.Linear(inputDim, 4)
         self.criterion = nn.CrossEntropyLoss() if args.label_smoothing == 0 else LabelSmoothingLoss(numClasses, args.label_smoothing)
         self.backbone = backbone
-    def forward(self, backbone, dataStep, y, rotation=False, mixup=False, manifold_mixup=False):
+    def forward(self, backbone, dataStep, y, lr=False, rotation=False, mixup=False, manifold_mixup=False):
         lbda, perm, mixupType = None, None, None
+        loss,score, multiplier = 0., torch.zeros(1), 1
         if mixup or manifold_mixup:
+            multiplier = 0.5
             perm = torch.randperm(dataStep.shape[0])
             if mixup:
                 lbda = random.random()
@@ -43,16 +45,18 @@ class LR(nn.Module):
             yRotations = targetRot
 
         x = backbone(dataStep, mixup = mixupType, lbda = lbda, perm = perm)
-        output = self.fc(x)
-        decision = output.argmax(dim = 1)
-        score = (decision - y == 0).float().mean()
-        loss = self.criterion(output, y)
+        if lr or mixup or manifold_mixup:
+            output = self.fc(x)
+            decision = output.argmax(dim = 1)
+            score = (decision - y == 0).float().mean()
+            loss = self.criterion(output, y)
+            multiplier = 0.5
         if lbda is not None:
             loss = lbda * loss + (1 - lbda) * self.criterion(output, y[perm])
             score = lbda * score + (1 - lbda) * (decision - y[perm] == 0).float().mean()
         if yRotations is not None:
             outputRotations = self.fcRotations(x)
-            loss = 0.5 * loss + 0.5 * (self.criterion(outputRotations, yRotations) if lbda == None else (lbda * self.criterion(outputRotations, yRotations) + (1 - lbda) * self.criterion(outputRotations, yRotations[perm])))
+            loss = multiplier * (loss + (self.criterion(outputRotations, yRotations) if lbda == None else (lbda * self.criterion(outputRotations, yRotations) + (1 - lbda) * self.criterion(outputRotations, yRotations[perm]))))
         if args.save_logits != '':
             return loss, score , output
         else:
@@ -119,6 +123,31 @@ class LabelSmoothingLoss(nn.Module):
             true_dist.fill_(self.smoothing / (self.cls - 1))
             true_dist.scatter_(1, target.data.unsqueeze(1), 1 - self.smoothing)
         return torch.mean(torch.sum(-true_dist * pred, dim=-1))
+
+class ProtoNet(nn.Module):
+    def __init__(self) -> None:
+        super(ProtoNet, self).__init__()
+        pass        
+    def forward(self, backbone, dataStep):
+        loss, score = 0, 0
+        features = [] # forward everything through backbone using a batch_size
+        for i in range(dataStep.shape[0]//args.batch_size + 1):
+            features.append(backbone(dataStep[i*args.batch_size:(i+1)*args.batch_size]))
+        features = torch.cat(features, dim = 0)
+        shots = torch.stack([features[(args.few_shot_shots+args.few_shot_queries)*c:(args.few_shot_shots+args.few_shot_queries)*c+args.few_shot_shots] for c in range(args.few_shot_ways)]) # split into shots
+        queries = torch.stack([features[(args.few_shot_shots+args.few_shot_queries)*c+args.few_shot_shots:(args.few_shot_shots+args.few_shot_queries)*(c+1)] for c in range(args.few_shot_ways)]) # split into queries
+        prototypes = shots.mean(dim = 1) # compute prototypes
+        distances = -1 * torch.pow(torch.norm(queries.reshape(-1, queries.shape[-1]).unsqueeze(1) - prototypes.unsqueeze(0), dim=2), 2) # compute distances        
+        distances = distances.reshape(args.few_shot_ways, args.few_shot_queries, args.few_shot_ways)
+
+        log_p_y = F.log_softmax(distances, dim=0)
+        target_inds = torch.arange(0, args.few_shot_ways).to(args.device)
+        target_inds = target_inds.view(args.few_shot_ways, 1, 1)
+        target_inds = target_inds.expand(args.few_shot_ways, args.few_shot_queries, 1).long()
+        loss = -log_p_y.gather(2, target_inds).squeeze().view(-1).mean()
+        _, y_hat = log_p_y.max(2)
+        score = y_hat.eq(target_inds.squeeze(2)).float().mean().cpu()
+        return loss, score
 
 ### NCM
 def ncm(shots, queries):
