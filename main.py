@@ -213,8 +213,10 @@ def generateFeatures(backbone, datasets, sample_aug=args.sample_aug):
             for augs in range(n_aug):
                 features = [{"name_class": name_class, "features": []} for name_class in dataset["name_classes"]]
                 for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
-                    data, target = data.to(args.device), target.to(args.device)
-                    feats = backbone(data).to("cpu")
+                    if isinstance(data, dict):
+                        data = data["supervised"]
+                    data, target = to(data, args.device), target.to(args.device)
+                    feats = backbone(data).to("cpu")    
                     for i in range(feats.shape[0]):
                         features[target[i]]["features"].append(feats[i])
                 for c in range(len(allFeatures)):
