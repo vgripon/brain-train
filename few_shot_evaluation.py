@@ -43,9 +43,12 @@ class EpisodicGenerator():
         return choices 
     
     def get_query_size(self, choice_classes, n_queries):
-        min_queries = n_queries if n_queries != 0 else 10
-        query_size = min([int(0.5*self.num_elements_per_class[c]) for c in choice_classes]) 
-        query_size = min(min_queries, query_size)
+        if n_queries == 0:
+            min_queries = n_queries if n_queries != 0 else 10
+            query_size = min([int(0.5*self.num_elements_per_class[c]) for c in choice_classes]) 
+            query_size = min(min_queries, query_size)
+        else:
+            query_size = n_queries
         return query_size
 
     def get_support_size(self, choice_classes, query_size, n_shots):
@@ -72,8 +75,10 @@ class EpisodicGenerator():
             n_shots_per_class = [n_shots]*len(choice_classes)
         return n_shots_per_class
 
-    def get_number_of_queries(self, choice_classes, query_size, unbalanced_queries):
-        if unbalanced_queries:
+    def get_number_of_queries(self, choice_classes, query_size, unbalanced_queries, max_queries,n_shots_per_class ):
+        if max_queries:
+            n_queries_per_class  = [min([self.num_elements_per_class[c]-n_shots_per_class[i] for i,c in enumerate(choice_classes)])]  *len(choice_classes)
+        elif unbalanced_queries:
             alpha = np.full(len(choice_classes), 2)
             prob_dist = np.random.dirichlet(alpha)
             while prob_dist.min()*query_size*len(choice_classes)<1: # if there is a class with less than one query resample
@@ -83,7 +88,7 @@ class EpisodicGenerator():
             n_queries_per_class = [query_size]*len(choice_classes)
         return n_queries_per_class
 
-    def sample_indices(self, num_elements_per_chosen_classes, n_shots_per_class, n_queries_per_class):
+    def sample_indices(self, num_elements_per_chosen_classes, n_shots_per_class, n_queries_per_class, max_queries = False):
         shots_idx = []
         queries_idx = []
         for k, q, elements_per_class in zip(n_shots_per_class, n_queries_per_class, num_elements_per_chosen_classes):
@@ -92,7 +97,7 @@ class EpisodicGenerator():
             queries_idx.append(choices[k:k+q].tolist())
         return shots_idx, queries_idx
 
-    def sample_episode(self, ways=0, n_shots=0, n_queries=0, unbalanced_queries=False, verbose=False):
+    def sample_episode(self, ways=0, n_shots=0, n_queries=0, unbalanced_queries=False, verbose=False, max_queries = False):
         """
         Sample an episode
         """
@@ -103,8 +108,8 @@ class EpisodicGenerator():
         support_size = self.get_support_size(choice_classes, query_size, n_shots)
 
         n_shots_per_class = self.get_number_of_shots(choice_classes, support_size, query_size, n_shots)
-        n_queries_per_class = self.get_number_of_queries(choice_classes, query_size, unbalanced_queries)
-        shots_idx, queries_idx = self.sample_indices([self.num_elements_per_class[c] for c in choice_classes], n_shots_per_class, n_queries_per_class)
+        n_queries_per_class = self.get_number_of_queries(choice_classes, query_size, unbalanced_queries, max_queries,n_shots_per_class )
+        shots_idx, queries_idx = self.sample_indices([self.num_elements_per_class[c] for c in choice_classes], n_shots_per_class, n_queries_per_class, max_queries = max_queries)
 
         if verbose:
             print(f'chosen class: {choice_classes}')
@@ -224,8 +229,8 @@ class OmniglotGenerator(EpisodicGenerator):
     def select_classes(self, ways):
         superclass_id = str(torch.randint(self.dataset['num_superclasses'],(1,1)).reshape(-1).item())
         classes_ids = self.dataset['classes_per_superclass'][superclass_id]
-        num_sampled_classes = torch.randint(5,min(len(classes_ids),50),(1,1)).reshape(-1)
-        
+        num_sampled_classes = ways if ways!=0 else torch.randint(5,min(len(classes_ids),50),(1,1)).reshape(-1)
+       
         return torch.tensor(classes_ids)[torch.randperm(len(classes_ids))[:num_sampled_classes].tolist()]
 class MetaAlbumsGenerator(EpisodicGenerator):
     """

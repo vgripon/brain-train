@@ -6,29 +6,61 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import random
+import numpy as np
 from args import args
+
 
 ### Logistic Regression module, which is the classic way to train deep models for classification
 class LR(nn.Module):
-    def __init__(self, inputDim, numClasses):
+    def __init__(self, inputDim, numClasses, backbone=None):
         super(LR, self).__init__()
         self.fc = nn.Linear(inputDim, numClasses)
         self.fcRotations = nn.Linear(inputDim, 4)
         self.criterion = nn.CrossEntropyLoss() if args.label_smoothing == 0 else LabelSmoothingLoss(numClasses, args.label_smoothing)
+        self.backbone = backbone
+    def forward(self, backbone, dataStep, y, lr=False, rotation=False, mixup=False, manifold_mixup=False):
+        lbda, perm, mixupType = None, None, None
+        loss,score, multiplier = 0., torch.zeros(1), 1
+        if mixup or manifold_mixup:
+            multiplier = 0.5
+            perm = torch.randperm(dataStep.shape[0])
+            if mixup:
+                lbda = random.random()
+                mixupType = "mixup"
+            else:
+                lbda = np.random.beta(2,2)
+                mixupType = "manifold mixup"
+        yRotations = None
+        if rotation:
+            bs = dataStep.shape[0] // 4
+            targetRot = torch.LongTensor(dataStep.shape[0]).to(args.device)
+            targetRot[:bs] = 0
+            dataStep[bs:] = dataStep[bs:].transpose(3,2).flip(2)
+            targetRot[bs:2*bs] = 1
+            dataStep[2*bs:] = dataStep[2*bs:].transpose(3,2).flip(2)
+            targetRot[2*bs:3*bs] = 2
+            dataStep[3*bs:] = dataStep[3*bs:].transpose(3,2).flip(2)
+            targetRot[3*bs:] = 3
+            yRotations = targetRot
 
-    def forward(self, x, y, yRotations = None, lbda = None, perm = None):
-        output = self.fc(x)
-        decision = output.argmax(dim = 1)
-        score = (decision - y == 0).float().mean()
-        loss = self.criterion(output, y)
+        x = backbone(dataStep, mixup = mixupType, lbda = lbda, perm = perm)
+        if lr or mixup or manifold_mixup:
+            output = self.fc(x)
+            decision = output.argmax(dim = 1)
+            score = (decision - y == 0).float().mean()
+            loss = self.criterion(output, y)
+            multiplier = 0.5
         if lbda is not None:
             loss = lbda * loss + (1 - lbda) * self.criterion(output, y[perm])
             score = lbda * score + (1 - lbda) * (decision - y[perm] == 0).float().mean()
         if yRotations is not None:
             outputRotations = self.fcRotations(x)
-            loss = 0.5 * loss + 0.5 * (self.criterion(outputRotations, yRotations) if lbda == None else (lbda * self.criterion(outputRotations, yRotations) + (1 - lbda) * self.criterion(outputRotations, yRotations[perm])))
-        return loss, score
+            loss = multiplier * (loss + (self.criterion(outputRotations, yRotations) if lbda == None else (lbda * self.criterion(outputRotations, yRotations) + (1 - lbda) * self.criterion(outputRotations, yRotations[perm]))))
+        if args.save_logits != '':
+            return loss, score , output
+        else:
+            return loss, score
 
 ### MultiLabel BCE
 class MultiLabelBCE(nn.Module):
@@ -92,15 +124,43 @@ class LabelSmoothingLoss(nn.Module):
             true_dist.scatter_(1, target.data.unsqueeze(1), 1 - self.smoothing)
         return torch.mean(torch.sum(-true_dist * pred, dim=-1))
 
+class ProtoNet(nn.Module):
+    def __init__(self) -> None:
+        super(ProtoNet, self).__init__()
+        pass        
+    def forward(self, backbone, dataStep):
+        loss, score = 0, 0
+        features = [] # forward everything through backbone using a batch_size
+        for i in range(dataStep.shape[0]//args.batch_size + 1):
+            features.append(backbone(dataStep[i*args.batch_size:(i+1)*args.batch_size]))
+        features = torch.cat(features, dim = 0)
+        shots = torch.stack([features[(args.few_shot_shots+args.few_shot_queries)*c:(args.few_shot_shots+args.few_shot_queries)*c+args.few_shot_shots] for c in range(args.few_shot_ways)]) # split into shots
+        queries = torch.stack([features[(args.few_shot_shots+args.few_shot_queries)*c+args.few_shot_shots:(args.few_shot_shots+args.few_shot_queries)*(c+1)] for c in range(args.few_shot_ways)]) # split into queries
+        prototypes = shots.mean(dim = 1) # compute prototypes
+        distances = -1 * torch.pow(torch.norm(queries.reshape(-1, queries.shape[-1]).unsqueeze(1) - prototypes.unsqueeze(0), dim=2), 2) # compute distances        
+        distances = distances.reshape(args.few_shot_ways, args.few_shot_queries, args.few_shot_ways)
+
+        log_p_y = F.log_softmax(distances, dim=0)
+        target_inds = torch.arange(0, args.few_shot_ways).to(args.device)
+        target_inds = target_inds.view(args.few_shot_ways, 1, 1)
+        target_inds = target_inds.expand(args.few_shot_ways, args.few_shot_queries, 1).long()
+        loss = -log_p_y.gather(2, target_inds).squeeze().view(-1).mean()
+        _, y_hat = log_p_y.max(2)
+        score = y_hat.eq(target_inds.squeeze(2)).float().mean().cpu()
+        return loss, score
+
 ### NCM
 def ncm(shots, queries):
     centroids = torch.stack([shotClass.mean(dim = 0) for shotClass in shots])
     score = 0
     total = 0
     for i, queriesClass in enumerate(queries):
-        distances = torch.norm(queriesClass.unsqueeze(1) - centroids.unsqueeze(0), dim = 2)
-        score += (distances.argmin(dim = 1) - i == 0).float().sum()
-        total += queriesClass.shape[0]
+        if queriesClass == []:
+            pass
+        else:
+            distances = torch.norm(queriesClass.unsqueeze(1) - centroids.unsqueeze(0), dim = 2)
+            score += (distances.argmin(dim = 1) - i == 0).float().sum().cpu()
+            total += queriesClass.shape[0]
     return score / total
 
 ###  softkmeans

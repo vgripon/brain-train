@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from args import args
 import random # for manifold mixup
+from functools import partial
 
 class ConvBN2d(nn.Module):
     def __init__(self, in_f, out_f, kernel_size = 3, stride = 1, padding = 1, groups = 1, outRelu = False, leaky = args.leaky):
@@ -184,12 +185,33 @@ class ResNet12(nn.Module):
         
         y = y.mean(dim = list(range(2, len(y.shape))))
         return y
+from vit import ViT
+from vit_dino import vit_small, vit_base, vit_tiny
 
+class Clip(nn.Module):
+    def __init__(self, device):
+        super(Clip, self).__init__()
+        import clip
+        self.backbone = clip.load("ViT-B/32", device=device)[0]
+    def forward(self, x, mixup = None, lbda = None, perm = None):
+        return self.backbone.encode_image(x)
 def prepareBackbone():
     large = False
+    patch_size = 0
+    projection = 'conv'
+    backbone = args.backbone
     if args.backbone.lower()[-6:] == "_large":
         large = True
-        args.backbone = args.backbone[:-6]
+        backbone = args.backbone[:-6]
+    if 'vit' in args.backbone:
+        if '_linear' in args.backbone:
+            projection = 'linear'
+            backbone = args.backbone[:-7]
+        else:
+            backbone = args.backbone
+        patch_size = int(backbone.split('_')[-1])
+        backbone = '_'.join(backbone.split('_')[:-1])
+
     return {
         "resnet18": lambda: (ResNet(BasicBlock, [(2, 1, 1), (2, 2, 2), (2, 2, 4), (2, 2, 8)], args.feature_maps, large = large), 8 * args.feature_maps),
         "resnet20": lambda: (ResNet(BasicBlock, [(3, 1, 1), (3, 2, 2), (3, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
@@ -199,7 +221,15 @@ def prepareBackbone():
         "resnet50": lambda: (ResNet(BottleneckBlock, [(3, 1, 1), (4, 2, 2), (6, 2, 4), (3, 2, 8)], args.feature_maps, large = large), 8 * 4 * args.feature_maps),
         "resnet12": lambda: (ResNet12(args.feature_maps), 10 * args.feature_maps),
         "wrn28_10": lambda: (ResNet(BasicBlock, [(4, 1, 10), (4, 2, 20), (4, 2, 40)], args.feature_maps, large = large), 40 * args.feature_maps),
-        "wrn16_16": lambda: (ResNet(BasicBlock, [(2, 1, 16), (2, 2, 32), (2, 2, 64)], args.feature_maps, large = large), 64 * args.feature_maps)
-        }[args.backbone.lower()]()
-
+        "wrn16_16": lambda: (ResNet(BasicBlock, [(2, 1, 16), (2, 2, 32), (2, 2, 64)], args.feature_maps, large = large), 64 * args.feature_maps),
+        "vit_tiny": lambda: (ViT(image_size = args.training_image_size, patch_size = patch_size, channels = 3, dim_head=64, dim = 192, depth = 12, heads = 3, mlp_dim = 192*4, pool=False, projection=projection, drop_path_rate=args.dropout, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6)), 192),
+        "vit_small": lambda: (ViT(image_size = args.training_image_size, patch_size = patch_size, channels = 3, dim_head=64, dim = 384, depth = 12, heads = 6, mlp_dim = 384*4, pool=False, projection=projection, drop_path_rate=args.dropout, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6)), 384),
+        "vit_base": lambda: (ViT(image_size = args.training_image_size, patch_size = patch_size, channels = 3, dim_head=64, dim = 768, depth = 12, heads = 12, mlp_dim = 768*4, pool=False, projection=projection, drop_path_rate=args.dropout, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6)), 768),
+        "vit_large": lambda: (ViT(image_size = args.training_image_size, patch_size = patch_size, channels = 3, dim_head=64, dim = 1024, depth = 24, heads = 16, mlp_dim = 1024*4, pool=False, projection=projection, drop_path_rate=args.dropout, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6)), 1024),
+        "vit_huge": lambda: (ViT(image_size = args.training_image_size, patch_size = patch_size, channels = 3, dim_head=64, dim = 1280, depth = 32, heads = 16, mlp_dim = 1280*4, pool=False, projection=projection, drop_path_rate=args.dropout, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6)), 1280),
+        "dino_vit_tiny": lambda: (vit_tiny(image_size = args.training_image_size, patch_size=patch_size, drop_path_rate=args.dropout), 192),
+        "dino_vit_small": lambda: (vit_small(image_size = args.training_image_size, patch_size=patch_size, drop_path_rate=args.dropout), 384),
+        "dino_vit_base": lambda: (vit_base(image_size = args.training_image_size, patch_size=patch_size, drop_path_rate=args.dropout), 768),
+        "clip": lambda: (Clip(args.device), 512)
+        }[backbone.lower()]()
 print(" backbones,", end='')

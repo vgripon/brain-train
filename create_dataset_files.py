@@ -28,7 +28,7 @@ for subset in graph['split_subgraphs'].values():
 all_results = defaultdict(dict)
 
 ### generate data for miniimagenet
-if 'miniimagenetimages' in available_datasets:
+if 'miniimagenetimages' in available_datasets and not args.fast_create_dataset:
     for dataset in ["train","validation","test"]:
         firstLine = True
         classToIdx = {}
@@ -57,7 +57,7 @@ if 'miniimagenetimages' in available_datasets:
         print("Done for miniimagenet_" + dataset + " with " + str(nClass) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
 
 ### generate data for tieredimagenet
-if 'tieredimagenet' in available_datasets:
+if 'tieredimagenet' in available_datasets and not args.fast_create_dataset:
     for dataset,folderName in [("train","train"),("validation","val"),("test","test")]:
         directories = os.listdir(args.dataset_path + "tieredimagenet/" + folderName)
         result = {"data":[], "targets":[], "name":"tieredimagenet_" + dataset, "num_classes":0, "name_classes":[]}
@@ -75,7 +75,7 @@ if 'tieredimagenet' in available_datasets:
         print("Done for tieredimagenet_" + dataset + " with " + str(i+1) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
 
 ### generate data for cifarfs
-if 'cifar_fs' in available_datasets:
+if 'cifar_fs' in available_datasets and not args.fast_create_dataset:
     for dataset,folderName in [("train","meta-train"),("validation","meta-val"),("test","meta-test")]:
         directories = os.listdir(args.dataset_path + "cifar_fs/" + folderName)
         result = {"data":[], "targets":[], "name":"cifarfs_" + dataset, "num_classes":0, "name_classes":[]}
@@ -106,57 +106,57 @@ try:
 except:
     pass
 ### generate data for imagenet metadatasets
-#try:
-if 'imagenet' in available_datasets:
-    # Parse Graph 
-    class_folders = {k:[p['wn_id'] for p in graph['split_subgraphs'][k] if len(p['children_ids']) == 0] for k in ['TRAIN', 'TEST', 'VALID']} # Existing classes    
-    # Get duplicates from other datasets which should be removed from ImageNet
-    duplicates = []
-    duplicate_files =  ['ImageNet_CUBirds_duplicates.txt', 'ImageNet_Caltech101_duplicates.txt', 'ImageNet_Caltech256_duplicates.txt']
-    for file in duplicate_files:
-        with open(os.path.join('datasets', 'metadatasets', 'ilsvrc_2012', file), 'r') as f:
-            duplicates_tmp = f.read().split('\n')
-        duplicates += [p.split('#')[0].replace(' ','') for p in duplicates_tmp if len(p)>0 and p[0] not in ['#']] # parse the duplicates files
-    # check which file exists:
-    path = os.path.join('imagenet', 'ILSVRC2012_img_train' if os.path.exists(os.path.join(args.dataset_path, 'imagenet', 'ILSVRC2012_img_train')) else 'train')
-    if args.subdomain!='':
-        clusters = np.load(args.subdomain)
-        nb_clusters = clusters.max()+1
-        L=[]
-        for k in range(nb_clusters):
-            L.append({"data":[], "targets":[], "name":"metadataset_imagenet_"+str(k) +'train', "num_classes":0, "name_classes":[], "num_elements_per_class":[], "classIdx":{}})
-    for dataset, folderName in [('train', 'TRAIN'), ('test', 'TEST'), ('validation','VALID')]:
-        result = {"data":[], "targets":[], "name":"metadataset_imagenet_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class":[], "classIdx":{}}
-        for i, classIdx in enumerate(class_folders[folderName]):
-            num_elements_per_class = 0
-            for fileName in os.listdir(os.path.join(args.dataset_path, path, classIdx)):
-                if os.path.join(classIdx, fileName) not in duplicates:
-                    if args.subdomain!='' and dataset=='train':
-                        L[clusters[i]]["data"].append(os.path.join(path, classIdx, fileName))
-                        L[clusters[i]]["targets"].append(L[clusters[i]]["num_classes"])
-                    result["data"].append(os.path.join(path, classIdx, fileName))
-                    result["targets"].append(i)
-                    num_elements_per_class +=1
+try:
+    if 'imagenet' in available_datasets:
+        # Parse Graph 
+        class_folders = {k:[p['wn_id'] for p in graph['split_subgraphs'][k] if len(p['children_ids']) == 0] for k in ['TRAIN', 'TEST', 'VALID']} # Existing classes    
+        # Get duplicates from other datasets which should be removed from ImageNet
+        duplicates = []
+        duplicate_files =  ['ImageNet_CUBirds_duplicates.txt', 'ImageNet_Caltech101_duplicates.txt', 'ImageNet_Caltech256_duplicates.txt']
+        for file in duplicate_files:
+            with open(os.path.join('datasets', 'metadatasets', 'ilsvrc_2012', file), 'r') as f:
+                duplicates_tmp = f.read().split('\n')
+            duplicates += [p.split('#')[0].replace(' ','') for p in duplicates_tmp if len(p)>0 and p[0] not in ['#']] # parse the duplicates files
+        # check which file exists:
+        path = os.path.join('imagenet', 'ILSVRC2012_img_train' if os.path.exists(os.path.join(args.dataset_path, 'imagenet', 'ILSVRC2012_img_train')) else 'train')
+        if args.subdomain!='':
+            clusters = np.load(args.subdomain)
+            nb_clusters = clusters.max()+1
+            L=[]
+            for k in range(nb_clusters):
+                L.append({"data":[], "targets":[], "name":"metadataset_imagenet_"+str(k) +'train', "num_classes":0, "name_classes":[], "num_elements_per_class":[], "classIdx":{}})
+        for dataset, folderName in [('train', 'TRAIN'), ('test', 'TEST'), ('validation','VALID')]:
+            result = {"data":[], "targets":[], "name":"metadataset_imagenet_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class":[], "classIdx":{}}
+            for i, classIdx in enumerate(class_folders[folderName]):
+                num_elements_per_class = 0
+                for fileName in os.listdir(os.path.join(args.dataset_path, path, classIdx)):
+                    if os.path.join(classIdx, fileName) not in duplicates:
+                        if args.subdomain!='' and dataset=='train':
+                            L[clusters[i]]["data"].append(os.path.join(path, classIdx, fileName))
+                            L[clusters[i]]["targets"].append(L[clusters[i]]["num_classes"])
+                        result["data"].append(os.path.join(path, classIdx, fileName))
+                        result["targets"].append(i)
+                        num_elements_per_class +=1
+                if args.subdomain!='' and dataset=='train':
+                    L[clusters[i]]["name_classes"].append(imagenet_class_names[classIdx])
+                    L[clusters[i]]["classIdx"][classIdx] = i
+                    L[clusters[i]]["num_elements_per_class"].append(num_elements_per_class)
+                result["name_classes"].append(imagenet_class_names[classIdx])
+                result["classIdx"][classIdx] = i
+                result["num_elements_per_class"].append(num_elements_per_class)
+                if args.subdomain!='' and dataset=='train':
+                    L[clusters[i]]["num_classes"]+=1
+            result["num_classes"] = i + 1   
             if args.subdomain!='' and dataset=='train':
-                L[clusters[i]]["name_classes"].append(imagenet_class_names[classIdx])
-                L[clusters[i]]["classIdx"][classIdx] = i
-                L[clusters[i]]["num_elements_per_class"].append(num_elements_per_class)
-            result["name_classes"].append(imagenet_class_names[classIdx])
-            result["classIdx"][classIdx] = i
-            result["num_elements_per_class"].append(num_elements_per_class)
-            if args.subdomain!='' and dataset=='train':
-                L[clusters[i]]["num_classes"]+=1
-        result["num_classes"] = i + 1   
-        if args.subdomain!='' and dataset=='train':
                 for k in range(nb_clusters):
-                    all_results["metadataset_imagenet_cluster"+ dataset+str(k)] = L[k]
-                    print("Done for metadataset_imagenet_cluster"+ dataset+str(k) + " with " + str(L[k]['num_classes']) + " classes and " + str(len(L[k]["data"])) +" samples (" + str(len(L[k]['targets'])) + ")" )
+                    all_results["metadataset_imagenet_"+str(k)] = L[k]
+                    print("Done for metadataset_imagenet_"+str(k) + " with " + str(L[k]['num_classes']) + " classes and " + str(len(L[k]["data"])) +" samples (" + str(len(L[k]['targets'])) + ")" )
 
-        all_results["metadataset_imagenet_" + dataset] = result
-        print("Done for metadataset_imagenet_" + dataset + " with " + str(i+1) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
-#except Exception as e: print(e)
+            all_results["metadataset_imagenet_" + dataset] = result
+            print("Done for metadataset_imagenet_" + dataset + " with " + str(i+1) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
 
-
+except Exception as e:
+    print(e)
 def split_fn(json_path):
     with open(json_path) as jsonFile:
         split = json.load(jsonFile)
@@ -264,31 +264,31 @@ def get_data_aircraft():
     return data
 
 ##### generate data for CUB and DTD
-if 'CUB_200_2011' in available_datasets:
+if 'CUB_200_2011' in available_datasets and not args.fast_create_dataset:
     results_cub = get_data("./datasets/metadatasets/cub/cu_birds_splits.json", "CUB_200_2011/images/", 'cub')
-if 'dtd' in available_datasets:
+if 'dtd' in available_datasets and not args.fast_create_dataset:
     results_dtd  = get_data('./datasets/metadatasets/dtd/dtd_splits.json', 'dtd/images/', 'dtd')
-if 'fungi' in available_datasets:
+if 'fungi' in available_datasets and not args.fast_create_dataset:
     results_fungi  = get_data_fungi()
 if 'fgvc-aircraft-2013b' in available_datasets:
     results_aircraft  = get_data_aircraft()
-if 'mscoco' in available_datasets:
+if 'mscoco' in available_datasets and not args.fast_create_dataset:
     results_mscoco = get_data('./datasets/metadatasets/mscoco/mscoco_splits.json', 'mscoco/imgs_g/', 'mscoco')
     
 for dataset in ['train', 'test', 'validation']:
-    if 'CUB_200_2011' in available_datasets:
+    if 'CUB_200_2011' in available_datasets  and not args.fast_create_dataset:
         all_results["metadataset_cub_" + dataset] = results_cub[dataset]
         print("Done for metadataset_cub_" + dataset + " with " + str(results_cub[dataset]['num_classes']) + " classes and " + str(len(results_cub[dataset]["data"])) + " samples (" + str(len(results_cub[dataset]["targets"])) + ")")
-    if 'dtd' in available_datasets:
+    if 'dtd' in available_datasets  and not args.fast_create_dataset:
         all_results["metadataset_dtd_" + dataset] = results_dtd[dataset]
         print("Done for metadataset_dtd_" + dataset + " with " + str(results_dtd[dataset]['num_classes']) + " classes and " + str(len(results_dtd[dataset]["data"])) + " samples (" + str(len(results_dtd[dataset]["targets"])) + ")")
-    if 'fungi' in available_datasets:
+    if 'fungi' in available_datasets and not args.fast_create_dataset:
         all_results["metadataset_fungi_" + dataset] = results_fungi[dataset]
         print("Done for metadataset_fungi_" + dataset + " with " + str(results_fungi[dataset]['num_classes']) + " classes and " + str(len(results_fungi[dataset]["data"])) + " samples (" + str(len(results_fungi[dataset]["targets"])) + ")")
     if 'fgvc-aircraft-2013b' in available_datasets:
         all_results["metadataset_aircraft_" + dataset] = results_aircraft[dataset]
         print("Done for metadataset_aircraft_" + dataset + " with " + str(results_aircraft[dataset]['num_classes']) + " classes and " + str(len(results_aircraft[dataset]["data"])) + " samples (" + str(len(results_aircraft[dataset]["targets"])) + ")")
-    if 'mscoco' in available_datasets and dataset != 'train':
+    if 'mscoco' in available_datasets and dataset != 'train' and not args.fast_create_dataset:
         results_mscoco[dataset]['name'] = 'metadataset_mscoco_' + dataset
         all_results["metadataset_mscoco_" + dataset] = results_mscoco[dataset]
         print("Done for metadataset_mscoco_" + dataset + " with " + str(results_mscoco[dataset]['num_classes']) + " classes and " + str(len(results_mscoco[dataset]["data"])) + " samples (" + str(len(results_mscoco[dataset]["targets"])) + ")")
@@ -296,7 +296,7 @@ for dataset in ['train', 'test', 'validation']:
 
 
 # generate data for omniglot
-if 'omniglot' in available_datasets:
+if 'omniglot' in available_datasets and not args.fast_create_dataset:
     with open("./datasets/metadatasets/omniglot/"+"omniglot_dataset_spec.json") as jsonFile:
             split = json.load(jsonFile)
             jsonFile.close()
@@ -329,7 +329,7 @@ if 'omniglot' in available_datasets:
 
 
 ## generate data for vgg_flower
-if 'vgg_flower' in available_datasets:
+if 'vgg_flower' in available_datasets and not args.fast_create_dataset:
     labels = scipy.io.loadmat(args.dataset_path+'vgg_flower/'+'imagelabels.mat')['labels'][0]
     with open('./datasets/metadatasets/vgg_flower/'+"vgg_flower_splits.json") as jsonFile:
             split = json.load(jsonFile)
@@ -357,7 +357,7 @@ if 'vgg_flower' in available_datasets:
         print("Done for metadataset_vgg_flower_" + dataset + " with " + str(all_results["metadataset_vgg_flower_"+dataset]['num_classes']) + " classes ")
 
 ### generate data for quickdraw
-if 'quickdraw' in available_datasets:
+if 'quickdraw' in available_datasets and not args.fast_create_dataset:
     all_samples_path = os.path.join(args.dataset_path , "quickdraw",'all_samples')
     with open("./datasets/metadatasets/quickdraw/quickdraw_splits.json") as jsonFile:
             split = json.load(jsonFile)
@@ -383,7 +383,7 @@ if 'quickdraw' in available_datasets:
 
 
 ### generate data for traffic_sign
-if 'GTSRB' in available_datasets:
+if 'GTSRB' in available_datasets and not args.fast_create_dataset:
     with open('./datasets/metadatasets/traffic_signs/'+"traffic_sign_splits.json") as jsonFile:
             split = json.load(jsonFile)
             jsonFile.close()
@@ -403,7 +403,7 @@ if 'GTSRB' in available_datasets:
     all_results['metadataset_traffic_signs_'+dataset] = result
     print('Done for metadataset_traffic_signs_' + dataset +'with '+str(result['num_classes'])+' classes and '+str(np.sum(np.array(result['num_elements_per_class']))) +' samples')
 
-if 'audioset' in available_datasets:
+if 'audioset' in available_datasets and not args.fast_create_dataset:
     ### generate data for quickdraw
     for dataset in ['train', 'test']:
         result = {"data":[], "targets":[], "name":"audioset_" + dataset, "num_classes":0, "name_classes":[], "num_elements_per_class": []}
@@ -425,7 +425,7 @@ if 'audioset' in available_datasets:
         all_results["audioset_" + dataset] = result
         print("Done for audioset_" + dataset + " with " + str(result['num_classes']) + " classes and " + str(len(result["data"])) + " samples (" + str(len(result["targets"])) + ")")
 
-if 'ESC-50' in available_datasets:
+if 'ESC-50' in available_datasets and not args.fast_create_dataset:
     # Note that we use ESC-50 with the few shot learning setup as defined in the MetaAudio paper https://arxiv.org/abs/2204.02121 , so the datasets will be named esc50fs_train val and test
     # We use here the baseline split from MetaAudio https://github.com/CHeggan/MetaAudio-A-Few-Shot-Audio-Classification-Benchmark/
     # Read the metadata for the original dataset 
@@ -498,7 +498,7 @@ def merge_data(list_data):
         train_dic['num_classes']+=data['num_classes']
     return train_dic #{'TRAIN': train_dic}
 
-if 'MetaAlbum' in available_datasets:
+if 'MetaAlbum' in available_datasets and not args.fast_create_dataset:
     for set_size in ['Micro', 'Mini', 'Extended']:
         data, sources = get_data_metaalbum('Set0_'+set_size)
         for i,source in enumerate(sources):
