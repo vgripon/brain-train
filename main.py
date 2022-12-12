@@ -155,7 +155,7 @@ def test(backbone, datasets, criterion):
         display(" " * (1 + max(0, len(datasets[testSetIdx]["name"]) - 16)) + opener + "{:.2e}  {:6.2f}%".format(losses / total_elt, 100 * accuracies / total_elt) + ender, end = '', force = True)
     return torch.tensor(results)
 
-def testFewShot(features, datasets = None, write_file=True):
+def testFewShot(features, datasets = None, write_file=False):
     results = torch.zeros(len(features), 2)
     for i in range(len(features)):
         accs = []
@@ -386,7 +386,7 @@ for nRun in range(args.runs):
                 updateCSV(trainStats, epoch = epoch)
             if args.save_classifier:
                 for i,c in enumerate([item for sublist in criterion.values() for item in sublist]):
-                    torch.save(c.cpu().state_dict(), args.save_classifier+str(i)+'_'+str(epoch))
+                    torch.save(c.cpu().state_dict(), args.save_classifier)
                     c.to(args.device)
             if (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "":
                 if epoch >= args.skip_epochs:

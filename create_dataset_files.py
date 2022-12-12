@@ -264,7 +264,7 @@ def get_data_aircraft():
     return data
 
 ##### generate data for CUB and DTD
-if 'CUB_200_2011' in available_datasets and not args.fast_create_dataset:
+if 'CUB_200_2011' in available_datasets :
     results_cub = get_data("./datasets/metadatasets/cub/cu_birds_splits.json", "CUB_200_2011/images/", 'cub')
 if 'dtd' in available_datasets and not args.fast_create_dataset:
     results_dtd  = get_data('./datasets/metadatasets/dtd/dtd_splits.json', 'dtd/images/', 'dtd')
@@ -276,7 +276,7 @@ if 'mscoco' in available_datasets and not args.fast_create_dataset:
     results_mscoco = get_data('./datasets/metadatasets/mscoco/mscoco_splits.json', 'mscoco/imgs_g/', 'mscoco')
     
 for dataset in ['train', 'test', 'validation']:
-    if 'CUB_200_2011' in available_datasets  and not args.fast_create_dataset:
+    if 'CUB_200_2011' in available_datasets  :
         all_results["metadataset_cub_" + dataset] = results_cub[dataset]
         print("Done for metadataset_cub_" + dataset + " with " + str(results_cub[dataset]['num_classes']) + " classes and " + str(len(results_cub[dataset]["data"])) + " samples (" + str(len(results_cub[dataset]["targets"])) + ")")
     if 'dtd' in available_datasets  and not args.fast_create_dataset:
@@ -329,7 +329,7 @@ if 'omniglot' in available_datasets and not args.fast_create_dataset:
 
 
 ## generate data for vgg_flower
-if 'vgg_flower' in available_datasets and not args.fast_create_dataset:
+if 'vgg_flower' in available_datasets:# and not args.fast_create_dataset:
     labels = scipy.io.loadmat(args.dataset_path+'vgg_flower/'+'imagelabels.mat')['labels'][0]
     with open('./datasets/metadatasets/vgg_flower/'+"vgg_flower_splits.json") as jsonFile:
             split = json.load(jsonFile)
