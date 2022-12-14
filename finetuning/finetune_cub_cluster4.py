@@ -33,6 +33,6 @@ list_lr = [0.5,0.1,0.05,0.01,0.005]
 for lr in list_lr:
     lr_str = str(lr)
     print(type(lr_str))
-    command = prefix +' --epochs 20 --lr {0}  --save-backbone {1}finetune_cubc4_{0}{3}.pt --save-features-prefix {1}finetuned_cubc4_{0}{3} --save-classifier {1}classifier_finetuned_cubc4_{0}{3} --load-classifier {1}finetune_cubc4_classifier.pt  {2} --batch-size 128'.format(lr_str, dir1, suffix, key)
+    command = prefix +' --epochs 20 --lr {0}  --save-backbone {1}finetune_cubc4_{0}{3}.pt --save-features-prefix {1}finetuned_cubc4_{0}{3} --save-classifier {1}classifier_finetuned_cubc4_{0}{3} --load-classifier {1}finetune_cubc4_classifier{3}.pt  {2} --batch-size 128'.format(lr_str, dir1, suffix, key)
     print(command)
     os.system(command)
