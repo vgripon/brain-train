@@ -1,8 +1,8 @@
 import os
 from time import sleep
 os.system('ps aux | grep subdomains.py')
-popos = True
-sl12 = False
+popos = False
+sl12 = True
 
 N=10   # number of subdomains 
 suffix = '--backbone resnet12  --wandb raflaf --wandb-dir wandb --wandbProjectName brain-train --wd 0.0001'
@@ -25,7 +25,7 @@ elif sl12:
     
 
 #get_classifier
-os.system( prefix + ' --freeze-backbone --force-train --epochs 30 --lr 0.1   --save-classifier {0}finetune_cubc4_classifier{1}.pt  {2} --batch-size 128'.format(dir1, key, suffix))
+os.system( prefix + ' --freeze-backbone --force-train --epochs 30 --lr 0.1   --save-classifier {0}finetune_cubc4_classifier{1}.pt  {2} --batch-size 128 --save-features-prefix {0}basline{1}'.format(dir1, key, suffix))
 
 #finetuning
 list_lr = [0.5,0.1,0.05,0.01,0.005]
