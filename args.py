@@ -161,6 +161,6 @@ if args.cosine:
     args.scheduler = "cosine"
 args.training_transforms = eval(args.training_transforms)
 args.test_transforms = eval(args.test_transforms)
-print("milestones are " + str(args.milestones))
+#print("milestones are " + str(args.milestones))
 
 print(" args,", end = '')

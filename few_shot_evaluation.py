@@ -9,6 +9,34 @@ def get_repository_path():
     import os
     return '/'+os.path.join(*os.path.abspath(__file__).split('/')[:-1])
 
+def testFewShot(features, datasets = None, write_file=False):
+    results = torch.zeros(len(features), 2)
+    for i in range(len(features)):
+        accs = []
+        feature = features[i]
+        Generator = {'metadataset_omniglot':OmniglotGenerator, 'metadataset_imagenet':ImageNetGenerator}.get(datasets[i]['name'].replace('_train', '').replace('_test', '').replace('_validation', '') if datasets != None else datasets, EpisodicGenerator)
+        generator = Generator(datasetName=None if datasets is None else datasets[i]["name"], num_elements_per_class= [len(feat['features']) for feat in feature], dataset_path=args.dataset_path)
+        for run in range(args.few_shot_runs):
+            shots = []
+            queries = []
+            episode = generator.sample_episode(ways=args.few_shot_ways, n_shots=args.few_shot_shots, n_queries=args.few_shot_queries, unbalanced_queries=args.few_shot_unbalanced_queries)
+            shots, queries = generator.get_features_from_indices(feature, episode)
+            accs.append(classifiers.evalFewShotRun(shots, queries))
+        accs = 100 * torch.tensor(accs)
+        low, up = confInterval(accs)
+        results[i, 0] = torch.mean(accs).item()
+        results[i, 1] = (up - low) / 2
+    if write_file:
+        result_file = torch.load('results_dic.pt')
+        try:
+            result_file[args.test_dataset][args.load_backbone ] =  results
+        except:    
+            result_file[args.test_dataset] = {args.load_backbone : results}
+
+        torch.save(result_file , 'results_dic.pt')
+    return results
+
+
 class EpisodicGenerator():
     def __init__(self, datasetName=None, dataset_path=None, max_classes=50, num_elements_per_class=None):
         assert datasetName != None or num_elements_per_class!=None, "datasetName and num_elements_per_class can't both be None"
@@ -34,7 +62,7 @@ class EpisodicGenerator():
         if self.num_elements_per_class != None:
             self.max_classes = min(len(self.num_elements_per_class), 50)
                 
-    def select_classes(self, ways):
+    def  select_classes(self, ways):
         # number of ways for this episode
         n_ways = ways if ways!=0 else random.randint(5, self.max_classes)
 
@@ -356,20 +384,6 @@ if __name__=='__main__':
         import classifiers
         from utils import confInterval
         feature = torch.load(args.test_features, map_location=args.device)
-
-    for _ in range(1):
-        print(f'\n---------------Generating episodes for {args.dataset}--------------------')
-        Generator = {'metadataset_omniglot':OmniglotGenerator, 'metadataset_imagenet':ImageNetGenerator}.get(args.dataset.replace('_train', '').replace('_test', '').replace('_validation', '') if args.dataset != None else args.dataset, EpisodicGenerator)
-        print('Generator:', Generator)
-        num_elements_per_class = [len(feat['features']) for feat in feature] if args.test_features != '' else None
-        generator = Generator(datasetName=args.dataset+'_test', dataset_path=args.dataset_path, num_elements_per_class=num_elements_per_class)
-        episode = generator.sample_episode(n_queries=args.few_shot_queries, ways=args.few_shot_ways, n_shots=args.few_shot_shots, unbalanced_queries=args.few_shot_unbalanced_queries, verbose=True)
-        if args.test_features != '':
-            shots, queries = generator.get_features_from_indices(feature, episode)
-            for c in range(len(shots)):
-                print(shots[c].shape, queries[c].shape)
-            
-            accs = classifiers.evalFewShotRun(shots, queries)
-            accs = 100 * torch.tensor([accs])
-            low, up = confInterval(accs)
-            print("acc={:.2f}% (±{:.2f}%)".format(torch.mean(accs).item(), (up - low) / 2))
+    results = testFewShot([feature], datasets = None, write_file=False)
+    print(args.test_features)
+    print("\t{:.3f} ±{:.3f}".format(results[0,0], results[0,1]) )
