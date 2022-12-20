@@ -77,7 +77,10 @@ def train(epoch, backbone, teacher, criterion, optimizer, scheduler):
                         
                     if 'lr' in step or 'mixup' in step or 'manifold mixup' in step or 'rotations' in step:
                         dataStep = data['supervised'].clone()
-                        loss_lr, score = criterion['supervised'][trainingSetIdx](backbone, dataStep, target, lr="lr" in step, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
+                        if args.save_logits == '':
+                            loss_lr, score = criterion['supervised'][trainingSetIdx](backbone, dataStep, target, lr="lr" in step, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
+                        else:
+                            loss_lr, score , logit = criterion['supervised'][trainingSetIdx](backbone, dataStep, target, lr="lr" in step, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
                         loss += args.step_coefficient[step_idx]*loss_lr
 
                     if 'dino' in step:
@@ -141,10 +144,15 @@ def test(backbone, datasets, criterion):
             for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
                 data = to(data, args.device)
                 target = target.to(args.device)
-                loss, score = criterion[testSetIdx](backbone, data, target, lr=True)
+                if args.save_logits == '':
+                    loss, score = criterion[testSetIdx](backbone, data, target, lr=True)
+                else:
+                    loss, score, logit = criterion[testSetIdx](backbone, data, target, lr=True)
                 losses += data.shape[0] * loss.item()
                 accuracies += data.shape[0] * score.item()
                 total_elt += data.shape[0]
+                for i in range(logit.shape[0]):
+                        features[target[i]]["features"].append(logit[i])
         if args.save_logits != '':
             for c in range(len(alloutputs)):
                 alloutputs[c]["logits"] = torch.stack(alloutputs[c]["logits"])
