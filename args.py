@@ -60,8 +60,8 @@ datasets = {
     "esc50fs": ("esc50fs_train", "esc50fs_val", "esc50fs_test"),
     "audioset": ("audioset_train", "", "audioset_test"),
 }
-
-
+parser.add_argument("--selection-file", type=str, default=os.environ.get("DATASETS"), help="name of class selection file")
+parser.add_argument("--work-folder", type=str, default=os.environ.get("DATASETS"), help="path to sets of classes classifiers etc.")
 parser.add_argument("--dataset-path", type=str, default=os.environ.get("DATASETS"), help="path to dataset files")
 parser.add_argument("--batch-size", type=int, default=64, help="batch size")
 parser.add_argument("--dataset", type=str, default="", help="dataset to use, can be any of " + str(datasets.keys()) + " or blank if using a direct choice for training-dataset, validation-dataset and test-dataset")
@@ -163,4 +163,4 @@ args.training_transforms = eval(args.training_transforms)
 args.test_transforms = eval(args.test_transforms)
 #print("milestones are " + str(args.milestones))
 
-print(" args,", end = '')
+#print(" args,", end = '')
