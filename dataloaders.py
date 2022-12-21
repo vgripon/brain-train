@@ -376,6 +376,8 @@ for x in all_datasets.keys():
             nb_cluster = int(x[len(key):])
     except:
         pass
+if 'nb_cluster' not in globals():
+    nb_cluster  = 0
 print('-------->There are ' +str(nb_cluster)+ ' clusters<---------')
 
 def prepareDataLoader(name, is_train=False):

@@ -152,11 +152,11 @@ def test(backbone, datasets, criterion):
                 accuracies += data.shape[0] * score.item()
                 total_elt += data.shape[0]
                 for i in range(logit.shape[0]):
-                        features[target[i]]["features"].append(logit[i])
-        if args.save_logits != '':
-            for c in range(len(alloutputs)):
-                alloutputs[c]["logits"] = torch.stack(alloutputs[c]["logits"])
-            torch.save(alloutputs, args.save_logits)
+                    alloutputs[target[i]]["logits"].append(logit[i])
+            if args.save_logits != '':
+                for c in range(len(alloutputs)):
+                    alloutputs[c]["logits"] = torch.stack(alloutputs[c]["logits"])
+                torch.save(alloutputs, args.save_logits)
         results.append((losses / total_elt, 100 * accuracies / total_elt))
         if args.wandb!='':
             wandb.log({ "test_loss_{}".format(dataset["name"]) : losses / total_elt, "test_acc_{}".format(dataset["name"]) : accuracies / total_elt})
@@ -409,7 +409,6 @@ for nRun in range(args.runs):
                 featuresValidation = process(featuresValidation, meanVector)
                 tempValidationStats = testFewShot(featuresValidation, validationSet)
             else:
-                print(criterion)
                 tempValidationStats = test(backbone, validationSet, criterion['supervised'])
             updateCSV(tempValidationStats)
             if (tempValidationStats[:,0].mean().item() < best_val and not args.few_shot) or (args.few_shot and tempValidationStats[:,0].mean().item() > best_val):

@@ -1,8 +1,12 @@
-#%tb
+import sys
 import torch
-import matplotlib.pyplot as plt
 import torch.nn as nn
-sys.path.append('/homes/r21lafar/Documents/brain-train')
+popos = True
+if popos:
+    sys.path.append('/home/raphael/Documents/brain-train')
+else:
+    sys.path.append('/homes/r21lafar/Documents/brain-train')
+
 from few_shot_evaluation import EpisodicGenerator, ImageNetGenerator, OmniglotGenerator
 from args import args
 import os
@@ -12,17 +16,21 @@ import random
 from tqdm import tqdm
 import numpy as np
 
-
-def print_classes(ordered_acc, std, accuracy):
+import json 
+with open(os.path.join(args.dataset_path,'datasets_subdomain.json')) as f:
+    dataset_json = json.load(f)
+print(dataset_json['metadataset_omniglot_test'].keys())
+def print_classes(ordered_acc, std, accuracy, nb_sample):
+    conf_inter = 1.96* std / np.sqrt(nb_sample)
     print('\n Best classes are \n' )
     for x in ordered_acc[:10]:
-        print("\t{:.3f} ±{:.3f}".format(accuracy[x].item(), 1.96 * std[x].item()/logits.shape[1] ), dataset_json['metadataset_imagenet_train']['name_classes'][x])
+        print("\t{:.3f} ±{:.3f}".format(accuracy[x].item(), conf_inter[x].item()  ), dataset_json['metadataset_imagenet_train']['name_classes'][x])
     print('\n Worst classes are \n' )
     for x in ordered_acc[-10:]:
-        print("\t{:.3f} ±{:.3f}".format(accuracy[x].item(), 1.96 * std[x].item()/logits.shape[1] ), dataset_json['metadataset_imagenet_train']['name_classes'][x])
+        print("\t{:.3f} ±{:.3f}".format(accuracy[x].item(), conf_inter[x].item()  ), dataset_json['metadataset_imagenet_train']['name_classes'][x])
 
 
-def measure_acc_by_dim(logits):
+def measure_acc_by_dim(logits): # not used here yet
     means = torch.mean(logits, dim = 1)
     print(f"{logits.shape=},{means.shape=}")
     print(f"{logits.unsqueeze(1).shape=},{means.unsqueeze(1).unsqueeze(0).shape=}")
@@ -42,8 +50,15 @@ def measure_acc_by_dim(logits):
 def testFewShot(features, datasets = None, write_file=False):
     results = torch.zeros(len(features), 2)
     accs = []
-    Generator = {'metadataset_omniglot':OmniglotGenerator, 'metadataset_imagenet':ImageNetGenerator}.get(datasets[i]['name'].replace('_train', '').replace('_test', '').replace('_validation', '') if datasets != None else datasets, EpisodicGenerator)
-    generator = Generator(datasetName=None if datasets is None else datasets[i]["name"], num_elements_per_class= [len(feat['features']) for feat in features], dataset_path=args.dataset_path)
+    if datasets=='omniglot':
+            Generator = OmniglotGenerator
+            generator = Generator(datasetName=None, num_elements_per_class= [feat['features'].shape[0] for feat in features], dataset_path=args.dataset_path)
+            generator.dataset = dataset_json['metadataset_omniglot_validation']
+            sys.exit(0)
+    else:
+        args.dataset_path = None
+        Generator = EpisodicGenerator
+        generator = Generator(datasetName=None, num_elements_per_class= [feat['features'].shape[0] for feat in features], dataset_path=args.dataset_path)
     for run in range(args.few_shot_runs):
         shots = []
         queries = []
@@ -55,7 +70,7 @@ def testFewShot(features, datasets = None, write_file=False):
 
 
 
-def ncm_dim(shots,queries):
+def ncm_dim(shots,queries): 
     centroids = torch.stack([shotClass.mean(dim = 0) for shotClass in shots])
     score = 0
     total = 0
@@ -69,38 +84,44 @@ def ncm_dim(shots,queries):
     return score / total
 
 
-import json 
-with open('/users2/libre/datasets/datasets.json') as f:
-    dataset_json = json.load(f)
+
 
 if __name__=='__main__':
     for dataset in ['cub', 'aircraft', 'dtd', 'mscoco', 'fungi', 'omniglot', 'traffic_signs', 'vgg_flower']:
-        logits_from_file = torch.load('/users2/libre/raphael/logits.pt')
-        softmax = nn.Softmax(dim = 2)
-        feats = torch.stack([x['logits'] for x in logits_from_file])
-        logits = softmax(feats)
-        logits_list = [{'features' : logits[i]  } for i in range(logits.shape[0])]
+        print('\n\n {} \n\n'.format(dataset))
+        if popos:
+            logits_from_file = torch.load('/home/raphael/Documents/models/logits_{}_val.pt'.format(dataset))
+        else:
+            logits_from_file = torch.load('/users2/libre/raphael/logits_{}_val.pt'.format(dataset))
+
+        softmax = nn.Softmax(dim = 1)
+        #feats = torch.stack([x['logits'] for x in logits_from_file])
+        #logits = softmax(feats)
+        #logits_list = [{'features' : logits[i]  } for i in range(logits.shape[0])]
+        logits_dic = [{'features' : softmax(x['logits'])} for x in logits_from_file]
+        logits_list = [softmax(x['logits']) for x in logits_from_file]
 
         # MAGNITUDE SELECTION (ACCURACY BY DIM WITH METADATASET SAMPLING)
-        magnitude = torch.norm(logits, dim = 1)
+        magnitude = torch.cat(logits_list)
+        nb_sample = magnitude.shape[0]
         mean_mag= torch.mean(magnitude, dim =  0)
-        std_mag= torch.std(magnitude, dim =  0)
+        std_mag = torch.std(magnitude, dim =  0)
         ordered_mag = torch.argsort(mean_mag, descending=True) 
-        torch.save(ordered_mag,'magnitude_selected{}.pt'.format(dataset))
+        print_classes(ordered_mag, std_mag, mean_mag, nb_sample)
+        torch.save(ordered_mag,'finetuning/selections/magnitude_selected_{}.pt'.format(dataset))
 
         # HARD SELECTION (ACCURACY BY DIM WITH ALL SAMPLES IN SUPPORT SET)
-        print_classes(ordered_mag, std_mag, mean_mag)
-        ordered_acc, std, accuracy = measure_acc_by_dim(logits)
-        torch.save(ordered_mag,'hard_selected{}.pt'.format(dataset))
-        print_classes(ordered_acc, std, accuracy)
+        #ordered_acc, std, accuracy = measure_acc_by_dim(logits)
+        #torch.save(ordered_mag,'finetuning/selections/hard_selected_{}.pt'.format(dataset))
+        #print_classes(ordered_acc, std, accuracy)
 
         # NCM SELECTION (ACCURACY BY DIM WITH METADATASET SAMPLING)
-        results = testFewShot(logits_list , datasets = None, write_file=False)
+        results = testFewShot(logits_dic , datasets = dataset, write_file=False)
         std = results.std(0)
         mean = results.mean(0)
         ordered_acc =mean.argsort(descending=True)
-        torch.save(ordered_mag,'NCM_selected{}.pt'.format(dataset))
-        print_classes(ordered_acc, mean, std)
+        torch.save(ordered_mag,'finetuning/selections/NCM_selected_{}.pt'.format(dataset))
+        print_classes(ordered_acc, std, mean, nb_sample = args.few_shot_runs)
 
 
 
