@@ -116,6 +116,7 @@ if __name__=='__main__':
         #print_classes(ordered_acc, std, accuracy)
 
         # NCM SELECTION (ACCURACY BY DIM WITH METADATASET SAMPLING)
+        
         results = testFewShot(logits_dic , datasets = dataset, write_file=False)
         std = results.std(0)
         mean = results.mean(0)
