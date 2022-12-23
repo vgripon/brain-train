@@ -120,6 +120,8 @@ parser.add_argument("--proxy", type=str, default="", help="proxy metric to ident
 parser.add_argument("--target-dataset", type=str, default="", help="target_dataset")
 parser.add_argument("--temperature", type=float, default=5, help="temperature softmax rankme and confidence")
 parser.add_argument("--force-train", action="store_true", help="reduce output verbose")
+parser.add_argument("--info",  type=str, default="", help="number of top classes selected")
+parser.add_argument("--choice", type=str, default="", help="proxy metric to identify the best backbone")
 
 
 args = parser.parse_args()

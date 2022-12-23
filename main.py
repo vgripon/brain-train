@@ -269,6 +269,11 @@ for nRun in range(args.runs):
             tags=tag, 
             config=vars(args),
             dir=args.wandb_dir)
+        if not args.freeze_classifier:
+            end = str(args.info) +str(args.lr)
+        else:
+            end = 'baseline' 
+        run_wandb.name = args.test_dataset[12:-5] +'_'+ end
     if not args.silent:
         print("Preparing backbone... ", end='')
     if args.audio:

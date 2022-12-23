@@ -43,8 +43,8 @@ class EpisodicGenerator():
         
         all_datasets = {}
         self.dataset_path = dataset_path
-        if self.dataset_path != '' and self.dataset_path != None:
-            json_path = os.path.join(self.dataset_path, 'datasets.json')
+        if self.dataset_path != '' and self.dataset_path != None and 'omniglot' in datasetName:
+            json_path = os.path.join(self.dataset_path, 'datasets_subdomain.json')
 
             if os.path.exists(json_path):
                 f = open(json_path)    

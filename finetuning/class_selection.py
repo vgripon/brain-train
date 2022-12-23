@@ -15,11 +15,13 @@ import sys
 import random 
 from tqdm import tqdm
 import numpy as np
-
 import json 
+
 with open(os.path.join(args.dataset_path,'datasets_subdomain.json')) as f:
     dataset_json = json.load(f)
 print(dataset_json['metadataset_omniglot_test'].keys())
+
+
 def print_classes(ordered_acc, std, accuracy, nb_sample):
     conf_inter = 1.96* std / np.sqrt(nb_sample)
     print('\n Best classes are \n' )
@@ -87,12 +89,18 @@ def ncm_dim(shots,queries):
 
 
 if __name__=='__main__':
-    for dataset in ['cub', 'aircraft', 'dtd', 'mscoco', 'fungi', 'omniglot', 'traffic_signs', 'vgg_flower']:
+    for dataset in [ 'vgg_flower']: #['cub', 'aircraft', 'dtd', 'mscoco', 'fungi', 'omniglot', 'traffic_signs', 'vgg_flower']:
         print('\n\n {} \n\n'.format(dataset))
         if popos:
-            logits_from_file = torch.load('/home/raphael/Documents/models/logits_{}_val.pt'.format(dataset))
+            if dataset == 'traffic_signs':
+                logits_from_file = torch.load('/home/raphael/Documents/models/old_logits/logits_{}_test.pt'.format(dataset))
+            else:
+                logits_from_file = torch.load('/home/raphael/Documents/models/old_logits/logits_{}_val.pt'.format(dataset))
         else:
-            logits_from_file = torch.load('/users2/libre/raphael/logits_{}_val.pt'.format(dataset))
+            if dataset == 'traffic_signs':
+                logits_from_file = torch.load('/users2/libre/raphael/logits_{}_test.pt'.format(dataset))
+            else:
+                logits_from_file = torch.load('/users2/libre/raphael/logits_{}_val.pt'.format(dataset))
 
         softmax = nn.Softmax(dim = 1)
         #feats = torch.stack([x['logits'] for x in logits_from_file])
