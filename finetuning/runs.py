@@ -3,7 +3,7 @@ import sys
 import os
 import torch
 
-popos = True
+popos = False
 if popos:
     sys.path.append('/home/raphael/Documents/brain-train')
 else:
@@ -35,12 +35,12 @@ suffix = '--backbone resnet12  --wandb raflaf --wandb-dir wandb  --wd 0.0001 '
 dir1 = args.work_folder
 for choice in ['best', 'worst', 'random']:
     for selection in ['magnitude','NCM']:
-        for dataset in  ['cub', 'aircraft', 'dtd', 'fungi', 'omniglot', 'traffic_signs', 'vgg_flower']:
+        for dataset in  ['vgg_flower', 'traffic_signs', 'omniglot', 'fungi', 'dtd']:
             if dataset != 'traffic_signs':
                 validtest = '--validation-dataset metadataset_{0}_validation --test-dataset metadataset_{0}_test'.format(dataset)
             else:
                 validtest = '--test-dataset metadataset_{0}_test'.format(dataset)
-            for k in [2, 5, 10, 50]:
+            for k in [2, 5, 10]:
                 make_npy0(selection+'_selected_{}.pt'.format(dataset), topk = k, choice = choice)
                 key = str(k)+choice+selection
 
@@ -65,7 +65,7 @@ for choice in ['best', 'worst', 'random']:
                 for i in range(n_runs):
                     os.system( prefix +  ' --freeze-backbone --force-train --epochs 10 --lr 0.01  --save-classifier {0}/classifiers/{3}{4}{1}.pt   {2} --batch-size 128  --info {1} --wandbProjectName classifier'.format(dir1, key, suffix, str(i), dataset))
                     #finetuning
-                    list_lr = [0.01, 0.001, 0.0005 , 0.0001, 0.00005, 0.00001, 0.0]
+                    list_lr = [0.01, 0.001 , 0.0001, 0.00001, 0.0]
 
                     for lr in list_lr:
                         lr_str = str(lr)

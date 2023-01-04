@@ -357,7 +357,7 @@ if 'vgg_flower' in available_datasets:# and not args.fast_create_dataset:
         print("Done for metadataset_vgg_flower_" + dataset + " with " + str(all_results["metadataset_vgg_flower_"+dataset]['num_classes']) + " classes ")
 
 ### generate data for quickdraw
-if 'quickdraw' in available_datasets and not args.fast_create_dataset:
+if 'quickdraw' in available_datasets and not args.fast_create_dataset and False:
     all_samples_path = os.path.join(args.dataset_path , "quickdraw",'all_samples')
     with open("./datasets/metadatasets/quickdraw/quickdraw_splits.json") as jsonFile:
             split = json.load(jsonFile)

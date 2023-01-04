@@ -273,7 +273,11 @@ for nRun in range(args.runs):
             end = str(args.info) +str(args.lr)
         else:
             end = 'baseline' 
-        run_wandb.name = args.test_dataset[12:-5] +'_'+ end
+        if args.test_dataset != '':
+            run_wandb.name = args.test_dataset[12:-5] +'_'+ end
+        else:
+            run_wandb.name = args.training_dataset[12:-5] +'_'+ end
+
     if not args.silent:
         print("Preparing backbone... ", end='')
     if args.audio:
