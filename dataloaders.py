@@ -337,6 +337,20 @@ def metaalbum(source, is_train=False):
             trans = transforms.Compose([transforms.RandomResizedCrop(image_size), transforms.ToTensor(), normalization])
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = is_train), "name":dataset['name'], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
+
+def load_features(path = args.test_features, is_train = True):
+    trans = transforms.Lambda(lambda x:x)
+    features = torch.load(path)
+    num_classes = len(features)
+    name_classes = [x['name_class'] for x in features]
+    data = features[0]['features']
+    targets = [0] * data.shape[0]
+    for i,x in enumerate(features[1:]):
+        feat = x['features']
+        targets+=[i]*feat.shape[0]
+        data = torch.cat((data,feat), dim = 0)
+    return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = is_train ,episodic=args.episodic, datasetName="loaded_features"), "name":path, "num_classes":num_classes, "name_classes": name_classes}
+
 def prepareDataLoader(name, is_train=False):
     if isinstance(name, str):
         name = [name]
@@ -409,6 +423,7 @@ def prepareDataLoader(name, is_train=False):
             "metaalbum_micro":lambda: metaalbum("Micro", is_train=is_train),
             "metaalbum_mini":lambda: metaalbum("Mini", is_train=is_train),
             "metaalbum_extended":lambda: metaalbum("Extended", is_train=is_train),
+            "load_features": lambda: load_features(args.test_features, is_train = is_train)
         }
     # Adding Meta albums
     for setting in ['Micro', 'Macro', 'Extended']:
@@ -469,5 +484,10 @@ if args.test_dataset != "":
             args.test_image_size = checkSize(args.test_dataset)
 else:
     testSet = []
+
+
+if args.training_dataset == "" and args.test_dataset == "":
+    trainSet = prepareDataLoader("load_features", is_train=True)
+    cleanSet = prepareDataLoader("load_features", is_train=False)
 
 print(" dataloaders,", end='')

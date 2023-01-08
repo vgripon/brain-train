@@ -43,8 +43,10 @@ class LR(nn.Module):
             dataStep[3*bs:] = dataStep[3*bs:].transpose(3,2).flip(2)
             targetRot[3*bs:] = 3
             yRotations = targetRot
-
-        x = backbone(dataStep, mixup = mixupType, lbda = lbda, perm = perm)
+        if backbone !=None:
+            x = backbone(dataStep, mixup = mixupType, lbda = lbda, perm = perm)
+        else:
+            x = dataStep
         if lr or mixup or manifold_mixup:
             output = self.fc(x)
             decision = output.argmax(dim = 1)
