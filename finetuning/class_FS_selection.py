@@ -27,9 +27,9 @@ def print_classes(ordered_acc, std, accuracy, nb_sample):
     print('\n Best classes are \n' )
     for x in ordered_acc[:10]:
         print("\t{:.3f} ±{:.3f}".format(accuracy[x].item(), conf_inter[x].item()  ), dataset_json['metadataset_imagenet_train']['name_classes'][x])
-    print('\n Worst classes are \n' )
-    for x in ordered_acc[-10:]:
-        print("\t{:.3f} ±{:.3f}".format(accuracy[x].item(), conf_inter[x].item()  ), dataset_json['metadataset_imagenet_train']['name_classes'][x])
+    #print('\n Worst classes are \n' )
+    #for x in ordered_acc[-10:]:
+    #    print("\t{:.3f} ±{:.3f}".format(accuracy[x].item(), conf_inter[x].item()  ), dataset_json['metadataset_imagenet_train']['name_classes'][x])
 
 
 def measure_acc_by_dim(logits): # not used here yet
@@ -49,9 +49,9 @@ def measure_acc_by_dim(logits): # not used here yet
 
 
 
-def testFewShot(features, datasets = None, write_file=False):
-    results = torch.zeros(len(features), 2)
-    accs = []
+def GenFewShot(features, datasets = None, write_file=False):
+    list_shots, list_queries = [],[]
+    list_episodes = []
     if datasets=='omniglot':
             Generator = OmniglotGenerator
             generator = Generator(datasetName='omniglot', num_elements_per_class= [feat['features'].shape[0] for feat in features], dataset_path=args.dataset_path)
@@ -65,9 +65,10 @@ def testFewShot(features, datasets = None, write_file=False):
         queries = []
         episode = generator.sample_episode(ways=args.few_shot_ways, n_shots=args.few_shot_shots, n_queries=args.few_shot_queries, unbalanced_queries=args.few_shot_unbalanced_queries)
         shots, queries = generator.get_features_from_indices(features, episode)
-        accs.append(ncm_dim(shots,queries))
-    accs = 100 * torch.stack(accs)
-    return accs
+        list_episodes.append(episode)
+        list_shots.append(shots)
+        list_queries.append(queries)
+    return list_episodes, list_shots, list_queries
 
 
 
@@ -108,29 +109,24 @@ if __name__=='__main__':
         logits_dic = [{'features' : softmax(x['logits'])} for x in logits_from_file]
         logits_list = [softmax(x['logits']) for x in logits_from_file]
 
-        # MAGNITUDE SELECTION (ACCURACY BY DIM WITH METADATASET SAMPLING)
-        magnitude = torch.cat(logits_list)
-        nb_sample = magnitude.shape[0]
-        mean_mag= torch.mean(magnitude, dim =  0)
-        std_mag = torch.std(magnitude, dim =  0)
-        ordered_mag = torch.argsort(mean_mag, descending=True) 
-        print_classes(ordered_mag, std_mag, mean_mag, nb_sample)
-        torch.save(mean_mag,'finetuning/selections/magnitude/magnitude_{}.pt'.format(dataset))
-        torch.save(ordered_mag,'finetuning/selections/magnitude_selected_{}.pt'.format(dataset))
-
-        # HARD SELECTION (ACCURACY BY DIM WITH ALL SAMPLES IN SUPPORT SET)
-        #ordered_acc, std, accuracy = measure_acc_by_dim(logits)
-        #torch.save(ordered_mag,'finetuning/selections/hard_selected_{}.pt'.format(dataset))
-        #print_classes(ordered_acc, std, accuracy)
-
-        # NCM SELECTION (ACCURACY BY DIM WITH METADATASET SAMPLING)
         
-        '''results = testFewShot(logits_dic , datasets = dataset, write_file=False)
-        std = results.std(0)
-        mean = results.mean(0)
-        ordered_acc =mean.argsort(descending=True)
-        torch.save(ordered_mag,'finetuning/selections/NCM_selected_{}.pt'.format(dataset))
-        print_classes(ordered_acc, std, mean, nb_sample = args.few_shot_runs)'''
+        
+        list_episodes, list_shots, list_queries = GenFewShot(logits_dic , datasets = dataset, write_file=False)
+        magnitudes = {'mag': [],'episodes':list_episodes}
+        for i in range(args.few_shot_runs):
+            magnitude = torch.cat(list_shots[i], dim  = 0)
+            nb_sample = magnitude.shape[0]
+            mean_mag= torch.mean(magnitude, dim =  0)
+            magnitudes['mag'].append(mean_mag)
+            std_mag = torch.std(magnitude, dim =  0)
+            ordered_mag = torch.argsort(mean_mag, descending=True) 
+            print('\n\n {} \n\n'.format(dataset))
+            print('choice_classes = ',list_episodes[i]['choice_classes'].tolist())
+            print('number of shots per class', [len(x) for x in list_episodes[i]['shots_idx']])
+            print_classes(ordered_mag, std_mag, mean_mag, nb_sample)
+            #torch.save(ordered_mag,'finetuning/selections/runs/magnitude_selected_{}{}.pt'.format(dataset,i))
+        magnitudes['mag'] = torch.stack(magnitudes['mag'])
+        torch.save(magnitudes,'finetuning/selections/runs/magnitudes/magnitude_{}.pt'.format(dataset))
 
 
 
