@@ -1,7 +1,7 @@
 import sys
 import torch
 import torch.nn as nn
-popos = True
+popos = False
 if popos:
     sys.path.append('/home/raphael/Documents/brain-train')
 else:
@@ -89,7 +89,7 @@ def ncm_dim(shots,queries):
 
 
 if __name__=='__main__':
-    for dataset in ['cub', 'aircraft', 'dtd', 'mscoco', 'fungi', 'omniglot', 'traffic_signs', 'vgg_flower']:
+    for dataset in ['cub', 'aircraft', 'dtd',  'fungi', 'omniglot', 'traffic_signs', 'vgg_flower', 'mscoco',]:
         print('\n\n {} \n\n'.format(dataset))
         if popos:
             if dataset == 'traffic_signs':
@@ -98,9 +98,9 @@ if __name__=='__main__':
                 logits_from_file = torch.load('/home/raphael/Documents/models/old_logits/logits_{}_val.pt'.format(dataset))
         else:
             if dataset == 'traffic_signs':
-                logits_from_file = torch.load('/users2/libre/raphael/logits_{}_test.pt'.format(dataset))
+                logits_from_file = torch.load('/users2/libre/raphael/old_logits/logits_{}_test.pt'.format(dataset))
             else:
-                logits_from_file = torch.load('/users2/libre/raphael/logits_{}_val.pt'.format(dataset))
+                logits_from_file = torch.load('/users2/libre/raphael/old_logits/logits_{}_val.pt'.format(dataset))
 
         softmax = nn.Softmax(dim = 1)
         #feats = torch.stack([x['logits'] for x in logits_from_file])
@@ -112,7 +112,7 @@ if __name__=='__main__':
         
         
         list_episodes, list_shots, list_queries = GenFewShot(logits_dic , datasets = dataset, write_file=False)
-        magnitudes = {'mag': [],'episodes':list_episodes}
+        magnitudes = {'mag': [],'episodes':list_episodes, 'ord': []}
         for i in range(args.few_shot_runs):
             magnitude = torch.cat(list_shots[i], dim  = 0)
             nb_sample = magnitude.shape[0]
@@ -120,12 +120,14 @@ if __name__=='__main__':
             magnitudes['mag'].append(mean_mag)
             std_mag = torch.std(magnitude, dim =  0)
             ordered_mag = torch.argsort(mean_mag, descending=True) 
+            magnitudes['ord'].append(ordered_mag)
             print('\n\n {} \n\n'.format(dataset))
             print('choice_classes = ',list_episodes[i]['choice_classes'].tolist())
             print('number of shots per class', [len(x) for x in list_episodes[i]['shots_idx']])
             print_classes(ordered_mag, std_mag, mean_mag, nb_sample)
             #torch.save(ordered_mag,'finetuning/selections/runs/magnitude_selected_{}{}.pt'.format(dataset,i))
         magnitudes['mag'] = torch.stack(magnitudes['mag'])
+        magnitudes['ord'] = torch.stack(magnitudes['ord'])
         torch.save(magnitudes,'finetuning/selections/runs/magnitudes/magnitude_{}.pt'.format(dataset))
 
 
