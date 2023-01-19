@@ -10,7 +10,7 @@ else:
     sys.path.append('/homes/r21lafar/Documents/brain-train')
 from args import args
 import json
-n_runs = 5
+n_runs = 1
 
 #translate file
 
@@ -41,8 +41,8 @@ for choice in ['best', 'worst', 'random']:
                 validtest = '--validation-dataset metadataset_{0}_validation --test-dataset metadataset_{0}_test'.format(dataset)
             else:
                 validtest = '--test-dataset metadataset_{0}_test'.format(dataset)
-            for k in [2, 50]:
-                for run in range(10):
+            for k in [50]:
+                for run in range(100):
                     make_npy0('runs/magnitudes/'+selection+'_{}.pt'.format(dataset), topk = k, choice = choice, run = run)
                     key = str(k)+choice+selection+'run'+str(run)
 
@@ -53,7 +53,7 @@ for choice in ['best', 'worst', 'random']:
 
                     else:
                         os.system('python create_dataset_files.py --dataset-path '+ args.dataset_path +' --subdomain {}/processed.npy '.format(args.work_folder))
-                        prefix = 'python main.py --dataset-path '+ args.dataset_path +' --load-backbone /users2/libre/raphael/resnet12_metadataset_imagenet_64.pt --few-shot-shots 0 --few-shot-ways 0 --few-shot-queries 0 --training-dataset metadataset_imagenet_0  --few-shot ' 
+                        prefix = 'python main.py --dataset-path '+ args.dataset_path +' --load-backbone /users2/local/r21lafar/resnet12_metadataset_imagenet_64.pt --few-shot-shots 0 --few-shot-ways 0 --few-shot-queries 0 --training-dataset metadataset_imagenet_0  --few-shot ' 
 
                     print(os.path.join(args.dataset_path,'datasets_subdomain.json'))
                     with open(os.path.join(args.dataset_path,'datasets_subdomain.json')) as f:
@@ -72,6 +72,6 @@ for choice in ['best', 'worst', 'random']:
                         for lr in list_lr:
                             lr_str = str(lr)
                             print(type(lr_str))
-                            command = prefix + validtest +' --epochs 20 --lr {5}  --save-backbone {0}/backbones/{3}{4}{1}{5}.pt --save-features-prefix {0}/features/{3}finetuned_{1}{5} --save-classifier {0}/classifiers/{3}{4}classifier_finetuned_{1}{5}.pt --load-classifier {0}/classifiers/{3}{4}{1}.pt  {2} --batch-size 128 --scheduler linear --wandbProjectName finetuning --info {1}'.format(dir1, key, suffix, str(i), dataset, lr_str)
+                            command = prefix + validtest +' --epochs 1 --lr {5}  --save-backbone {0}/backbones/{3}{4}{1}{5}.pt --save-features-prefix {0}/features/{3}finetuned_{1}{5} --save-classifier {0}/classifiers/{3}{4}classifier_finetuned_{1}{5}.pt --load-classifier {0}/classifiers/{3}{4}{1}.pt  {2} --batch-size 128 --scheduler linear --wandbProjectName finetuning --info {1}'.format(dir1, key, suffix, str(i), dataset, lr_str)
                             print(command)
                             os.system(command)
