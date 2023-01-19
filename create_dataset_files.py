@@ -266,29 +266,29 @@ def get_data_aircraft():
 ##### generate data for CUB and DTD
 if 'CUB_200_2011' in available_datasets :
     results_cub = get_data("./datasets/metadatasets/cub/cu_birds_splits.json", "CUB_200_2011/images/", 'cub')
-if 'dtd' in available_datasets and not args.fast_create_dataset:
+if 'dtd' in available_datasets  :
     results_dtd  = get_data('./datasets/metadatasets/dtd/dtd_splits.json', 'dtd/images/', 'dtd')
-if 'fungi' in available_datasets and not args.fast_create_dataset:
+if 'fungi' in available_datasets :
     results_fungi  = get_data_fungi()
 if 'fgvc-aircraft-2013b' in available_datasets:
     results_aircraft  = get_data_aircraft()
-if 'mscoco' in available_datasets and not args.fast_create_dataset:
+if 'mscoco' in available_datasets  :
     results_mscoco = get_data('./datasets/metadatasets/mscoco/mscoco_splits.json', 'mscoco/imgs_g/', 'mscoco')
     
 for dataset in ['train', 'test', 'validation']:
     if 'CUB_200_2011' in available_datasets  :
         all_results["metadataset_cub_" + dataset] = results_cub[dataset]
         print("Done for metadataset_cub_" + dataset + " with " + str(results_cub[dataset]['num_classes']) + " classes and " + str(len(results_cub[dataset]["data"])) + " samples (" + str(len(results_cub[dataset]["targets"])) + ")")
-    if 'dtd' in available_datasets  and not args.fast_create_dataset:
+    if 'dtd' in available_datasets :
         all_results["metadataset_dtd_" + dataset] = results_dtd[dataset]
         print("Done for metadataset_dtd_" + dataset + " with " + str(results_dtd[dataset]['num_classes']) + " classes and " + str(len(results_dtd[dataset]["data"])) + " samples (" + str(len(results_dtd[dataset]["targets"])) + ")")
-    if 'fungi' in available_datasets and not args.fast_create_dataset:
+    if 'fungi' in available_datasets :
         all_results["metadataset_fungi_" + dataset] = results_fungi[dataset]
         print("Done for metadataset_fungi_" + dataset + " with " + str(results_fungi[dataset]['num_classes']) + " classes and " + str(len(results_fungi[dataset]["data"])) + " samples (" + str(len(results_fungi[dataset]["targets"])) + ")")
     if 'fgvc-aircraft-2013b' in available_datasets:
         all_results["metadataset_aircraft_" + dataset] = results_aircraft[dataset]
         print("Done for metadataset_aircraft_" + dataset + " with " + str(results_aircraft[dataset]['num_classes']) + " classes and " + str(len(results_aircraft[dataset]["data"])) + " samples (" + str(len(results_aircraft[dataset]["targets"])) + ")")
-    if 'mscoco' in available_datasets and dataset != 'train' and not args.fast_create_dataset:
+    if 'mscoco' in available_datasets and dataset != 'train' :
         results_mscoco[dataset]['name'] = 'metadataset_mscoco_' + dataset
         all_results["metadataset_mscoco_" + dataset] = results_mscoco[dataset]
         print("Done for metadataset_mscoco_" + dataset + " with " + str(results_mscoco[dataset]['num_classes']) + " classes and " + str(len(results_mscoco[dataset]["data"])) + " samples (" + str(len(results_mscoco[dataset]["targets"])) + ")")
@@ -296,7 +296,7 @@ for dataset in ['train', 'test', 'validation']:
 
 
 # generate data for omniglot
-if 'omniglot' in available_datasets and not args.fast_create_dataset:
+if 'omniglot' in available_datasets :
     with open("./datasets/metadatasets/omniglot/"+"omniglot_dataset_spec.json") as jsonFile:
             split = json.load(jsonFile)
             jsonFile.close()
@@ -383,7 +383,7 @@ if 'quickdraw' in available_datasets and not args.fast_create_dataset and False:
 
 
 ### generate data for traffic_sign
-if 'GTSRB' in available_datasets and not args.fast_create_dataset:
+if 'GTSRB' in available_datasets :
     with open('./datasets/metadatasets/traffic_signs/'+"traffic_sign_splits.json") as jsonFile:
             split = json.load(jsonFile)
             jsonFile.close()
