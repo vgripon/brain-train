@@ -1,0 +1,1 @@
+If you have anough space on this disk you can create a workking directory with the same structure as the "semantic" folder.

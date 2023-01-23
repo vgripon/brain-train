@@ -14,22 +14,21 @@ import json
 
 
 
-
 suffix = '--backbone resnet12  --wandb raflaf --wandb-dir wandb  --wd 0.0001 '
 dir1 = args.work_folder
 clusters = np.load(args.subdomain)
 if popos: 
     #create dataset_json
-    os.system('python create_dataset_files.py --dataset-path /home/datasets/ --subdomain {} --fast-create-dataset'.format( args.subdomain))
+    os.system('python create_dataset_files.py --dataset-path '+args.dataset_path+ ' --subdomain {} --fast-create-dataset'.format( args.subdomain))
 else:
-    os.system('python create_dataset_files.py --dataset-path /users2/libre/datasets/ --subdomain {} --fast-create-dataset'.format( args.subdomain))
+    os.system('python create_dataset_files.py --dataset-path '+args.dataset_path+ ' --subdomain {} --fast-create-dataset'.format( args.subdomain))
 
 for cluster in range(0, len(np.unique(clusters))):
     key = args.subdomain[-25:-4]+ str(cluster)
     if popos: 
-        prefix = 'python main.py --dataset-path /home/datasets/ --load-backbone /home/raphael/Documents/models/resnet12_metadataset_imagenet_64.pt --few-shot-shots 0 --few-shot-ways 0 --few-shot-queries 0 --training-dataset metadataset_imagenet_{}  --few-shot '.format(str(cluster))
+        prefix = 'python main.py --dataset-path '+args.dataset_path+ ' --load-backbone  '+ args.load_backbone  +' --few-shot-shots 0 --few-shot-ways 0 --few-shot-queries 0 --training-dataset metadataset_imagenet_{}  --few-shot '.format(str(cluster))
     else:
-        prefix = 'python main.py --dataset-path /users2/libre/datasets/ --load-backbone /users2/libre/raphael/resnet12_metadataset_imagenet_64.pt --few-shot-shots 0 --few-shot-ways 0 --few-shot-queries 0 --training-dataset metadataset_imagenet_{}  --few-shot '.format(str(cluster))
+        prefix = 'python main.py --dataset-path '+args.dataset_path+ ' --load-backbone '+ args.load_backbone  +' --few-shot-shots 0 --few-shot-ways 0 --few-shot-queries 0 --training-dataset metadataset_imagenet_{}  --few-shot '.format(str(cluster))
     print(os.path.join(args.dataset_path,'datasets_subdomain.json'))
     with open(os.path.join(args.dataset_path,'datasets_subdomain.json')) as f:
         dic = json.load(f)
