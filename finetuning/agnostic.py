@@ -14,7 +14,11 @@ import json
 
 
 
-suffix = '--backbone resnet12  --wandb raflaf --wandb-dir wandb  --wd 0.0001 '
+suffix = '--backbone resnet12   --wd 0.0001 '
+if args.wandb != '':
+    suffix+= ' --wandb '+args.wandb
+if args.wandb_dir != '':
+    ' --wandb-dir '+args.wandb_dir
 dir1 = args.work_folder
 clusters = np.load(args.subdomain)
 if popos: 
