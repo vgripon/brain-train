@@ -373,12 +373,12 @@ key = "metadataset_imagenet_"
 for x in all_datasets.keys():
     try:
         if key in x:
-            nb_cluster = int(x[len(key):])
+            nb_cluster = int(x[len(key):])+1
     except:
         pass
 if 'nb_cluster' not in globals():
     nb_cluster  = 0
-print('-------->There are ' +str(nb_cluster+1)+ ' clusters<---------')
+print('-------->There are ' +str(nb_cluster)+ ' clusters<---------')
 
 def prepareDataLoader(name, is_train=False):
     if isinstance(name, str):
