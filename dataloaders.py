@@ -373,12 +373,12 @@ key = "metadataset_imagenet_"
 for x in all_datasets.keys():
     try:
         if key in x:
-            nb_cluster = int(x[len(key):])
+            nb_cluster = int(x[len(key):])+1
     except:
         pass
 if 'nb_cluster' not in globals():
     nb_cluster  = 0
-print('-------->There are ' +str(nb_cluster+1)+ ' clusters<---------')
+print('-------->There are ' +str(nb_cluster)+ ' clusters<---------')
 
 def prepareDataLoader(name, is_train=False):
     if isinstance(name, str):
@@ -457,7 +457,6 @@ def prepareDataLoader(name, is_train=False):
     for setting in ['Micro', 'Macro', 'Extended']:
         for album in ['BCT', 'BRD', 'CRS', 'FLW', 'MD_MIX', 'PLK', 'PLT_VIL', 'RESISC', 'SPT', 'TEX']:
             dataset_options[f'metaalbum_{album.lower()}_{setting.lower()}'] = lambda: metaalbum(f'{album}_{setting}', is_train=is_train)    
-
     for h in range(nb_cluster):
         dataset_options["metadataset_imagenet_"+str(h)] = subdomain(h)
     for elt in name:

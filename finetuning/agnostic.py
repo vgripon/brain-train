@@ -4,10 +4,8 @@ import os
 import torch
 
 popos = False
-if popos:
-    sys.path.append('/home/raphael/Documents/brain-train')
-else:
-    sys.path.append('/homes/r21lafar/Documents/brain-train')
+sys.path.append(os.getcwd())
+sys.path.append(os.getcwd()+'/../')
 from args import args
 import json
 
