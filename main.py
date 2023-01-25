@@ -254,6 +254,7 @@ for nRun in range(args.runs):
     else:
         import backbones
         backbone, outputDim = backbones.prepareBackbone()
+        print(backbone)
     if args.load_backbone != "":
         backbone.load_state_dict(torch.load(args.load_backbone))
     backbone = backbone.to(args.device)
@@ -358,7 +359,6 @@ for nRun in range(args.runs):
                 else:
                     raise ValueError(f"Unknown scheduler {args.scheduler}")
                 lr = lr * args.gamma
-
         continueTest = False
         meanVector = None
         trainStats = None
@@ -427,6 +427,7 @@ for nRun in range(args.runs):
             allRunTrainStats = torch.cat([allRunTrainStats, trainStats.unsqueeze(0)])
         else:
             allRunTrainStats = trainStats.unsqueeze(0)
+
     if validationSet != []:
         if allRunValidationStats is not None:
             allRunValidationStats = torch.cat([allRunValidationStats, validationStats.unsqueeze(0)])
@@ -437,6 +438,7 @@ for nRun in range(args.runs):
             allRunTestStats = torch.cat([allRunTestStats, testStats.unsqueeze(0)])
         else:
             allRunTestStats = testStats.unsqueeze(0)
+    
 
     print()
     print("Run " + str(nRun+1) + "/" + str(args.runs) + " finished")
@@ -453,3 +455,8 @@ for nRun in range(args.runs):
     print()
     if args.wandb!='':
         run_wandb.finish()
+
+torch.save({"state_dict" : backbone.state_dict()}, "backbone.pth")
+torch.save({"state_dict" : criterion["supervised"][0].state_dict()}, "class_meta.pth")
+
+

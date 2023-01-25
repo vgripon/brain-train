@@ -30,6 +30,7 @@ class DataHolder():
         self.transforms = transforms
         self.target_transforms = target_transforms
         self.opener = opener
+
     def __getitem__(self, idx):
         if isinstance(self.data[idx], str):
             elt = self.opener(args.dataset_path + self.data[idx])
