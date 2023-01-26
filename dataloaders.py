@@ -15,6 +15,7 @@ from selfsupervised.selfsupervised import get_ssl_transform
 from utils import *
 from few_shot_evaluation import EpisodicGenerator
 from augmentations import parse_transforms
+import itertools
 ### first define dataholder, which will be used as an argument to dataloaders
 all_steps = [item for sublist in eval(args.steps) for item in sublist]
 supervised = 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "" or args.episodic
@@ -229,10 +230,7 @@ def subsample_dataset(dataset, file, index):
     keys = dataset.keys()
     subset = np.load(file)
     subset_num_class = int(subset.sum())
-    subset_name_classes = []
-    for j in subset:
-        if j==0:
-            subset_name_classes.append(dataset['name_classes'][j])
+    subset_name_classes = [dataset['name_classes'][i] for i, v in enumerate(subset) if v == 0]
     print("This cooresponds to the dataloader of file subset_{}_index_{}".format(file, index))
     print(subset_name_classes)
     out = {"data":[], "targets":[], "name":"subset_{}_index_{}".format(file, index), "num_classes":subset_num_class, "name_classes":subset_name_classes}
@@ -245,8 +243,8 @@ def subsample_dataset(dataset, file, index):
 
 
 def reassign_numbers(lst):
-    sorted_lst = sorted(set(lst))
-    return [sorted_lst.index(i) for i in lst]
+    remap = dict(zip(set(lst), itertools.count()))
+    return [remap[i] for i in lst]
 
 
 def metadataset(datasetName, name):
