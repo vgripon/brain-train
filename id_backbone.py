@@ -248,14 +248,14 @@ def print_metric(metric_tensor, name = ''):
 def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = '', save = False):
     N = args.num_clusters
     dir_name = str(N) if N ==50 else '10_large'
-    filename_baseline = os.path.join(args.save_features_prefix,'baselinemetadataset_'+dataset+'_test_features.pt')
+    filename_baseline = os.path.join('/users/local/r21lafar/finetune/baseline/baselinemetadataset_'+dataset+'_validation_features.pt')
     res_baseline = testFewShot_proxy(filename_baseline, datasets = dataset,n_shots = n_shots, proxy=proxy, tqdm_verbose = True)
     L = np.zeros((N+1,2,len(res_baseline['acc'])))  #N+A and the two bottom lines are here to add the baseline amongst candidates
     L[N,0] = np.array(res_baseline['acc']) 
     L[N,1] = np.array(res_baseline[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
     episodes = res_baseline['episodes']
     for i in tqdm(range(N)):
-        filename = os.path.join(args.save_features_prefix,dir_name,str(i)+'metadataset_'+dataset+'_test_features.pt')
+        filename = os.path.join('/users/local/r21lafar/finetune/sem/features/sem'+str(i)+'metadataset_'+dataset+'_validation_features.pt')
         res = testFewShot_proxy(filename, datasets = dataset, n_shots = n_shots, proxy = [proxy])
         L[i,0] = np.array(res['acc'])
         L[i,1] = np.array(res[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
@@ -277,7 +277,7 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
 
 def save_results(L,dataset, proxy, chance, episodes):
     N = args.num_clusters
-    file = '/users2/local/r21lafar/results/results_test_id_backbone'+str(N)+'.pt'
+    file = '/users/local/r21lafar/finetune/sem/d'+str(N)+'.pt'
     if not os.path.isfile(file):
         d={'episodes': {}, 'hash_episode' : {}}
         torch.save(d,file)
@@ -291,7 +291,7 @@ def save_results(L,dataset, proxy, chance, episodes):
         d['hash_episode'][dataset] = h
     if proxy in d.keys() and dataset in d[proxy].keys():
         print('overwriting',dataset, proxy)
-        torch.save(d,'/users2/local/r21lafar/results/backed'+str(N)+'.pt')
+        torch.save(d,'/users/local/r21lafar/finetune/sem/d'+str(N)+'_2.pt')
     if proxy in d.keys():
         d[proxy][dataset] = {'data' : torch.from_numpy(L), 'info' : str(args), 'nb_runs' : args.few_shot_runs, 'chance' : chance, 'hash_episode' : h}
     else:
