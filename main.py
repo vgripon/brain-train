@@ -330,6 +330,8 @@ for nRun in range(args.runs):
                 print()
             print(" ep.       lr ".format(), end='')
             for dataset in trainSet:
+                print("taille dataset : ", len(dataset["dataloader"]))
+
                 print(Back.CYAN + " {:>19s} ".format(dataset["name"]) + Style.RESET_ALL, end='')
             if epoch >= args.skip_epochs:
                 for dataset in validationSet:
@@ -402,9 +404,11 @@ for nRun in range(args.runs):
             if continueTest:
                 testStats = tempTestStats
             ender = Style.RESET_ALL
-        if continueTest and args.save_backbone != "" and epoch >= args.skip_epochs:
-            torch.save(backbone.to("cpu").state_dict(), args.save_backbone)
-            backbone.to(args.device)
+        if epoch != 0 and epoch % 10 == 0:
+            torch.save({"state_dict" : backbone.state_dict()}, f"backbone_{epoch}.pth")
+            torch.save({"state_dict" : criterion["supervised"][0].state_dict()}, f"class_meta_{epoch}.pth")
+            #torch.save(backbone.to("cpu").state_dict(), args.save_backbone)
+            #backbone.to(args.device)
         if continueTest and args.save_features_prefix != "" and epoch >= args.skip_epochs:
             for i, dataset in enumerate(trainSet):
                 torch.save(featuresTrain[i], args.save_features_prefix + dataset["name"] + "_features.pt")
@@ -456,7 +460,6 @@ for nRun in range(args.runs):
     if args.wandb!='':
         run_wandb.finish()
 
-torch.save({"state_dict" : backbone.state_dict()}, "backbone.pth")
-torch.save({"state_dict" : criterion["supervised"][0].state_dict()}, "class_meta.pth")
+
 
 
