@@ -228,7 +228,7 @@ def imagenet(datasetName):
 
 def subsample_dataset(dataset, file, index):
     keys = dataset.keys()
-    subset = np.load(file)
+    subset = np.load(file)[index]
     subset_num_class = int(subset.sum())
     subset_name_classes = [dataset['name_classes'][i] for i, v in enumerate(subset) if v == 0]
     print("This cooresponds to the dataloader of file subset_{}_index_{}".format(file, index))
