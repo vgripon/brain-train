@@ -225,6 +225,30 @@ def imagenet(datasetName):
         
     return {"dataloader": dataLoader(pytorchDataset, shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="imagenet_"+datasetName), "name":"imagenet_" + datasetName, "num_classes":1000, "name_classes": pytorchDataset.classes}
 
+def subsample_dataset(dataset, file, index):
+    keys = dataset.keys()
+    subset = np.load(file)
+    subset_num_class = int(subset.sum())
+    subset_name_classes = []
+    for j in subset:
+        if j==0:
+            subset_name_classes.append(dataset['name_classes'][j])
+    print("This cooresponds to the dataloader of file subset_{}_index_{}".format(file, index))
+    print(subset_name_classes)
+    out = {"data":[], "targets":[], "name":"subset_{}_index_{}".format(file, index), "num_classes":subset_num_class, "name_classes":subset_name_classes}
+    for i,x in enumerate(dataset['targets']):
+        if subset[x]==0:
+            out['data'].append(dataset['data'][i])
+            out['targets'].append(x)
+    out['targets'] = reassign_numbers(out['targets'])
+    return out
+
+
+def reassign_numbers(lst):
+    sorted_lst = sorted(set(lst))
+    return [sorted_lst.index(i) for i in lst]
+
+
 def metadataset(datasetName, name):
     """
     Generic function to load a dataset from the Meta-Dataset v1.0
@@ -233,6 +257,8 @@ def metadataset(datasetName, name):
     all_datasets = json.loads(f.read())
     f.close()
     dataset = all_datasets[name+"_" + datasetName]
+    if args.subset_file != '':
+        dataset = subsample_dataset(dataset,args.subset_file,args.index_subset)
     if datasetName not in ["test", "validation"]:
         datasetName = 'train' # the dataset was loaded now the only thing that matters is if it is a train one.
     if datasetName == "train":
