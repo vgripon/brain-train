@@ -36,7 +36,7 @@ suffix = '--backbone resnet12  --wandb raflaf --wandb-dir wandb  --wd 0.0001 '
 dir1 = args.work_folder
 for choice in ['best', 'worst', 'random']:
     for selection in ['magnitude','NCM']:
-        for dataset in  ['cub']:
+        for dataset in  ['dtd']:
             if dataset != 'traffic_signs':
                 validtest = '--validation-dataset metadataset_{0}_validation --test-dataset metadataset_{0}_test'.format(dataset)
             else:
@@ -72,6 +72,6 @@ for choice in ['best', 'worst', 'random']:
                         for lr in list_lr:
                             lr_str = str(lr)
                             print(type(lr_str))
-                            command = prefix + validtest +' --epochs 1 --lr {5}  --save-backbone {0}/backbones/{3}{4}{1}{5}.pt --save-features-prefix {0}/features/{3}finetuned_{1}{5} --save-classifier {0}/classifiers/{3}{4}classifier_finetuned_{1}{5}.pt --load-classifier {0}/classifiers/{3}{4}{1}.pt  {2} --batch-size 128 --scheduler linear --wandbProjectName finetuning --info {1}'.format(dir1, key, suffix, str(i), dataset, lr_str)
+                            command = prefix + validtest +' --epochs 1 --lr {5}  --save-backbone {0}/backbones/{3}{4}{1}{5}.pt --save-features-prefix {0}/features/{4}/{3}finetuned_{1}{5} --save-classifier {0}/classifiers/{3}{4}classifier_finetuned_{1}{5}.pt --load-classifier {0}/classifiers/{3}{4}{1}.pt  {2} --batch-size 128 --scheduler linear --wandbProjectName finetuning --info {1}'.format(dir1, key, suffix, str(i), dataset, lr_str)
                             print(command)
                             os.system(command)

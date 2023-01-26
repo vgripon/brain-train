@@ -38,12 +38,12 @@ for cluster in range(0, len(np.unique(clusters))):
     print(dic['metadataset_imagenet_{}'.format(str(cluster))]['name_classes'])    
 
                     
-    os.system( prefix +  ' --freeze-backbone --force-train --epochs 10 --dataset-size 10000 --lr 0.01  --save-classifier {0}/classifiers/{1}.pt   {2} --batch-size 128  --info {1} --wandbProjectName classifier'.format(dir1, key, suffix))
+    #os.system( prefix +  ' --freeze-backbone --force-train --epochs 10 --dataset-size 10000 --lr 0.01  --save-classifier {0}/classifiers/{1}.pt   {2} --batch-size 128  --info {1} --wandbProjectName classifier'.format(dir1, key, suffix))
     #finetuning
 
     for lr in [0.01]:
         lr_str = str(lr)
         print(type(lr_str))
-        command = prefix +' --epochs 5 --dataset-size 1000 --lr {3}  --save-backbone {0}/backbones/{1}{3}.pt --save-features-prefix {0}/features/finetuned_{1}{3} --save-classifier {0}/classifiers/classifier_finetuned_{1}{3}.pt --load-classifier {0}/classifiers/{1}.pt  {2} --batch-size 128 --scheduler linear --wandbProjectName finetuning --info {1}'.format(dir1, key, suffix, lr_str)
+        command = prefix +' --epochs 10 --dataset-size 10000 --lr {3}  --save-backbone {0}/backbones/{1}{3}.pt --save-features-prefix {0}/features/finetuned_{1}{3} --save-classifier {0}/classifiers/classifier_finetuned_{1}{3}.pt --load-classifier {0}/classifiers/{1}.pt  {2} --batch-size 128 --scheduler linear --wandbProjectName finetuning --info {1}'.format(dir1, key, suffix, lr_str)
         print(command)
         os.system(command)

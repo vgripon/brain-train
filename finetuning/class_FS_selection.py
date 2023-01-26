@@ -51,7 +51,7 @@ def measure_acc_by_dim(logits): # not used here yet
 
 def GenFewShot(features, datasets = None, write_file=False):
     list_shots, list_queries = [],[]
-    list_episodes = []
+    list_episodes = {'choice_classes': [], 'shots_idx': [], 'queries_idx': []}
     if datasets=='omniglot':
             Generator = OmniglotGenerator
             generator = Generator(datasetName='omniglot', num_elements_per_class= [feat['features'].shape[0] for feat in features], dataset_path=args.dataset_path)
@@ -65,7 +65,8 @@ def GenFewShot(features, datasets = None, write_file=False):
         queries = []
         episode = generator.sample_episode(ways=args.few_shot_ways, n_shots=args.few_shot_shots, n_queries=args.few_shot_queries, unbalanced_queries=args.few_shot_unbalanced_queries)
         shots, queries = generator.get_features_from_indices(features, episode)
-        list_episodes.append(episode)
+        for k,v in episode.items():
+            list_episodes[k].append(v)
         list_shots.append(shots)
         list_queries.append(queries)
     return list_episodes, list_shots, list_queries
@@ -122,8 +123,8 @@ if __name__=='__main__':
             ordered_mag = torch.argsort(mean_mag, descending=True) 
             magnitudes['ord'].append(ordered_mag)
             print('\n\n {} \n\n'.format(dataset))
-            print('choice_classes = ',list_episodes[i]['choice_classes'].tolist())
-            print('number of shots per class', [len(x) for x in list_episodes[i]['shots_idx']])
+            print('choice_classes = ',list_episodes['choice_classes'][i].tolist())
+            print('number of shots per class', [len(x) for x in list_episodes['shots_idx'][i]])
             print_classes(ordered_mag, std_mag, mean_mag, nb_sample)
             #torch.save(ordered_mag,'finetuning/selections/runs/magnitude_selected_{}{}.pt'.format(dataset,i))
         magnitudes['mag'] = torch.stack(magnitudes['mag'])
