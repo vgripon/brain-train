@@ -84,6 +84,9 @@ parser.add_argument("--backbone", type=str, default="resnet18", help="backbone a
 parser.add_argument("--feature-processing", type=str, default="", help="feature processing before few-shot classifiers, can contain M (remove mean of feature vectors), and E (unit sphere projection of feature vectors)")
 parser.add_argument("--leaky", action="store_true", help="use leaky relu instead of relu for intermediate activations")
 parser.add_argument("--subdomain", type=str, default='', help="npy file with index clusters of classes in imagenet")
+parser.add_argument("--subset-file", type=str, default='', help="binary npy file with index clusters of classes in imagenet")
+parser.add_argument("--index-subset", type=str, default='', help="binary npy file with index clusters of classes in imagenet")
+
 parser.add_argument("--dropout", type=float, default=0., help="dropout rate")
 parser.add_argument("--num-clusters", type=int, default=50, help="number of clusters")
 parser.add_argument("--QR", action="store_true", help="reduce dim to n_ways-1")
