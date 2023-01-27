@@ -330,7 +330,6 @@ for nRun in range(args.runs):
                 print()
             print(" ep.       lr ".format(), end='')
             for dataset in trainSet:
-                print("taille dataset : ", len(dataset["dataloader"]))
 
                 print(Back.CYAN + " {:>19s} ".format(dataset["name"]) + Style.RESET_ALL, end='')
             if epoch >= args.skip_epochs:
