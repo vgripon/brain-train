@@ -185,8 +185,8 @@ class ResNet12(nn.Module):
         
         y = y.mean(dim = list(range(2, len(y.shape))))
         return y
-from vit import ViT
-from vit_dino import vit_small, vit_base, vit_tiny
+#from vit import ViT
+#from vit_dino import vit_small, vit_base, vit_tiny
 
 class Clip(nn.Module):
     def __init__(self, device):
