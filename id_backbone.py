@@ -98,7 +98,7 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
                     fake_data = fake_samples2(shots)
                     fake_acc.append(classifiers.evalFewShotRun(shots, fake_data))
             if 'loo' in proxy:
-                loo.append(leave_one_out_2(shots))
+                loo.append(loo_shuffle(shots))
             if 'hard' in proxy:
                 hard.append(classifiers.evalFewShotRun(shots, shots))
             if 'soft' in proxy:
@@ -255,7 +255,7 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
     L[N,1] = np.array(res_baseline[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
     episodes = res_baseline['episodes']
     for i in tqdm(range(N)):
-        filename = os.path.join('/users/local/r21lafar/finetune/sem/features/sem'+str(i)+'metadataset_'+dataset+'_validation_features.pt')
+        filename = os.path.join('/users/local/r21lafar/finetune/sem/agnostic_sem2/features/sem'+str(i)+'metadataset_'+dataset+'_validation_features.pt')
         res = testFewShot_proxy(filename, datasets = dataset, n_shots = n_shots, proxy = [proxy])
         L[i,0] = np.array(res['acc'])
         L[i,1] = np.array(res[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
@@ -328,6 +328,21 @@ def leave_one_out_2(shots):
                 shots_loo.append(torch.cat((shots[j][:i],shots[j][i+1:])))
         acc += classifiers.evalFewShotRun(shots_loo, q)/max_shots
     return acc
+
+def loo_shuffle(shots,num_iterations=100):
+    results = []
+    for i in range(num_iterations):
+        new_shots = []
+        val_query = []
+        for shot in shots:
+            n = shot.shape[0]
+            shuffled_shot = shot[torch.randperm(n)] if n > 1 else shot
+            new_shots.append(shuffled_shot[1:])
+            val_query.append(shuffled_shot[0].unsqueeze(0))
+            if n==1:
+                val_query.append([])
+        results.append(classifiers.evalFewShotRun(new_shots, val_query).item())
+    return np.array(results).mean()
 
 
 if __name__ == "__main__":
