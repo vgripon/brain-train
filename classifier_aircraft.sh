@@ -17,7 +17,7 @@
 #SBATCH -t 2:00:00
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
-#SBATCH --array=0-10
+#SBATCH --array=11-200
 set -eux
 
 module load arch/skylake
