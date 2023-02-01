@@ -93,6 +93,9 @@ parser.add_argument("--QR", action="store_true", help="reduce dim to n_ways-1")
 parser.add_argument("--isotropic", action="store_true", help="reduce dim to n_ways-1")
 parser.add_argument("--centroids", action="store_true", help="reduce output verbose")
 
+parser.add_argument("--valtest", type=str, default='should_be_test_or_val', help="validation or test in id_bakcbone")
+parser.add_argument("--competing-features", type=str, default='list of features', help="list of features for id_backbone")
+
 
 ### criterion
 parser.add_argument("--classifier", type=str, default="lr", help="define which classifier is used on top of selected backbone, can be any of lr for logistic regression, or L2 for euclidean distance regression, or multilabelBCE for multi label classification")

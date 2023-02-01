@@ -234,7 +234,7 @@ def subsample_dataset(dataset, file, index):
     subset_name_classes = [dataset['name_classes'][i] for i, v in enumerate(subset) if v == 0]
     print("This cooresponds to the dataloader of file subset_{}_index_{}".format(file, index))
     print(subset_name_classes)
-    out = {"data":[], "targets":[], "name":"subset_{}_index_{}".format(file, index), "num_classes":subset_num_class, "name_classes":subset_name_classes}
+    out = {"data":[], "targets":[], "name":"subset_{}_index_{}".format(file, index)[-31:], "num_classes":subset_num_class, "name_classes":subset_name_classes}
     for i,x in enumerate(dataset['targets']):
         if subset[x]==0:
             out['data'].append(dataset['data'][i])
