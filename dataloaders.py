@@ -227,13 +227,15 @@ def imagenet(datasetName):
     return {"dataloader": dataLoader(pytorchDataset, shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="imagenet_"+datasetName), "name":"imagenet_" + datasetName, "num_classes":1000, "name_classes": pytorchDataset.classes}
 
 def subsample_dataset(dataset, file, index):
+    '''reads an npy file looks at the "index" row, and selects the classes at 0'''
     keys = dataset.keys()
     subset = np.load(file)
     subset = subset[index]
-    subset_num_class = int(subset.sum())
+    subset_num_class = int(subset.shape[0]-subset.sum())   # the 0's are the selected classes
     subset_name_classes = [dataset['name_classes'][i] for i, v in enumerate(subset) if v == 0]
     print("This cooresponds to the dataloader of file subset_{}_index_{}".format(file, index))
     print(subset_name_classes)
+    print()
     out = {"data":[], "targets":[], "name":"subset_{}_index_{}".format(file, index)[-31:], "num_classes":subset_num_class, "name_classes":subset_name_classes}
     for i,x in enumerate(dataset['targets']):
         if subset[x]==0:

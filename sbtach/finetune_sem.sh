@@ -19,6 +19,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --array=0-10
 #SBATCH --output=../slurm/task-%A_%a.out
+
 set -eux
 
 module load arch/skylake
@@ -33,6 +34,6 @@ source /hpcfs/users/a1881717/lab/bin/activate
 
 export WANDB_MODE=offline
 
-python ../main.py --dataset-path /hpcfs/users/a1881717/datasets/   --load-backbone /hpcfs/users/a1881717/backbones/resnet12_metadataset_imagenet_64.pt  --subset-file /hpcfs/users/a1881717/work_dir/binary_agnostic_sem.npy --index-subset $SLURM_ARRAY_TASK_ID --training-dataset metadataset_imagenet_train --epoch 10 --dataset-size 10000 --wd 0.0001 --lr 0.001 --freeze-backbone --save-classifier /hpcfs/users/a1881717/work_dir/sem/classifiers/classifier_$SLURM_ARRAY_TASK_ID --force-train --backbone resnet12 --batch-size 128 --few-shot-shots 0 --few-shot-ways 0 --few-shot-queries 0 --few-shot --optimizer adam
-ADAMMM
+python ../main.py --dataset-path /hpcfs/users/a1881717/datasets/   --load-backbone /hpcfs/users/a1881717/backbones/resnet12_metadataset_imagenet_64.pt  --subset-file /hpcfs/users/a1881717/work_dir/binary_agnostic_sem.npy --index-subset $SLURM_ARRAY_TASK_ID --training-dataset metadataset_imagenet_train --epoch 10 --dataset-size 10000 --wd 0.0001 --lr 0.001 --freeze-backbone --load-classifier /hpcfs/users/a1881717/work_dir/sem/classifiers/classifier_$SLURM_ARRAY_TASK_ID --scheduler linear --force-train --backbone resnet12 --batch-size 128 --few-shot-shots 0 --few-shot-ways 0 --few-shot-queries 0 --few-shot --save-features-prefix /hpcfs/users/a1881717/work_dir/sem/features/feat_$SLURM_ARRAY_TASK_ID --save-backbone /hpcfs/users/a1881717/work_dir/sem/backbones/backbone_$SLURM_ARRAY_TASK_ID --optimizer adam
+
 wandb sync

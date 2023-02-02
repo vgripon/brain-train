@@ -17,6 +17,12 @@ from collections import defaultdict
 import hashlib
 import torch.nn as nn
 
+load_episode = args.load_episodes!=''
+load_fs_fine = args.fs_finetune!=''
+if load_episode ^ load_fs_fine:
+    print('\n \n load_episode and fs_finetune work together you forgot one \n\n' )
+    sys.exit(0)
+
 real_dp = args.dataset_path
 if 'omniglot' in args.target_dataset:
     data_info_omniglot_file = os.path.join(args.dataset_path, 'omniglot_test.json')
@@ -53,9 +59,11 @@ def SNR_mean_couple(list_distrib):
     return margin/noise , margin , noise
 
 def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_verbose = False, QR = args.QR ):
-    features = [torch.load(filename, map_location=args.device)]
-    #print('\n filename:', filename)
-    #print(torch.stack([features[0][i]['features'].std(0).mean() for i in range(len(features[0]))]).mean())
+    if not os.path.isdir(filename):
+        features = [torch.load(filename, map_location=args.device)]
+    else:
+        features = [torch.load(os.path.join(filename,'0metadataset_{0}_{1}_features.pt'.format(args.target_dataset, args.valtest)), map_location=args.device)]
+        #first run just to get the genrator right
     for i in range(len(features)):
         accs = []
         fake_acc = []
@@ -74,11 +82,18 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
             args.dataset_path = None
             Generator = EpisodicGenerator
             generator = Generator(datasetName=None, num_elements_per_class= [len(feat['features']) for feat in feature], dataset_path=args.dataset_path)
+        if args.load_episodes!='':
+            episodes = torch.load(args.load_episodes)['episodes']
         for run in tqdm(range(args.few_shot_runs)) if tqdm_verbose else range(args.few_shot_runs):
-            shots = []
-            queries = []
-            init_seed(args.seed+run)
-            episode = generator.sample_episode(ways=args.few_shot_ways, n_shots=n_shots, n_queries=args.few_shot_queries, unbalanced_queries=args.few_shot_unbalanced_queries, max_queries = args.max_queries)
+            if args.load_episodes=='':
+                shots = []
+                queries = []
+                init_seed(args.seed+run)
+                episode = generator.sample_episode(ways=args.few_shot_ways, n_shots=n_shots, n_queries=args.few_shot_queries, unbalanced_queries=args.few_shot_unbalanced_queries, max_queries = args.max_queries)
+            else:
+                if os.path.isdir(filename):
+                    feature = torch.load(os.path.join(filename,str(run)+'metadataset_{0}_{1}_features.pt'.format(args.target_dataset, args.valtest)), map_location=args.device)
+                episode = {'shots_idx' : episodes['shots_idx'][run], 'queries_idx' : episodes['queries_idx'][run], 'choice_classes' : episodes['choice_classes'][run]}
             #if run ==1:
             #    print('1st run shot', episode['shots_idx'][0])
             #    print('1st run classes', episode['choice_classes'])
@@ -247,17 +262,27 @@ def print_metric(metric_tensor, name = ''):
 
 def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = '', save = False):
     N = args.num_clusters
+    shift = 0
+    if args.fs_finetune!='':
+        shift=1
     filename_baseline = os.path.join('/hpcfs/users/a1881717/work_dir/baseline/features/'+dataset+'/featmetadataset_'+ dataset+'_'+args.valtest+'_features.pt' )
     res_baseline = testFewShot_proxy(filename_baseline, datasets = dataset,n_shots = n_shots, proxy=proxy, tqdm_verbose = True)
-    L = np.zeros((N+1,2,len(res_baseline['acc'])))  #N+A and the two bottom lines are here to add the baseline amongst candidates
+    L = np.zeros((N+1+shift,2,len(res_baseline['acc'])))  #N+A and the two bottom lines are here to add the baseline amongst candidates
     L[N,0] = np.array(res_baseline['acc']) 
     L[N,1] = np.array(res_baseline[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
     episodes = res_baseline['episodes']
     for i in tqdm(range(N)):
-        filename = os.path.join(eval(eval(args.competing_features))[i])
+        filename = eval(eval(args.competing_features))[i]
         res = testFewShot_proxy(filename, datasets = dataset, n_shots = n_shots, proxy = [proxy])
         L[i,0] = np.array(res['acc'])
         L[i,1] = np.array(res[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
+    if args.fs_finetune!='':
+        filename = args.fs_finetune
+        res = testFewShot_proxy(filename, datasets = dataset, n_shots = n_shots, proxy = [proxy])
+        L[N+1,0] = np.array(res_baseline['acc']) ### updated the position of the baseline
+        L[N+1,1] = np.array(res_baseline[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
+        L[N,0] = np.array(res['acc'])  #custom finetune is before last
+        L[N,1] = np.array(res[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
     print(dataset, n_shots, 'n_shots', 'proxy', proxy)
     random_backbone = np.take_along_axis(L[:,0],np.random.randint(0, N+1, L.shape[2] ).reshape(1,-1), axis = 0)
     print_metric(random_backbone.ravel(), 'random_backbone')
@@ -276,7 +301,10 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
 
 def save_results(L,dataset, proxy, chance, episodes):
     N = args.num_clusters
-    file = '/hpcfs/users/a1881717/work_dir/vis/d'+str(N)+'.pt'
+    if args.fs_finetune=='':
+        file = '/hpcfs/users/a1881717/work_dir/vis/d'+str(N)+'.pt'
+    else:
+        file = '/hpcfs/users/a1881717/work_dir/vis/dFS'+str(N)+'.pt'
     if not os.path.isfile(file):
         d={'episodes': {}, 'hash_episode' : {}}
         torch.save(d,file)
@@ -290,7 +318,12 @@ def save_results(L,dataset, proxy, chance, episodes):
         d['hash_episode'][dataset] = h
     if proxy in d.keys() and dataset in d[proxy].keys():
         print('overwriting',dataset, proxy)
-        torch.save(d,'/hpcfs/users/a1881717/work_dir/vis/d'+str(N)+'_2.pt')
+        if args.fs_finetune=='':
+            file2 = '/hpcfs/users/a1881717/work_dir/vis/d'+str(N)+'_2.pt'
+        else:
+            file2 = '/hpcfs/users/a1881717/work_dir/vis/dFS'+str(N)+'_2.pt'
+        torch.save(d,file2)
+
     if proxy in d.keys():
         d[proxy][dataset] = {'data' : torch.from_numpy(L), 'info' : str(args), 'nb_runs' : args.few_shot_runs, 'chance' : chance, 'hash_episode' : h}
     else:

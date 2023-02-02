@@ -95,6 +95,9 @@ parser.add_argument("--centroids", action="store_true", help="reduce output verb
 
 parser.add_argument("--valtest", type=str, default='should_be_test_or_val', help="validation or test in id_bakcbone")
 parser.add_argument("--competing-features", type=str, default='list of features', help="list of features for id_backbone")
+parser.add_argument("--load-episodes", type=str, default='', help="dict of episode")
+parser.add_argument("--fs-finetune", type=str, default='', help="path of dir to fs tuned features")
+
 
 
 ### criterion
