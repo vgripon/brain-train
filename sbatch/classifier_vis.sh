@@ -33,6 +33,6 @@ source /hpcfs/users/a1881717/lab/bin/activate
 
 export WANDB_MODE=offline
 
-python ../main.py --dataset-path /hpcfs/users/a1881717/datasets/   --load-backbone /hpcfs/users/a1881717/backbones/resnet12_metadataset_imagenet_64.pt  --subset-file /hpcfs/users/a1881717/work_dir/binary_agnostic_vis.npy --index-subset $SLURM_ARRAY_TASK_ID --training-dataset metadataset_imagenet_train --epoch 10 --dataset-size 10000 --wd 0.0001 --lr 0.001 --freeze-backbone --save-classifier /hpcfs/users/a1881717/work_dir/vis/classifiers/classifier_$SLURM_ARRAY_TASK_ID --force-train --backbone resnet12 --batch-size 128 --few-shot-shots 0 --few-shot-ways 0 --few-shot-queries 0 --few-shot 
+python ../main.py --dataset-path /hpcfs/users/a1881717/datasets/   --load-backbone /hpcfs/users/a1881717/backbones/resnet12_metadataset_imagenet_64.pt  --subset-file /hpcfs/users/a1881717/work_dir/binary_agnostic_vis.npy --index-subset $SLURM_ARRAY_TASK_ID --training-dataset metadataset_imagenet_train --epoch 10 --dataset-size 10000 --wd 0.0001 --lr 0.001 --freeze-backbone --save-classifier /hpcfs/users/a1881717/work_dir/vis/classifiers/classifier_$SLURM_ARRAY_TASK_ID --force-train --backbone resnet12 --batch-size 128 --few-shot-shots 0 --few-shot-ways 0 --few-shot-queries 0 --few-shot --optimizer adam
 
 wandb sync

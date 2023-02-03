@@ -17,8 +17,9 @@
 #SBATCH -t 01:00:00
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
-#SBATCH --array=17-17
-#SBATCH --output=../slurm/task-%A_%a.out
+#SBATCH --output=../../slurm/task-%A_%all_fs.out
+#SBATCH --array=1200-1399
+
 set -eux
 
 module load arch/skylake
@@ -28,18 +29,18 @@ module load cuDNN/CUDA-11.2
 
 source /hpcfs/users/a1881717/lab/bin/activate
 
+
+
 list1=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_flower")
+
 
 # Get the current task ID from the SLURM_ARRAY_TASK_ID environment variable
 task_id=$SLURM_ARRAY_TASK_ID
-den=11
+den=201
 # Get the current string from the list based on the task ID
 dat=${list1[$((task_id / den))]}
 index=$((task_id % den))
 
-if [ "$dat" == "traffic_signs" ]; then
-  python ../main.py --dataset-path /hpcfs/users/a1881717/datasets/  --test-dataset metadataset_${dat}_test --freeze-backbone --load-backbone /hpcfs/users/a1881717/work_dir/vis/backbones/backbone_sgd_$index  --epoch 1 --save-features-prefix /hpcfs/users/a1881717/work_dir/vis/features/${dat}/sgd_$index --backbone resnet12
-else
-  python ../main.py --dataset-path /hpcfs/users/a1881717/datasets/ --validation-dataset metadataset_${dat}_validation --test-dataset metadataset_${dat}_test --freeze-backbone --load-backbone /hpcfs/users/a1881717/work_dir/vis/backbones/backbone_10_$index  --epoch 1 --save-features-prefix /hpcfs/users/a1881717/work_dir/vis/features/${dat}/$index --backbone resnet12 --few-shot --few-shot-shots 0 --few-shot-runs 10000 --few-shot --few-shot-ways 0
-fi
 
+echo "Running task $SLURM_ARRAY_TASK_ID with string $dat"
+python ../../main.py --dataset-path /hpcfs/users/a1881717/datasets/  --validation-dataset metadataset_${dat}_validation --test-dataset metadataset_${dat}_test --freeze-backbone --load-backbone /hpcfs/users/a1881717/work_dir/runs_fs/backbones/${dat}/backbones_$index --epoch 1 --save-features-prefix /hpcfs/users/a1881717/work_dir/runs_fs/features/${dat}/$index --backbone resnet12

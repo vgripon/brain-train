@@ -30,8 +30,9 @@ source /hpcfs/users/a1881717/lab/bin/activate
 
 
 
-list1=("aircraft")
+list1=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_flower")
 list2=("snr")
+
 valtest="validation"
 mag_or_ncm="magnitude"
 task_id=$SLURM_ARRAY_TASK_ID

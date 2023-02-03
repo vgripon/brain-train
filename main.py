@@ -397,7 +397,7 @@ for nRun in range(args.runs):
         meanVector = None
         trainStats = None
         if trainSet != []:
-            opener = Fore.CYAN
+            #opener = Fore.CYAN
             if not args.freeze_backbone or args.force_train:
                 trainStats = train(epoch + 1, backbone, teacher, criterion, optimizer, scheduler)
                 updateCSV(trainStats, epoch = epoch)
@@ -412,7 +412,7 @@ for nRun in range(args.runs):
                     featuresTrain = process(featuresTrain, meanVector)
             ender = Style.RESET_ALL
         if validationSet != [] and epoch >= args.skip_epochs:
-            opener = Fore.GREEN
+            #opener = Fore.GREEN
             if args.few_shot or args.save_features_prefix != "":
                 featuresValidation = generateFeatures(backbone, validationSet)
                 featuresValidation = process(featuresValidation, meanVector)
@@ -428,7 +428,7 @@ for nRun in range(args.runs):
         else:
             continueTest = True
         if testSet != [] and epoch >= args.skip_epochs:
-            opener = Fore.RED
+            #opener = Fore.RED
             if args.few_shot or args.save_features_prefix != "":
                 #print('Generating Test Features')
                 featuresTest = generateFeatures(backbone, testSet)

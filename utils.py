@@ -9,7 +9,7 @@ from args import args
 lastDisplay = time.time()
 def display(string, end = '\n', force = False):
     global lastDisplay
-    if time.time() - lastDisplay > 0.1 or force:
+    if time.time() - lastDisplay > 1 or force:
         lastDisplay = time.time()
         print(string, end=end)
 

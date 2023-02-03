@@ -235,7 +235,6 @@ def subsample_dataset(dataset, file, index):
     subset_name_classes = [dataset['name_classes'][i] for i, v in enumerate(subset) if v == 0]
     print("This cooresponds to the dataloader of file subset_{}_index_{}".format(file, index))
     print(subset_name_classes)
-    print()
     out = {"data":[], "targets":[], "name":"subset_{}_index_{}".format(file, index)[-31:], "num_classes":subset_num_class, "name_classes":subset_name_classes}
     for i,x in enumerate(dataset['targets']):
         if subset[x]==0:
@@ -258,7 +257,7 @@ def metadataset(datasetName, name):
     all_datasets = json.loads(f.read())
     f.close()
     dataset = all_datasets[name+"_" + datasetName]
-    if args.subset_file != '':
+    if args.subset_file != '' and datasetName == 'train':
         dataset = subsample_dataset(dataset,args.subset_file,int(args.index_subset))
     if datasetName not in ["test", "validation"]:
         datasetName = 'train' # the dataset was loaded now the only thing that matters is if it is a train one.
