@@ -38,8 +38,8 @@ dat=${list1[$((task_id / den))]}
 index=$((task_id % den))
 
 if [ "$dat" == "traffic_signs" ]; then
-  python ../main.py --dataset-path /hpcfs/users/a1881717/datasets/  --test-dataset metadataset_${dat}_test --freeze-backbone --load-backbone /hpcfs/users/a1881717/work_dir/vis/backbones/backbone_sgd_$index  --epoch 1 --save-features-prefix /hpcfs/users/a1881717/work_dir/vis/features/${dat}/sgd_$index --backbone resnet12
+  python ../main.py --dataset-path /hpcfs/users/a1881717/datasets/  --test-dataset metadataset_${dat}_test --freeze-backbone --load-backbone /hpcfs/users/a1881717/work_dir/vis/backbones/backbone_$index  --epoch 1 --save-features-prefix /hpcfs/users/a1881717/work_dir/vis/features/${dat}/$index --backbone resnet12
 else
-  python ../main.py --dataset-path /hpcfs/users/a1881717/datasets/ --validation-dataset metadataset_${dat}_validation --test-dataset metadataset_${dat}_test --freeze-backbone --load-backbone /hpcfs/users/a1881717/work_dir/vis/backbones/backbone_10_$index  --epoch 1 --save-features-prefix /hpcfs/users/a1881717/work_dir/vis/features/${dat}/$index --backbone resnet12 --few-shot --few-shot-shots 0 --few-shot-runs 10000 --few-shot --few-shot-ways 0
+  python ../main.py --dataset-path /hpcfs/users/a1881717/datasets/ --validation-dataset metadataset_${dat}_validation --test-dataset metadataset_${dat}_test --freeze-backbone --load-backbone /hpcfs/users/a1881717/work_dir/vis/backbones/backbone_$index  --epoch 1 --save-features-prefix /hpcfs/users/a1881717/work_dir/vis/features/${dat}/$index --backbone resnet12 --few-shot --few-shot-shots 0 --few-shot-runs 10000 --few-shot --few-shot-ways 0
 fi
 

@@ -32,15 +32,17 @@ source /hpcfs/users/a1881717/lab/bin/activate
 
 list1=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_flower")
 list2=("snr")
-
+length=${#list2[@]}
 valtest="validation"
 mag_or_ncm="magnitude"
 task_id=$SLURM_ARRAY_TASK_ID
-dat=${list1[$((task_id / 3))]}
-proxy=${list2[$((task_id % 3))]}
+dat=${list1[$((task_id / length))]}
+proxy=${list2[$((task_id % length))]}
 fsfinetune="/hpcfs/users/a1881717/work_dir/runs_fs/features/${dat}"
-dir="/hpcfs/users/a1881717/work_dir/vis/features/${dat}/"
-featureslist=$(ls $dir)
+dirvis="/hpcfs/users/a1881717/work_dir/vis/features/${dat}/"
+dirsem="/hpcfs/users/a1881717/work_dir/sem/features/${dat}/"
+dirrandom="/hpcfs/users/a1881717/work_dir/random/features/${dat}/"
+featureslist=("$(ls $dirvis)" "$(ls $dirsem)" "$(ls $dirrandom)")
 array=($featureslist)
 loadepisode="/hpcfs/users/a1881717/work_dir/runs_fs/episodes/${mag_or_ncm}_${dat}.pt"
 
@@ -66,4 +68,4 @@ echo "$length"
 echo "$dat"
 echo "$proxy"
 
-python ../id_backbone.py --valtest $valtest --fs-finetune $fsfinetune --load-episode $loadepisode --num-cluster $length --target-dataset $dat --proxy $proxy --competing-features $string --dataset-path /users/local/datasets/  --seed 1 --few-shot-ways 0 --few-shot-shots 0 --few-shot-queries 0  --few-shot-runs 100
+python ../id_backbone.py --valtest $valtest --fs-finetune $fsfinetune --load-episode $loadepisode --num-cluster $length --target-dataset $dat --proxy $proxy --competing-features $string --dataset-path /users/local/datasets/  --seed 1 --few-shot-ways 0 --few-shot-shots 0 --few-shot-queries 0  --few-shot-runs 200
