@@ -18,7 +18,7 @@
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
 #SBATCH --array=400-599
-#SBATCH --output=../../slurm/task-%A_%all_fs.out
+#SBATCH --output=../../slurm/finetune/task-%A_%all_fs.out
 
 set -eux
 
@@ -33,11 +33,11 @@ source /hpcfs/users/a1881717/lab/bin/activate
 list1=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_flower")
 
 task_id=$SLURM_ARRAY_TASK_ID
-den=201
+den=200
 # Get the current string from the list based on the task ID
 dat=${list1[$((task_id / den))]}
 index=$((task_id % den))
 
-python ../../main.py --dataset-path /hpcfs/users/a1881717/datasets/   --load-backbone /hpcfs/users/a1881717/backbones/resnet12_metadataset_imagenet_64.pt  --subset-file /hpcfs/users/a1881717/datasets/binary_${dat}.npy --index-subset $SLURM_ARRAY_TASK_ID --training-dataset metadataset_imagenet_train --epoch 20 --dataset-size 10000 --wd 0.0001 --lr 0.001  --load-classifier /hpcfs/users/a1881717/work_dir/runs_fs/classifiers/${dat}/classifier_$SLURM_ARRAY_TASK_ID --scheduler cosine  --backbone resnet12 --batch-size 128 --few-shot-shots 0 --few-shot-ways 0 --few-shot-queries 0 --few-shot --save-features-prefix /hpcfs/users/a1881717/work_dir/runs_fs/features/${dat}/feat_$SLURM_ARRAY_TASK_ID --save-backbone /hpcfs/users/a1881717/work_dir/runs_fs/backbones/${dat}/backbones_$SLURM_ARRAY_TASK_ID --save-classifier /hpcfs/users/a1881717/work_dir/runs_fs/classifiers/${dat}/classifier_finetune_$SLURM_ARRAY_TASK_ID
+python ../../main.py --dataset-path /hpcfs/users/a1881717/datasets/   --load-backbone /hpcfs/users/a1881717/backbones/resnet12_metadataset_imagenet_64.pt  --subset-file /hpcfs/users/a1881717/datasets/binary_${dat}.npy --index-subset ${index} --training-dataset metadataset_imagenet_train --epoch 20 --dataset-size 10000 --wd 0.0001 --lr 0.001  --load-classifier /hpcfs/users/a1881717/work_dir/runs_fs/classifiers/${dat}/classifier_${index} --scheduler cosine  --backbone resnet12 --batch-size 128 --few-shot-shots 0 --few-shot-ways 0 --few-shot-queries 0 --few-shot  --save-backbone /hpcfs/users/a1881717/work_dir/runs_fs/backbones/${dat}/backbones_${index} --save-classifier /hpcfs/users/a1881717/work_dir/runs_fs/classifiers/${dat}/classifier_finetune_${index}
 
 wandb sync

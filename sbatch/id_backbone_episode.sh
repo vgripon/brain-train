@@ -14,11 +14,11 @@
 #SBATCH -p batch
 #SBATCH -N 1
 #SBATCH -c 4
-#SBATCH -t 01:00:00
+#SBATCH -t 03:00:00
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
-#SBATCH --array=0-0
-#SBATCH --output=../slurm/task-%A_%a_id_backbone_episode.out
+#SBATCH --array=0-7
+#SBATCH --output=../slurm/atmp/task-%A_%a_id_backbone_episode.out
 set -eux
 
 module load arch/skylake
@@ -42,30 +42,29 @@ fsfinetune="/hpcfs/users/a1881717/work_dir/runs_fs/features/${dat}"
 dirvis="/hpcfs/users/a1881717/work_dir/vis/features/${dat}/"
 dirsem="/hpcfs/users/a1881717/work_dir/sem/features/${dat}/"
 dirrandom="/hpcfs/users/a1881717/work_dir/random/features/${dat}/"
-featureslist=("$(ls $dirvis)" "$(ls $dirsem)" "$(ls $dirrandom)")
-array=($featureslist)
 loadepisode="/hpcfs/users/a1881717/work_dir/runs_fs/episodes/${mag_or_ncm}_${dat}.pt"
 
-for item in "${array[@]}"; do
-  if [[ $item == *"$valtest"* ]]; then
-    filtered_array+=("$item")
-  fi
+directories=($dirvis $dirsem $dirrandom)
+result="["
+count=0
+
+for dir in "${directories[@]}"; do
+  echo $dir
+  files=$(find "$dir" -type f -name "*$valtest*") 
+  for file in $files; do
+    result="$result'$file',"
+    count=$((count+1))
+  done
 done
 
 
-length=${#filtered_array[@]}
-string='"['
-for item in "${array[@]}"; do
-  string+="'$dir$item',"
-done
-string=${string::-1} # remove the last comma
-string+=']"'
-echo $string
+# Remove the trailing comma and add the closing bracket
+result="${result%,}]"
+result="\"$result\""
 
 
-echo "$featureslist"
-echo "$length"
+echo $result
 echo "$dat"
 echo "$proxy"
 
-python ../id_backbone.py --valtest $valtest --fs-finetune $fsfinetune --load-episode $loadepisode --num-cluster $length --target-dataset $dat --proxy $proxy --competing-features $string --dataset-path /users/local/datasets/  --seed 1 --few-shot-ways 0 --few-shot-shots 0 --few-shot-queries 0  --few-shot-runs 200
+python ../id_backbone.py --valtest $valtest --fs-finetune $fsfinetune --load-episode $loadepisode --num-cluster $count --target-dataset $dat --proxy $proxy --competing-features $result --dataset-path /users/local/datasets/  --seed 1 --few-shot-ways 0 --few-shot-shots 0 --few-shot-queries 0  --few-shot-runs 200

@@ -14,11 +14,12 @@
 #SBATCH -p batch
 #SBATCH -N 1
 #SBATCH -c 4
-#SBATCH -t 01:00:00
+#SBATCH -t 03:00:00
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
-#SBATCH --array=0-8
-#SBATCH --output=../slurm/task-%A_%a_id_backbone_MD.out
+#SBATCH --array=0-31
+#SBATCH --output=../slurm/atmp/task-%A_%a_id_backbone_MD.out
+
 set -eux
 
 module load arch/skylake
@@ -30,37 +31,42 @@ source /hpcfs/users/a1881717/lab/bin/activate
 
 
 
-list1=("cub" "dtd" "aircraft")
-list2=("hard" "loo" "soft")
-valtest="validation"
+list1=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_flower")
+list2=("hard" "loo" "soft" "fake_acc")
+valtest="test"
+length2=${#list2[@]}
 task_id=$SLURM_ARRAY_TASK_ID
-dat=${list1[$((task_id / 3))]}
-proxy=${list2[$((task_id % 3))]}
+dat=${list1[$((task_id / length2))]}
+proxy=${list2[$((task_id % length2))]}
 fsfinetune="/hpcfs/users/a1881717/work_dir/runs_fs/features/${dat}"
-dir="/hpcfs/users/a1881717/work_dir/vis/features/${dat}/"
-featureslist=$(ls $dir)
-array=($featureslist)
+dirvis="/hpcfs/users/a1881717/work_dir/vis/features/${dat}/"
+dirsem="/hpcfs/users/a1881717/work_dir/sem/features/${dat}/"
+dirrandom="/hpcfs/users/a1881717/work_dir/random/features/${dat}/"
 
-for item in "${array[@]}"; do
-  if [[ $item == *"$valtest"* ]]; then
-    filtered_array+=("$item")
-  fi
+directories=($dirvis $dirsem $dirrandom)
+result="["
+count=0
+
+for dir in "${directories[@]}"; do
+  echo $dir
+  files=$(find "$dir" -type f -name "*$valtest*") 
+  for file in $files; do
+    result="$result'$file',"
+    count=$((count+1))
+  done
 done
 
 
-length=${#filtered_array[@]}
-string='"['
-for item in "${array[@]}"; do
-  string+="'$dir$item',"
-done
-string=${string::-1} # remove the last comma
-string+=']"'
-echo $string
+# Remove the trailing comma and add the closing bracket
+result="${result%,}]"
+result="\"$result\""
 
 
-echo "$featureslist"
-echo "$length"
+echo $result
+
+
+echo "$count"
 echo "$dat"
 echo "$proxy"
 
-python ../id_backbone.py --valtest $valtest --num-cluster $length --target-dataset $dat --proxy $proxy --competing-features $string --dataset-path /users/local/datasets/  --seed 1 --few-shot-ways 0 --few-shot-shots 0 --few-shot-queries 0  --few-shot-runs 100
+python ../id_backbone.py --valtest $valtest --num-cluster $count --target-dataset $dat --proxy $proxy --competing-features $result --dataset-path /users/local/datasets/  --seed 1 --few-shot-ways 0 --few-shot-shots 0 --few-shot-queries 0  --few-shot-runs 10000

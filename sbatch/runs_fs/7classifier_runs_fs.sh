@@ -18,7 +18,7 @@
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
 #SBATCH --array=1400-1599
-#SBATCH --output=../../slurm/task-%A_%all_fs.out
+#SBATCH --output=../../slurm/classifier/task-%A_%all_fs.out
 
 set -eux
 
@@ -40,6 +40,6 @@ den=200
 dat=${list1[$((task_id / den))]}
 index=$((task_id % den))
 
-python ../../main.py --dataset-path /hpcfs/users/a1881717/datasets/   --load-backbone /hpcfs/users/a1881717/backbones/resnet12_metadataset_imagenet_64.pt  --subset-file /hpcfs/users/a1881717/datasets/binary_${dat}.npy --index-subset $SLURM_ARRAY_TASK_ID --training-dataset metadataset_imagenet_train --epoch 20 --dataset-size 10000 --wd 0.0001 --lr 0.001 --save-classifier /hpcfs/users/a1881717/work_dir/runs_fs/classifiers/${dat}/classifier_$SLURM_ARRAY_TASK_ID --backbone resnet12 --batch-size 128 --few-shot-shots 0 --few-shot-ways 0 --few-shot-queries 0 --few-shot --optimizer adam
+python ../../main.py --dataset-path /hpcfs/users/a1881717/datasets/   --load-backbone /hpcfs/users/a1881717/backbones/resnet12_metadataset_imagenet_64.pt  --subset-file /hpcfs/users/a1881717/datasets/binary_${dat}.npy --index-subset ${index} --training-dataset metadataset_imagenet_train --epoch 20 --dataset-size 10000 --wd 0.0001 --lr 0.001 --save-classifier /hpcfs/users/a1881717/work_dir/runs_fs/classifiers/${dat}/classifier_${index} --backbone resnet12 --batch-size 128 --few-shot-shots 0 --few-shot-ways 0 --few-shot-queries 0 --few-shot --optimizer adam
 
 wandb sync

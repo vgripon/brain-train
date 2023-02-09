@@ -127,10 +127,10 @@ def train(epoch, backbone, teacher, criterion, optimizer, scheduler):
                 for trainingSetIdx in range(len(iterators)):
                     for step in eval(args.steps):
                         if 'dino' in step:
-                            criterion['dino'][trainingSetIdx].update_teacher(backbone, teacher['dino'], epoch-1, batch_idx_list[trainingSetIdx])
-                
+                            criterion['dino'][trainingSetIdx].update_teacher(backbone, teacher['dino'], epoch-1, batch_idx_list[trainingSetIdx])   
         except StopIteration:
             return torch.stack([losses / total_elt, 100 * accuracies / total_elt]).transpose(0,1)
+    
 
 def test(backbone, datasets, criterion):
     backbone.eval()
@@ -242,6 +242,9 @@ def generateFeatures(backbone, datasets, sample_aug=args.sample_aug):
                         allFeatures[c]["features"] += torch.stack(features[c]["features"])/n_aug
 
         results.append([{"name_class": allFeatures[i]["name_class"], "features": allFeatures[i]["features"]} for i in range(len(allFeatures))])
+    # Get the GPU memory usage
+    gpu_memory = torch.cuda.memory_allocated() / (1024**2)
+    print('GPU memory usage:', gpu_memory, 'MB')
     return results
 def get_optimizer(parameters, name, lr, weight_decay):
     if name == 'sgd':
@@ -400,6 +403,9 @@ for nRun in range(args.runs):
             #opener = Fore.CYAN
             if not args.freeze_backbone or args.force_train:
                 trainStats = train(epoch + 1, backbone, teacher, criterion, optimizer, scheduler)
+                # Get the GPU memory usage
+                gpu_memory = torch.cuda.memory_allocated() / (1024**2)
+                print('GPU memory usage:', gpu_memory, 'MB') 
                 updateCSV(trainStats, epoch = epoch)
             if args.save_classifier:
                 for i,c in enumerate([item for sublist in criterion.values() for item in sublist]):

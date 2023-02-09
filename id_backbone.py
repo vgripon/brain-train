@@ -302,9 +302,9 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
 def save_results(L,dataset, proxy, chance, episodes):
     N = args.num_clusters
     if args.fs_finetune=='':
-        file = '/hpcfs/users/a1881717/work_dir/vis/d'+str(N)+'.pt'
-    else:
         file = '/hpcfs/users/a1881717/work_dir/vis/dFS'+str(N)+'.pt'
+    else:
+        file = '/hpcfs/users/a1881717/work_dir/vis/d'+str(N)+'.pt'
     if not os.path.isfile(file):
         d={'episodes': {}, 'hash_episode' : {}}
         torch.save(d,file)
@@ -368,10 +368,12 @@ def loo_shuffle(shots,num_iterations=100):
         val_query = []
         for shot in shots:
             n = shot.shape[0]
-            shuffled_shot = shot[torch.randperm(n)] if n > 1 else shot
-            new_shots.append(shuffled_shot[1:])
-            val_query.append(shuffled_shot[0].unsqueeze(0))
+            shuffled_shot = shot[torch.randperm(n)] if n > 1 
+            if n>1:
+                new_shots.append(shuffled_shot[1:])
+                val_query.append(shuffled_shot[0].unsqueeze(0))
             if n==1:
+                new_shots.append(shot)
                 val_query.append([])
         results.append(classifiers.evalFewShotRun(new_shots, val_query).item())
     return np.array(results).mean()

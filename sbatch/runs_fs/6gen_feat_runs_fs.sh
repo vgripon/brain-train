@@ -17,7 +17,7 @@
 #SBATCH -t 01:00:00
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
-#SBATCH --output=../../slurm/task-%A_%all_fs.out
+#SBATCH --output=../../slurm/gen_feat/task-%A_%all_fs.out
 #SBATCH --array=1200-1399
 
 set -eux

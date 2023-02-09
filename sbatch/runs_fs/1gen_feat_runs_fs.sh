@@ -17,7 +17,7 @@
 #SBATCH -t 01:00:00
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
-#SBATCH --output=../../slurm/task-%A_%all_fs.out
+#SBATCH --output=../../slurm/gen_feat/task-%A_%all_fs.out
 #SBATCH --array=200-399
 
 set -eux
@@ -42,5 +42,5 @@ dat=${list1[$((task_id / den))]}
 index=$((task_id % den))
 
 
-echo "Running task $SLURM_ARRAY_TASK_ID with string $dat"
+echo "Running task ${index} with string $dat"
 python ../../main.py --dataset-path /hpcfs/users/a1881717/datasets/  --validation-dataset metadataset_${dat}_validation --test-dataset metadataset_${dat}_test --freeze-backbone --load-backbone /hpcfs/users/a1881717/work_dir/runs_fs/backbones/${dat}/backbones_$index --epoch 1 --save-features-prefix /hpcfs/users/a1881717/work_dir/runs_fs/features/${dat}/$index --backbone resnet12

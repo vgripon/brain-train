@@ -33,7 +33,7 @@ list=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_fl
 # Get the current task ID from the SLURM_ARRAY_TASK_ID environment variable
 task_id=$SLURM_ARRAY_TASK_ID
 # Get the current string from the list based on the task ID
-dat=${list1[$SLURM_ARRAY_TASK_ID]}
+dat=${list[$SLURM_ARRAY_TASK_ID]}
 if [ "$dat" == "traffic_signs" ]; then
     python ../main.py --dataset-path /hpcfs/users/a1881717/datasets/  --test-dataset metadataset_${dat}_test --freeze-backbone  --load-backbone /hpcfs/users/a1881717/backbones/resnet12_metadataset_imagenet_64.pt  --epoch 1 --save-features-prefix /hpcfs/users/a1881717/work_dir/baseline/features/${dat}/feat --backbone resnet12 --few-shot --few-shot-shots 0 --few-shot-runs 10000 --few-shot --few-shot-ways 0
 else
