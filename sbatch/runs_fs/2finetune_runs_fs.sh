@@ -17,7 +17,7 @@
 #SBATCH -t 2:00:00
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
-#SBATCH --array=400-599
+#SBATCH --array=585-589
 #SBATCH --output=../../slurm/finetune/task-%A_%all_fs.out
 
 set -eux

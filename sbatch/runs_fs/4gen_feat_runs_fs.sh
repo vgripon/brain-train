@@ -18,7 +18,7 @@
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
 #SBATCH --output=../../slurm/gen_feat/task-%A_%all_fs.out
-#SBATCH --array=800-999
+#SBATCH --array=800-802
 
 set -eux
 
@@ -36,7 +36,7 @@ list1=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_f
 
 # Get the current task ID from the SLURM_ARRAY_TASK_ID environment variable
 task_id=$SLURM_ARRAY_TASK_ID
-den=201
+den=200
 # Get the current string from the list based on the task ID
 dat=${list1[$((task_id / den))]}
 index=$((task_id % den))

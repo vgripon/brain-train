@@ -25,9 +25,10 @@ if load_episode ^ load_fs_fine:
 
 real_dp = args.dataset_path
 if 'omniglot' in args.target_dataset:
-    data_info_omniglot_file = os.path.join(args.dataset_path, 'omniglot_test.json')
+    data_info_omniglot_file = os.path.join(args.dataset_path, 'omniglot.json')
     with open(data_info_omniglot_file) as f:
         data_info_omniglot = json.load(f)
+    data_info_omniglot=data_info_omniglot['metadataset_omniglot_{}'.format(args.valtest)]
 
 def SNR(list_distrib):
     #print('n_ways distrib', len(list_distrib))
@@ -76,7 +77,7 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
         episodes = {'shots_idx' : [], 'queries_idx' : [], 'choice_classes' : []}
         if datasets=='omniglot':
             Generator = OmniglotGenerator
-            generator = Generator(datasetName=None, num_elements_per_class= [len(feat['features']) for feat in feature], dataset_path=args.dataset_path)
+            generator = Generator(datasetName='omniglot', num_elements_per_class= [len(feat['features']) for feat in feature], dataset_path=args.dataset_path)
             generator.dataset = data_info_omniglot
         else:
             args.dataset_path = None
@@ -296,10 +297,10 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
     print_metric(max_possible.ravel(),'max_possible: ')
     _,_ = plot_norm_correlation(L, plot=False, proxy= proxy)
     if save:
-        save_results(L, dataset, proxy+'QR'*args.QR+'isotropic'*args.isotropic, res['chance'], episodes = episodes)
-    return res_baseline, L
+        save_results(L, dataset, proxy+'QR'*args.QR+'isotropic'*args.isotropic, res['chance'], episodes = episodes, backbones = eval(eval(args.competing_features))+[args.fs_finetune]+[filename_baseline])
+    return res_baseline, L 
 
-def save_results(L,dataset, proxy, chance, episodes):
+def save_results(L,dataset, proxy, chance, episodes,backbones):
     N = args.num_clusters
     if args.fs_finetune=='':
         file = '/hpcfs/users/a1881717/work_dir/vis/dFS'+str(N)+'.pt'
@@ -319,11 +320,11 @@ def save_results(L,dataset, proxy, chance, episodes):
     if proxy in d.keys() and dataset in d[proxy].keys():
         print('overwriting',dataset, proxy)
         if args.fs_finetune=='':
-            file2 = '/hpcfs/users/a1881717/work_dir/vis/d'+str(N)+'_2.pt'
-        else:
             file2 = '/hpcfs/users/a1881717/work_dir/vis/dFS'+str(N)+'_2.pt'
+        else:
+            file2 = '/hpcfs/users/a1881717/work_dir/vis/d'+str(N)+'_2.pt'
         torch.save(d,file2)
-
+    d['backbones']= backbones
     if proxy in d.keys():
         d[proxy][dataset] = {'data' : torch.from_numpy(L), 'info' : str(args), 'nb_runs' : args.few_shot_runs, 'chance' : chance, 'hash_episode' : h}
     else:
@@ -361,14 +362,17 @@ def leave_one_out_2(shots):
         acc += classifiers.evalFewShotRun(shots_loo, q)/max_shots
     return acc
 
-def loo_shuffle(shots,num_iterations=100):
+def loo_shuffle(shots,num_iterations=10):
     results = []
+    if [len(shot) for shot in shots]==[1 for shot in shots]:
+        print('loo cannot process this run')
+        return np.random.random(1)[0]
     for i in range(num_iterations):
         new_shots = []
         val_query = []
         for shot in shots:
             n = shot.shape[0]
-            shuffled_shot = shot[torch.randperm(n)] if n > 1 
+            shuffled_shot = shot[torch.randperm(n)] if n > 1 else shot
             if n>1:
                 new_shots.append(shuffled_shot[1:])
                 val_query.append(shuffled_shot[0].unsqueeze(0))

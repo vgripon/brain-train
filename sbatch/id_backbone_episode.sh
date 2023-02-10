@@ -18,7 +18,7 @@
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
 #SBATCH --array=0-7
-#SBATCH --output=../slurm/atmp/task-%A_%a_id_backbone_episode.out
+#SBATCH --output=../slurm/id_backbone_episode/task-%A_%a_id_backbone_episode.out
 set -eux
 
 module load arch/skylake
@@ -67,4 +67,4 @@ echo $result
 echo "$dat"
 echo "$proxy"
 
-python ../id_backbone.py --valtest $valtest --fs-finetune $fsfinetune --load-episode $loadepisode --num-cluster $count --target-dataset $dat --proxy $proxy --competing-features $result --dataset-path /users/local/datasets/  --seed 1 --few-shot-ways 0 --few-shot-shots 0 --few-shot-queries 0  --few-shot-runs 200
+python ../id_backbone.py --valtest $valtest --fs-finetune $fsfinetune --load-episode $loadepisode --num-cluster $count --target-dataset $dat --proxy $proxy --competing-features $result --dataset-path /users/local/datasets/  --seed 1 --few-shot-ways 0 --few-shot-shots 0 --few-shot-queries 0  --few-shot-runs 200 --dataset-path /hpcfs/users/a1881717/datasets/

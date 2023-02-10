@@ -14,11 +14,11 @@
 #SBATCH -p batch
 #SBATCH -N 1
 #SBATCH -c 4
-#SBATCH -t 03:00:00
+#SBATCH -t 24:00:00
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
-#SBATCH --array=0-31
-#SBATCH --output=../slurm/atmp/task-%A_%a_id_backbone_MD.out
+#SBATCH --array=8-19
+#SBATCH --output=../slurm/id_backboneMD/task-%A_%a_id_backbone_MD.out
 
 set -eux
 
@@ -69,4 +69,4 @@ echo "$count"
 echo "$dat"
 echo "$proxy"
 
-python ../id_backbone.py --valtest $valtest --num-cluster $count --target-dataset $dat --proxy $proxy --competing-features $result --dataset-path /users/local/datasets/  --seed 1 --few-shot-ways 0 --few-shot-shots 0 --few-shot-queries 0  --few-shot-runs 10000
+python ../id_backbone.py --valtest $valtest --num-cluster $count --target-dataset $dat --proxy $proxy --competing-features $result --dataset-path /users/local/datasets/  --seed 1 --few-shot-ways 0 --few-shot-shots 0 --few-shot-queries 0  --few-shot-runs 1000 --dataset-path /hpcfs/users/a1881717/datasets/ 
