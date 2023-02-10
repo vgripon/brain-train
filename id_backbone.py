@@ -303,9 +303,9 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
 def save_results(L,dataset, proxy, chance, episodes,backbones):
     N = args.num_clusters
     if args.fs_finetune=='':
-        file = '/hpcfs/users/a1881717/work_dir/vis/dFS'+str(N)+'.pt'
-    else:
         file = '/hpcfs/users/a1881717/work_dir/vis/d'+str(N)+'.pt'
+    else:
+        file = '/hpcfs/users/a1881717/work_dir/vis/dFS'+str(N)+'.pt'
     if not os.path.isfile(file):
         d={'episodes': {}, 'hash_episode' : {}}
         torch.save(d,file)
