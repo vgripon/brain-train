@@ -21,6 +21,8 @@
 
 set -eux
 
+dat_ind=${1:-0} ; shift
+
 source /gpfs/users/a1230203/projects/2023-02-few-shot/env.sh
 
 list1=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_flower")
@@ -28,8 +30,8 @@ list1=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_f
 task_id=$SLURM_ARRAY_TASK_ID
 den=200
 # Get the current string from the list based on the task ID
-dat=${list1[$((task_id / den))]}
-index=$((task_id % den))
+dat=${list1[$dat_ind]}
+index=$task_id
 
 python ../../main.py \
   --dataset-path /gpfs/users/a1230203/projects/2023-02-few-shot/brain-train/datasets/   \
