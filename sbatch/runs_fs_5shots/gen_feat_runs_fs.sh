@@ -9,7 +9,7 @@
 # ( EXP_NAME=resnet50 sbatch .../slurm/run_imagenet.sh --arch=resnet50 )
 # ( EXP_NAME=resnet50-b128-lr0.05 sbatch .../slurm/run_imagenet.sh --arch=resnet50 --batch-size=128 --learning-rate=0.05 )
 
-#SBATCH -J FS_cls
+#SBATCH -J FS_gen
 #SBATCH -p gpunodes
 #SBATCH -N 1
 #SBATCH -c 4
@@ -34,16 +34,11 @@ task_id=$SLURM_ARRAY_TASK_ID
 dat=${list1[$dat_ind]}
 index=$task_id
 
-python ../../main.py \
-  --dataset-path /gpfs/users/a1881717/datasets/ \
-  --load-backbone /gpfs/users/a1881717/resnet12_metadataset_imagenet_64.pt \
-  --subset-file /gpfs/users/a1881717/work_dir/runs_fs/episodes/binary_${dat}.npy \
-  --index-subset ${index} \
-  --out-dir /gpfs/users/a1881717/work_dir/ \
-  --training-dataset metadataset_imagenet_train \
-  --epoch 20 --dataset-size 10000 --wd 0.0001 --lr 0.001 \
-  --save-classifier /gpfs/users/a1881717/work_dir/runs_fs/classifiers/${dat}/classifier_${index} \
-  --backbone resnet12 --batch-size 128 --few-shot-shots 0 --few-shot-ways 0 --few-shot-queries 0 --few-shot --optimizer adam \
+python ../../main.py --dataset-path /gpfs/users/a1881717/datasets/ \
+ --validation-dataset metadataset_${dat}_validation \
+  --test-dataset metadataset_${dat}_test --freeze-backbone \
+  --load-backbone /gpfs/users/a1881717/5shots_work_dir/runs_fs/backbones/${dat}/backbones_$index \
+  --epoch 1 --save-features-prefix /gpfs/users/a1881717/5shots_work_dir/runs_fs/features/${dat}/$index --backbone resnet12
   $@
 
 wandb sync
