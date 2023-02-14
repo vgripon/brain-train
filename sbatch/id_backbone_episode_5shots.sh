@@ -31,18 +31,18 @@ source /hpcfs/users/a1881717/lab/bin/activate
 
 
 list1=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_flower")
-list2=("snr")
+list2=("snr" "loo" "fake_acc" "hard" "soft")
 length=${#list2[@]}
 valtest="validation"
 mag_or_ncm="magnitude"
 task_id=$SLURM_ARRAY_TASK_ID
 dat=${list1[$((task_id / length))]}
 proxy=${list2[$((task_id % length))]}
-fsfinetune="/hpcfs/users/a1881717/work_dir/runs_fs/features/${dat}"
-dirvis="/hpcfs/users/a1881717/work_dir/vis/features/${dat}/"
-dirsem="/hpcfs/users/a1881717/work_dir/sem/features/${dat}/"
-dirrandom="/hpcfs/users/a1881717/work_dir/random/features/${dat}/"
-loadepisode="/hpcfs/users/a1881717/work_dir/runs_fs/episodes/${mag_or_ncm}_${dat}.pt"
+fsfinetune="/hpcfs/users/a1881717/5shots_work_dir/runs_fs/features/${dat}"
+dirvis="/hpcfs/users/a1881717/5shots_work_dir/vis/features/${dat}/"
+dirsem="/hpcfs/users/a1881717/5shots_work_dir/sem/features/${dat}/"
+dirrandom="/hpcfs/users/a1881717/5shots_work_dir/random/features/${dat}/"
+loadepisode="/hpcfs/users/a1881717/5shots_work_dir/runs_fs/episodes/${mag_or_ncm}_${dat}.pt"
 
 directories=($dirvis $dirsem $dirrandom)
 result="["
@@ -67,4 +67,4 @@ echo $result
 echo "$dat"
 echo "$proxy"
 
-python ../id_backbone.py --out-file /gpfs/users/a1881717/work_dir/runs_fs/selection.pt --valtest $valtest --fs-finetune $fsfinetune --load-episode $loadepisode --num-cluster $count --target-dataset $dat --proxy $proxy --competing-features $result --dataset-path /users/local/datasets/  --seed 1 --few-shot-ways 0 --few-shot-shots 0 --few-shot-queries 0  --few-shot-runs 200 --dataset-path /hpcfs/users/a1881717/datasets/
+python ../id_backbone.py --out-file /gpfs/users/a1881717/5shots_work_dir/runs_fs/5shots_selection.pt --valtest $valtest --fs-finetune $fsfinetune --load-episode $loadepisode --num-cluster $count --target-dataset $dat --proxy $proxy --competing-features $result --dataset-path /users/local/datasets/  --seed 1 --few-shot-ways 0 --few-shot-shots 0 --few-shot-queries 0  --few-shot-runs 200 --dataset-path /hpcfs/users/a1881717/datasets/

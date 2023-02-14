@@ -303,9 +303,9 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
 def save_results(L,dataset, proxy, chance, episodes,backbones):
     N = args.num_clusters
     if args.fs_finetune=='':
-        file = '/hpcfs/users/a1881717/work_dir/vis/d'+str(N)+'.pt'
-    else:
-        file = '/hpcfs/users/a1881717/work_dir/vis/dFS'+str(N)+'.pt'
+            file2 = args.out_dir+'/dFS'+str(N)+'.pt'
+        else:
+            file2 = args.out_dir+'/d'+str(N)+'.pt'
     if not os.path.isfile(file):
         d={'episodes': {}, 'hash_episode' : {}}
         torch.save(d,file)
@@ -320,9 +320,9 @@ def save_results(L,dataset, proxy, chance, episodes,backbones):
     if proxy in d.keys() and dataset in d[proxy].keys():
         print('overwriting',dataset, proxy)
         if args.fs_finetune=='':
-            file2 = '/hpcfs/users/a1881717/work_dir/vis/dFS'+str(N)+'_2.pt'
+            file2 = args.out_dir+'/dFS'+str(N)+'_2.pt'
         else:
-            file2 = '/hpcfs/users/a1881717/work_dir/vis/d'+str(N)+'_2.pt'
+            file2 = args.out_dir+'/d'+str(N)+'_2.pt'
         torch.save(d,file2)
     d['backbones']= backbones
     if proxy in d.keys():
