@@ -18,7 +18,7 @@
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
 #SBATCH --output=../../slurm/gen_feat/task-%A_%all_fs.out
-#SBATCH --array=200-399
+#SBATCH --array=0-1599
 
 set -eux
 
@@ -42,5 +42,11 @@ dat=${list1[$((task_id / den))]}
 index=$((task_id % den))
 
 
-echo "Running task $SLURM_ARRAY_TASK_ID with string $dat"
-python ../../main.py --dataset-path /hpcfs/users/a1881717/datasets/  --validation-dataset metadataset_${dat}_validation --test-dataset metadataset_${dat}_test --freeze-backbone --load-backbone /hpcfs/users/a1881717/work_dir/runs_fs/backbones/${dat}/backbones_$index --epoch 1 --save-features-prefix /hpcfs/users/a1881717/work_dir/runs_fs/features/${dat}/$index --backbone resnet12
+echo "Running task ${index} with string $dat"
+
+
+if [ "$dat" == "traffic_signs" ]; then
+    python ../../main.py --dataset-path /hpcfs/users/a1881717/datasets/  --test-dataset metadataset_${dat}_test --freeze-backbone --load-backbone /hpcfs/users/a1881717/MD_work_dir/runs_fs/backbones/${dat}/backbones_$index --epoch 1 --save-features-prefix /hpcfs/users/a1881717/MD_work_dir/runs_fs/features/${dat}/$index --backbone resnet12
+else
+    python ../../main.py --dataset-path /hpcfs/users/a1881717/datasets/  --validation-dataset metadataset_${dat}_validation --test-dataset metadataset_${dat}_test --freeze-backbone --load-backbone /hpcfs/users/a1881717/MD_work_dir/runs_fs/backbones/${dat}/backbones_$index --epoch 1 --save-features-prefix /hpcfs/users/a1881717/MD_work_dir/runs_fs/features/${dat}/$index --backbone resnet12
+fi

@@ -17,7 +17,7 @@
 #SBATCH -t 2:00:00
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
-#SBATCH --array=0-199
+#SBATCH --array=200-399
 #SBATCH --output=../../slurm/classifier/task-%A_%all_fs.out
 
 set -eux
