@@ -16,7 +16,6 @@
 #SBATCH -t 2:00:00
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
-#SBATCH --array=0-199
 #SBATCH --output=../../slurm/gen_feat/task-%A_%all_fs.out
 
 set -eux
@@ -29,22 +28,21 @@ export WANDB_MODE=offline
 
 list1=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_flower")
 
-task_id=$SLURM_ARRAY_TASK_ID
-# Get the current string from the list based on the task ID
 dat=${list1[$dat_ind]}
-index=$task_id
+
 if [ "$dat" == "traffic_signs" ]; then
 python ../../main.py --dataset-path /gpfs/users/a1881717/datasets/ \
   --test-dataset metadataset_${dat}_test --freeze-backbone \
-  --load-backbone /gpfs/users/a1881717/5shots_work_dir/runs_fs/backbones/${dat}/backbones_$index \
-  --epoch 1 --save-features-prefix /gpfs/users/a1881717/5shots_work_dir/runs_fs/features/${dat}/$index --backbone resnet12
+  --load-backbone /gpfs/users/a1881717/work_dir/DI/backbones/${dat}/backbones \
+  --epoch 1 --save-features-prefix /gpfs/users/a1881717/work_dir/DI/features/${dat}/f --backbone resnet12
   $@
 else
 python ../../main.py --dataset-path /gpfs/users/a1881717/datasets/ \
  --validation-dataset metadataset_${dat}_validation \
   --test-dataset metadataset_${dat}_test --freeze-backbone \
-  --load-backbone /gpfs/users/a1881717/5shots_work_dir/runs_fs/backbones/${dat}/backbones_$index \
-  --epoch 1 --save-features-prefix /gpfs/users/a1881717/5shots_work_dir/runs_fs/features/${dat}/$index --backbone resnet12
+  --load-backbone /gpfs/users/a1881717/work_dir/DI/backbones/${dat}/backbones \
+  --epoch 1 --save-features-prefix /gpfs/users/a1881717/work_dir/DI/features/${dat}/f --backbone resnet12
   $@
 fi
+
 wandb sync

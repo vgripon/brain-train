@@ -16,7 +16,6 @@
 #SBATCH -t 2:00:00
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
-#SBATCH --array=0-199
 #SBATCH --output=../../slurm/classifier/task-%A_%all_fs.out
 
 set -eux
@@ -29,19 +28,18 @@ export WANDB_MODE=offline
 
 list1=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_flower")
 
-task_id=$SLURM_ARRAY_TASK_ID
 # Get the current string from the list based on the task ID
 dat=${list1[$dat_ind]}
-index=$task_id
+
 
 python ../../main.py \
   --dataset-path /gpfs/users/a1881717/datasets/ \
   --load-backbone /gpfs/users/a1881717/resnet12_metadataset_imagenet_64.pt \
-  --subset-file /gpfs/users/a1881717/5shots_work_dir/runs_fs/episodes/binary_5shots_top50_${dat}.npy \
-  --index-subset ${index} \
+  --subset-file /gpfs/users/a1881717/work_dir/DI/episodes/binary_${dat}_50.npy  \
+  --index-subset 0 \
   --training-dataset metadataset_imagenet_train \
   --epoch 20 --dataset-size 10000 --wd 0.0001 --lr 0.001 \
-  --save-classifier /gpfs/users/a1881717/5shots_work_dir/runs_fs/classifiers/${dat}/classifier_${index} \
+  --save-classifier /gpfs/users/a1881717/work_dir/DI/classifiers/${dat}/classifier \
   --backbone resnet12 --batch-size 128 --few-shot-shots 0 --few-shot-ways 0 --few-shot-queries 0 --few-shot --optimizer adam \
   $@
 

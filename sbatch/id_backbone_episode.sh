@@ -21,12 +21,11 @@
 #SBATCH --output=../slurm/id_backbone_episode/task-%A_%a_id_backbone_episode.out
 set -eux
 
-module load arch/skylake
-module load Python/3.8.6
-module load CUDA/11.2.0
-module load cuDNN/CUDA-11.2
+dat_ind=${1:-0} ; shift
 
-source /hpcfs/users/a1881717/lab/bin/activate
+source /gpfs/users/a1881717/env.sh
+
+export WANDB_MODE=offline
 
 
 

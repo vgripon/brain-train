@@ -266,7 +266,7 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
     shift = 0
     if args.fs_finetune!='':
         shift=1
-    filename_baseline = os.path.join('/hpcfs/users/a1881717/work_dir/baseline/features/'+dataset+'/featmetadataset_'+ dataset+'_'+args.valtest+'_features.pt' )
+    filename_baseline = os.path.join('/gpfs/users/a1881717/work_dir/baseline/features/'+dataset+'/featmetadataset_'+ dataset+'_'+args.valtest+'_features.pt' )
     res_baseline = testFewShot_proxy(filename_baseline, datasets = dataset,n_shots = n_shots, proxy=proxy, tqdm_verbose = True)
     L = np.zeros((N+1+shift,2,len(res_baseline['acc'])))  #N+A and the two bottom lines are here to add the baseline amongst candidates
     L[N,0] = np.array(res_baseline['acc']) 
@@ -279,11 +279,11 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
         L[i,1] = np.array(res[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
     if args.fs_finetune!='':
         filename = args.fs_finetune
-        res = testFewShot_proxy(filename, datasets = dataset, n_shots = n_shots, proxy = [proxy])
+        res_fn = testFewShot_proxy(filename, datasets = dataset, n_shots = n_shots, proxy = [proxy])
         L[N+1,0] = np.array(res_baseline['acc']) ### updated the position of the baseline
         L[N+1,1] = np.array(res_baseline[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
-        L[N,0] = np.array(res['acc'])  #custom finetune is before last
-        L[N,1] = np.array(res[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
+        L[N,0] = np.array(res_fn['acc'])  #custom finetune is before last
+        L[N,1] = np.array(res_fn[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
     print(dataset, n_shots, 'n_shots', 'proxy', proxy)
     random_backbone = np.take_along_axis(L[:,0],np.random.randint(0, N+1, L.shape[2] ).reshape(1,-1), axis = 0)
     print_metric(random_backbone.ravel(), 'random_backbone')
@@ -292,6 +292,7 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
     print_metric(opti.ravel(), 'opti: ')
     baseline = res_baseline['acc']
     print_metric(baseline,'baseline: ')
+    print_metric(res_fn['acc'],'finetuned: ')
     print_metric(L[N,0,:],'sanity check baseline: ')
     max_possible = np.take_along_axis(L[:,0],L[:,0].argmax(0)[None,:], axis =0)
     print_metric(max_possible.ravel(),'max_possible: ')
@@ -303,9 +304,9 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
 def save_results(L,dataset, proxy, chance, episodes,backbones):
     N = args.num_clusters
     if args.fs_finetune=='':
-            file2 = args.out_dir+'/dFS'+str(N)+'.pt'
-        else:
-            file2 = args.out_dir+'/d'+str(N)+'.pt'
+        file = args.out_file+'FS'
+    else:
+        file = args.out_file
     if not os.path.isfile(file):
         d={'episodes': {}, 'hash_episode' : {}}
         torch.save(d,file)
@@ -320,9 +321,9 @@ def save_results(L,dataset, proxy, chance, episodes,backbones):
     if proxy in d.keys() and dataset in d[proxy].keys():
         print('overwriting',dataset, proxy)
         if args.fs_finetune=='':
-            file2 = args.out_dir+'/dFS'+str(N)+'_2.pt'
+            file2 = args.out_file+'FS2'
         else:
-            file2 = args.out_dir+'/d'+str(N)+'_2.pt'
+            file2 = args.out_file+'2'
         torch.save(d,file2)
     d['backbones']= backbones
     if proxy in d.keys():
