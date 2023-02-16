@@ -43,7 +43,7 @@ dirvis="/hpcfs/users/a1881717/work_dir/vis/features/${dat}/"
 dirsem="/hpcfs/users/a1881717/work_dir/sem/features/${dat}/"
 dirrandom="/hpcfs/users/a1881717/work_dir/random/features/${dat}/"
 loadepisode="/hpcfs/users/a1881717/MD_work_dir/runs_fs/episodes/${mag_or_ncm}_MD_${dat}.pt"
-
+outfile="/hpcfs/users/a1881717/MD_work_dir/runs_fs/d_MD.pt"
 directories=($dirvis $dirsem $dirrandom)
 result="["
 count=0
@@ -67,4 +67,4 @@ echo $result
 echo "$dat"
 echo "$proxy"
 
-python ../id_backbone.py --valtest $valtest --fs-finetune $fsfinetune --load-episode $loadepisode --num-cluster $count --target-dataset $dat --proxy $proxy --competing-features $result --dataset-path /users/local/datasets/  --seed 1 --few-shot-ways 0 --few-shot-shots 0 --few-shot-queries 0  --few-shot-runs 200 --dataset-path /hpcfs/users/a1881717/datasets/
+python ../id_backbone.py --out-file $outfile --valtest $valtest --fs-finetune $fsfinetune --load-episode $loadepisode --num-cluster $count --target-dataset $dat --proxy $proxy --competing-features $result --dataset-path /users/local/datasets/  --seed 1 --few-shot-ways 0 --few-shot-shots 0 --few-shot-queries 0  --few-shot-runs 200 --dataset-path /hpcfs/users/a1881717/datasets/

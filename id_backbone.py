@@ -263,12 +263,14 @@ def print_metric(metric_tensor, name = ''):
 
 def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = '', save = False):
     N = args.num_clusters
-    shift = 0
     if args.fs_finetune!='':
-        shift=1
+        shift_fs=1
+    if args.cheated!='':
+        shift_ch=1
+    N+=(shift_fs+shift_ch)
     filename_baseline = os.path.join('/gpfs/users/a1881717/work_dir/baseline/features/'+dataset+'/featmetadataset_'+ dataset+'_'+args.valtest+'_features.pt' )
     res_baseline = testFewShot_proxy(filename_baseline, datasets = dataset,n_shots = n_shots, proxy=proxy, tqdm_verbose = True)
-    L = np.zeros((N+1+shift,2,len(res_baseline['acc'])))  #N+A and the two bottom lines are here to add the baseline amongst candidates
+    L = np.zeros((N+1,2,len(res_baseline['acc'])))  #N+A and the two bottom lines are here to add the baseline amongst candidates
     L[N,0] = np.array(res_baseline['acc']) 
     L[N,1] = np.array(res_baseline[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
     episodes = res_baseline['episodes']
@@ -280,10 +282,14 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
     if args.fs_finetune!='':
         filename = args.fs_finetune
         res_fn = testFewShot_proxy(filename, datasets = dataset, n_shots = n_shots, proxy = [proxy])
-        L[N+1,0] = np.array(res_baseline['acc']) ### updated the position of the baseline
-        L[N+1,1] = np.array(res_baseline[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
-        L[N,0] = np.array(res_fn['acc'])  #custom finetune is before last
-        L[N,1] = np.array(res_fn[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
+        L[N-shift_ch-1]=np.array(res_cheated['acc'])  #custom finetune is before-before last
+        L[N-shift_ch-1,1] = np.array(res_cheated[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
+    if args.cheated!='':
+        res_cheated = testFewShot_proxy(args.cheated, datasets = dataset, n_shots = n_shots, proxy = [proxy])
+        L[N-1,0] = np.array(res_cheated['acc'])  #custom cheated is before last
+        L[N-1,1] = np.array(res_cheated[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
+    
+
     print(dataset, n_shots, 'n_shots', 'proxy', proxy)
     random_backbone = np.take_along_axis(L[:,0],np.random.randint(0, N+1, L.shape[2] ).reshape(1,-1), axis = 0)
     print_metric(random_backbone.ravel(), 'random_backbone')
@@ -293,6 +299,7 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
     baseline = res_baseline['acc']
     print_metric(baseline,'baseline: ')
     print_metric(res_fn['acc'],'finetuned: ')
+    print_metric(res_cheated['acc'],'cheated: ')
     print_metric(L[N,0,:],'sanity check baseline: ')
     max_possible = np.take_along_axis(L[:,0],L[:,0].argmax(0)[None,:], axis =0)
     print_metric(max_possible.ravel(),'max_possible: ')

@@ -41,6 +41,7 @@ dirvis="/gpfs/users/a1881717/work_dir/vis/features/${dat}/"
 dirsem="/gpfs/users/a1881717/work_dir/sem/features/${dat}/"
 dirrandom="/gpfs/users/a1881717/work_dir/random/features/${dat}/"
 loadepisode="/gpfs/users/a1881717/5shots_work_dir/runs_fs/episodes/${mag_or_ncm}_5shots_${dat}.pt"
+cheated="/gpfs/users/a1881717/work_dir/DI/features/${dat}/fmetadataset_${dat}_${valtest}_features.pt"
 
 directories=($dirvis $dirsem $dirrandom)
 result="["
@@ -72,4 +73,4 @@ echo "$proxy"
 
 
 
-python ../id_backbone.py --out-file /gpfs/users/a1881717/5shots_work_dir/runs_fs/5shots_selection.pt --valtest $valtest --fs-finetune $fsfinetune --load-episode $loadepisode --num-cluster $count --target-dataset $dat --proxy $proxy --competing-features $result --dataset-path /users/local/datasets/  --seed 1 --few-shot-ways 0 --few-shot-shots 0 --few-shot-queries 0  --few-shot-runs 200 --dataset-path /gpfs/users/a1881717/datasets/
+python ../id_backbone.py --out-file /gpfs/users/a1881717/5shots_work_dir/runs_fs/5shots_selection.pt --cheated $cheated --valtest $valtest --fs-finetune $fsfinetune --load-episode $loadepisode --num-cluster $count --target-dataset $dat --proxy $proxy --competing-features $result --dataset-path /users/local/datasets/  --seed 1 --few-shot-ways 0 --few-shot-shots 0 --few-shot-queries 0  --few-shot-runs 200 --dataset-path /gpfs/users/a1881717/datasets/

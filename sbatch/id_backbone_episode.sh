@@ -37,11 +37,12 @@ mag_or_ncm="magnitude"
 task_id=$SLURM_ARRAY_TASK_ID
 dat=${list1[$((task_id / length))]}
 proxy=${list2[$((task_id % length))]}
-fsfinetune="/hpcfs/users/a1881717/work_dir/runs_fs/features/${dat}"
-dirvis="/hpcfs/users/a1881717/work_dir/vis/features/${dat}/"
-dirsem="/hpcfs/users/a1881717/work_dir/sem/features/${dat}/"
-dirrandom="/hpcfs/users/a1881717/work_dir/random/features/${dat}/"
-loadepisode="/hpcfs/users/a1881717/work_dir/runs_fs/episodes/${mag_or_ncm}_${dat}.pt"
+fsfinetune="/gpfs/users/a1881717/work_dir/runs_fs/features/${dat}"
+dirvis="/gpfs/users/a1881717/work_dir/vis/features/${dat}/"
+dirsem="/gpfs/users/a1881717/work_dir/sem/features/${dat}/"
+dirrandom="/gpfs/users/a1881717/work_dir/random/features/${dat}/"
+loadepisode="/gpfs/users/a1881717/work_dir/runs_fs/episodes/${mag_or_ncm}_${dat}.pt"
+cheated="/gpfs/users/a1881717/work_dir/DI/features/${dat}/fmetadataset_${dat}_${valtest}_features.pt"
 
 directories=($dirvis $dirsem $dirrandom)
 result="["
@@ -66,4 +67,4 @@ echo $result
 echo "$dat"
 echo "$proxy"
 
-python ../id_backbone.py --out-file /gpfs/users/a1881717/work_dir/runs_fs/selection.pt --valtest $valtest --fs-finetune $fsfinetune --load-episode $loadepisode --num-cluster $count --target-dataset $dat --proxy $proxy --competing-features $result --dataset-path /users/local/datasets/  --seed 1 --few-shot-ways 0 --few-shot-shots 0 --few-shot-queries 0  --few-shot-runs 200 --dataset-path /hpcfs/users/a1881717/datasets/
+python ../id_backbone.py --out-file /gpfs/users/a1881717/work_dir/runs_fs/selection.pt --cheated $cheated --valtest $valtest --fs-finetune $fsfinetune --load-episode $loadepisode --num-cluster $count --target-dataset $dat --proxy $proxy --competing-features $result --dataset-path /users/local/datasets/  --seed 1 --few-shot-ways 0 --few-shot-shots 0 --few-shot-queries 0  --few-shot-runs 200 --dataset-path /gpfs/users/a1881717/datasets/

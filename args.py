@@ -99,6 +99,7 @@ parser.add_argument("--valtest", type=str, default='should_be_test_or_val', help
 parser.add_argument("--competing-features", type=str, default='list of features', help="list of features for id_backbone")
 parser.add_argument("--load-episodes", type=str, default='', help="dict of episode")
 parser.add_argument("--fs-finetune", type=str, default='', help="path of dir to fs tuned features")
+parser.add_argument("--cheated", type=str, default='', help="path of file of cheated features")
 
 
 
