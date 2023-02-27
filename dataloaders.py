@@ -257,7 +257,7 @@ def metadataset(datasetName, name):
     all_datasets = json.loads(f.read())
     f.close()
     dataset = all_datasets[name+"_" + datasetName]
-    if args.subset_file != '' and datasetName == 'train':
+    if args.subset_file != '' and datasetName == args.subset_split:
         dataset = subsample_dataset(dataset,args.subset_file,int(args.index_subset))
     if datasetName not in ["test", "validation"]:
         datasetName = 'train' # the dataset was loaded now the only thing that matters is if it is a train one.

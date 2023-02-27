@@ -147,7 +147,8 @@ def test(backbone, datasets, criterion):
                 if args.save_logits == '':
                     loss, score = criterion[testSetIdx](backbone, data, target, lr=True)
                 else:
-                    loss, score, logit = criterion[testSetIdx](backbone, data, target, lr=True)
+                    n_classes_classifier = criterion[testSetIdx].fc.out_features # this is useful if the number of classes of the dataset is larger than the output of the classifier (use case:  get its logit)
+                    loss, score, logit = criterion[testSetIdx](backbone, data,target%n_classes_classifier, lr=True)
                 losses += data.shape[0] * loss.item()
                 accuracies += data.shape[0] * score.item()
                 total_elt += data.shape[0]

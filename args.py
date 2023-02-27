@@ -87,7 +87,7 @@ parser.add_argument("--subdomain", type=str, default='', help="npy file with ind
 parser.add_argument("--subset-file", type=str, default='', help="binary npy file with index clusters of classes in imagenet")
 parser.add_argument("--index-subset", type=str, default='', help="binary npy file with index clusters of classes in imagenet")
 parser.add_argument("--out-file", type=str, default='', help="output result file of id_backbone.py")
-
+parser.add_argument("--subset-split", type=str, default='train', help="split on which the subset file is applied.")
 
 parser.add_argument("--dropout", type=float, default=0., help="dropout rate")
 parser.add_argument("--num-clusters", type=int, default=50, help="number of clusters")
