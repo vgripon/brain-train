@@ -20,6 +20,7 @@ class ConvBN2d(nn.Module):
         y = self.bn(self.conv(x))
         if lbda is not None:
             y = lbda * y + (1 - lbda) * y[perm]
+
         if self.outRelu:
             if not self.leaky:
                 return torch.relu(y)
@@ -106,7 +107,6 @@ class ResNet(nn.Module):
             x = lbda * x + (1 - lbda) * x[perm]
         if x.shape[1] == 1:
             x = x.repeat(1,3,1,1)
-
         if mixup_layer == 1:
             y = self.embed(x, lbda, perm)
         else:
@@ -114,7 +114,6 @@ class ResNet(nn.Module):
 
         if self.large:
             y = self.mp(y)
-
         for i, block in enumerate(self.blocks):
             if mixup_layer == i + 2:
                 y = block(y, lbda, perm)

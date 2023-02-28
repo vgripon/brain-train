@@ -206,12 +206,19 @@ def generateFeatures(backbone, datasets, sample_aug=args.sample_aug):
             for augs in range(n_aug):
                 features = [{"name_class": name_class, "features": []} for name_class in dataset["name_classes"]]
                 for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
-                    if isinstance(data, dict):
-                        data = data["supervised"]
-                    data, target = to(data, args.device), target.to(args.device)
-                    feats = backbone(data).to("cpu")
-                    for i in range(feats.shape[0]):
-                        features[target[i]]["features"].append(feats[i])
+                    reda = True
+                    if reda  : 
+                        if isinstance(data, dict):
+                            data = data["supervised"]
+                        data, target = to(data, args.device), target.to(args.device)
+                        #print(data)
+                        #print(data.shape)
+                        #print("feaaaaaaaaaaaaaaaaats")
+                        feats = backbone(data).to("cpu")
+                        #print(feats.shape)
+                        #print(feats)
+                        for i in range(feats.shape[0]):
+                            features[target[i]]["features"].append(feats[i])
                 for c in range(len(allFeatures)):
                     if augs == 0:
                         allFeatures[c]["features"] = torch.stack(features[c]["features"])/n_aug
@@ -254,9 +261,8 @@ for nRun in range(args.runs):
     else:
         import backbones
         backbone, outputDim = backbones.prepareBackbone()
-        print(backbone)
     if args.load_backbone != "":
-        backbone.load_state_dict(torch.load(args.load_backbone))
+        backbone.load_state_dict(torch.load(args.load_backbone, map_location=args.device)["state_dict"])
     backbone = backbone.to(args.device)
     if not args.silent:
         numParamsBackbone = torch.tensor([m.numel() for m in backbone.parameters()]).sum().item()
@@ -270,7 +276,18 @@ for nRun in range(args.runs):
             nSteps = math.ceil(args.dataset_size / args.batch_size)
     except:
         nSteps = 0
-    
+
+    print(backbone)
+    #print(backbone.state_dict())
+    #embed = nn.Sequential(backbone.embed)
+    #block_net = nn.Sequential(*list(backbone.blocks))
+    #backbone = nn.Sequential(embed, block_net)
+
+    featuresValidation = generateFeatures(backbone, validationSet)
+    biyam = testFewShot(featuresValidation, validationSet)
+    print(biyam)
+    print(STOP)
+
     criterion = {}
     teacher = {}
     all_steps = [item for sublist in eval(args.steps) for item in sublist]
@@ -435,6 +452,7 @@ for nRun in range(args.runs):
         if allRunValidationStats is not None:
             allRunValidationStats = torch.cat([allRunValidationStats, validationStats.unsqueeze(0)])
         else:
+            print(validationStats,"STATS")
             allRunValidationStats = validationStats.unsqueeze(0)
     if testSet != []:
         if allRunTestStats is not None:
