@@ -145,6 +145,7 @@ def test(backbone, datasets, criterion):
                 data = to(data, args.device)
                 target = target.to(args.device)
                 if args.save_logits == '':
+                    print(criterion)
                     loss, score = criterion[testSetIdx](backbone, data, target, lr=True)
                 else:
                     n_classes_classifier = criterion[testSetIdx].fc.out_features # this is useful if the number of classes of the dataset is larger than the output of the classifier (use case:  get its logit)
@@ -494,6 +495,7 @@ for nRun in range(args.runs):
                     for stat in range(stats.shape[2]):
                         low, up = confInterval(stats[:,dataset,stat])
                         print("\t{:.3f} ±{:.3f} (conf. [{:.3f}, {:.3f}])".format(stats[:,dataset,stat].mean().item(), stats[:,dataset,stat].std().item(), low, up), end = '')
+                        save_stats(args.save_stats,stats[:,dataset,stat].mean().item())
                     print()
     print()
     if args.wandb!='':

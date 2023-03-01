@@ -5,6 +5,7 @@ import torch
 import numpy
 import scipy.stats as st
 from args import args
+import os
 
 lastDisplay = time.time()
 def display(string, end = '\n', force = False):
@@ -52,5 +53,18 @@ def updateCSV(stats, epoch = -1):
             text += str(stats[i,0].item()) + ", " + str(stats[i,1].item()) + ", "
         f.write(text)
         f.close()
+
+def save_stats(filename, datapoint):
+    if os.path.isfile(filename):
+        # Load data from file
+        data = torch.load(filename)
+        # Add new float to list
+        data.append(datapoint)
+    else:
+        # Create new list with one float
+        data = [datapoint]
+
+    # Save data to file
+    torch.save(data, filename)
 
 print(" utils,", end="")
