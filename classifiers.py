@@ -151,6 +151,8 @@ class ProtoNet(nn.Module):
 
 ### NCM
 def ncm(shots, queries):
+    if args.chance:
+        return 1/len(shots)
     centroids = torch.stack([shotClass.mean(dim = 0) for shotClass in shots])
     score = 0
     total = 0
