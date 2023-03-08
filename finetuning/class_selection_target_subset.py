@@ -91,10 +91,7 @@ if __name__=='__main__':
     for dataset in [args.target_dataset]:
         print('\n\n {} \n\n'.format(dataset))
         if popos:
-            if dataset == 'traffic_signs':
-                logits_from_file = torch.load('/home/raphael/Documents/models/old_logits/logits_{}_test.pt'.format(dataset))
-            else:
-                logits_from_file = torch.load('/home/raphael/Documents/models/old_logits/logits_{}_val.pt'.format(dataset))
+            logits_from_file = torch.load('/home/raphael/Documents/models/old_logits/logits_{}_test.pt'.format(dataset))
         else:
             if dataset == 'traffic_signs':
                 logits_from_file = torch.load('/users2/libre/raphael/logits_{}_test.pt'.format(dataset))

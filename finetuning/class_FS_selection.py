@@ -1,12 +1,12 @@
 import sys
 import torch
 import torch.nn as nn
-popos = False
+popos = True
 if popos:
-    sys.path.append('/home/raphael/Documents/brain-train')
+    sys.path.append('.')
 else:
     sys.path.append('/homes/r21lafar/Documents/brain-train')
-
+print(sys.path)
 from few_shot_evaluation import EpisodicGenerator, ImageNetGenerator, OmniglotGenerator
 from args import args
 import os
@@ -16,10 +16,10 @@ import random
 from tqdm import tqdm
 import numpy as np
 import json 
+k=50
 
 with open(os.path.join(args.dataset_path,'datasets_subdomain.json')) as f:
     dataset_json = json.load(f)
-print(dataset_json['metadataset_omniglot_test'].keys())
 
 
 def print_classes(ordered_acc, std, accuracy, nb_sample):
@@ -55,7 +55,7 @@ def GenFewShot(features, datasets = None, write_file=False):
     if datasets=='omniglot':
             Generator = OmniglotGenerator
             generator = Generator(datasetName='omniglot', num_elements_per_class= [feat['features'].shape[0] for feat in features], dataset_path=args.dataset_path)
-            generator.dataset = dataset_json['metadataset_omniglot_validation']
+            generator.dataset = dataset_json['metadataset_omniglot_test']
     else:
         args.dataset_path = None
         Generator = EpisodicGenerator
@@ -88,20 +88,14 @@ def ncm_dim(shots,queries):
 
 
 
-
+print('hello')
 if __name__=='__main__':
-    for dataset in ['cub', 'aircraft', 'dtd',  'fungi', 'omniglot', 'traffic_signs', 'vgg_flower', 'mscoco',]:
+    for dataset in ['cub', 'aircraft', 'dtd',  'fungi', 'omniglot', 'traffic_signs', 'vgg_flower', 'mscoco']:
         print('\n\n {} \n\n'.format(dataset))
         if popos:
-            if dataset == 'traffic_signs':
-                logits_from_file = torch.load('/home/raphael/Documents/models/old_logits/logits_{}_test.pt'.format(dataset))
-            else:
-                logits_from_file = torch.load('/home/raphael/Documents/models/old_logits/logits_{}_val.pt'.format(dataset))
+            logits_from_file = torch.load('/home/raphael/Documents/models/old_logits/logits_{}_test.pt'.format(dataset))
         else:
-            if dataset == 'traffic_signs':
-                logits_from_file = torch.load('/users2/libre/raphael/old_logits/logits_{}_test.pt'.format(dataset))
-            else:
-                logits_from_file = torch.load('/users2/libre/raphael/old_logits/logits_{}_val.pt'.format(dataset))
+            logits_from_file = torch.load('/users2/libre/raphael/old_logits/logits_{}_test.pt'.format(dataset))
 
         softmax = nn.Softmax(dim = 1)
         #feats = torch.stack([x['logits'] for x in logits_from_file])
@@ -129,7 +123,12 @@ if __name__=='__main__':
             #torch.save(ordered_mag,'finetuning/selections/runs/magnitude_selected_{}{}.pt'.format(dataset,i))
         magnitudes['mag'] = torch.stack(magnitudes['mag'])
         magnitudes['ord'] = torch.stack(magnitudes['ord'])
-        torch.save(magnitudes,'finetuning/selections/runs/magnitudes/magnitude_{}.pt'.format(dataset))
+        torch.save(magnitudes,'finetuning/selections/runs/magnitudes_test/magnitude_test_{}.pt'.format(dataset))
+        bin = np.ones(magnitudes['ord'].shape,dtype=np.bool)
+        for i in range(magnitudes['ord'].shape[0]):
+            bin[i,magnitude['ord'][i,:k].cpu()]=0
+        #print(b[i])
 
+        np.save('finetuning/selections/runs/magnitudes_test/binaryFS_test_{}_{}.npy'.format(k,dataset), bin)
 
 
