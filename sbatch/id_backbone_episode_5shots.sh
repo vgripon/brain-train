@@ -16,7 +16,7 @@
 #SBATCH -t 03:00:00
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
-#SBATCH --array=0-39
+#SBATCH --array=5-9
 #SBATCH --output=../slurm/id_backbone_episode/task-%A_%a_id_backbone_episode.out
 set -eux
 

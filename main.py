@@ -495,7 +495,7 @@ for nRun in range(args.runs):
                     for stat in range(stats.shape[2]):
                         low, up = confInterval(stats[:,dataset,stat])
                         print("\t{:.3f} ±{:.3f} (conf. [{:.3f}, {:.3f}])".format(stats[:,dataset,stat].mean().item(), stats[:,dataset,stat].std().item(), low, up), end = '')
-                        save_stats(args.save_stats,stats[:,dataset,stat].mean().item())
+                        save_stats(args.save_stats,{'i':args.index_subset , 'stats' : stats[:,dataset,stat].mean().item()})
                     print()
     print()
     if args.wandb!='':

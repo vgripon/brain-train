@@ -9,24 +9,20 @@
 # ( EXP_NAME=resnet50 sbatch .../slurm/run_imagenet.sh --arch=resnet50 )
 # ( EXP_NAME=resnet50-b128-lr0.05 sbatch .../slurm/run_imagenet.sh --arch=resnet50 --batch-size=128 --learning-rate=0.05 )
 
-#SBATCH -M volta
-#SBATCH -J FS_raph2
-#SBATCH -p batch
+#SBATCH -J id_backbone
+#SBATCH -p gpunodes
+#SBATCH -N 1
 #SBATCH -N 1
 #SBATCH -c 4
 #SBATCH -t 24:00:00
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
-#SBATCH --array=0-7
+#SBATCH --array=9-9
 #SBATCH --output=../slurm/id_backbone_episode/task-%A_%a_id_backbone_episode.out
 set -eux
 
-module load arch/skylake
-module load Python/3.8.6
-module load CUDA/11.2.0
-module load cuDNN/CUDA-11.2
 
-source /hpcfs/users/a1881717/lab/bin/activate
+source /gpfs/users/a1881717/env.sh
 
 
 
@@ -38,12 +34,13 @@ mag_or_ncm="magnitude"
 task_id=$SLURM_ARRAY_TASK_ID
 dat=${list1[$((task_id / length))]}
 proxy=${list2[$((task_id % length))]}
-fsfinetune="/hpcfs/users/a1881717/MD_work_dir/runs_fs/features/${dat}"
-dirvis="/hpcfs/users/a1881717/work_dir/vis/features/${dat}/"
-dirsem="/hpcfs/users/a1881717/work_dir/sem/features/${dat}/"
-dirrandom="/hpcfs/users/a1881717/work_dir/random/features/${dat}/"
-loadepisode="/hpcfs/users/a1881717/MD_work_dir/runs_fs/episodes/${mag_or_ncm}_MD_${dat}.pt"
-outfile="/hpcfs/users/a1881717/MD_work_dir/runs_fs/d_MD.pt"
+fsfinetune="/gpfs/users/a1881717/MD_work_dir/runs_fs/features/${dat}"
+dirvis="/gpfs/users/a1881717/work_dir/vis/features/${dat}/"
+dirsem="/gpfs/users/a1881717/work_dir/sem/features/${dat}/"
+dirrandom="/gpfs/users/a1881717/work_dir/random/features/${dat}/"
+loadepisode="/gpfs/users/a1881717/MD_work_dir/runs_fs/episodes/${mag_or_ncm}_MD_${dat}.pt"
+outfile="/gpfs/users/a1881717/MD_work_dir/runs_fs/d_MD.pt"
+cheated="/gpfs/users/a1881717/work_dir/DI/features/${dat}/fmetadataset_${dat}_${valtest}_features.pt"
 directories=($dirvis $dirsem $dirrandom)
 result="["
 count=0
@@ -67,4 +64,7 @@ echo $result
 echo "$dat"
 echo "$proxy"
 
-python ../id_backbone.py --out-file $outfile --valtest $valtest --fs-finetune $fsfinetune --load-episode $loadepisode --num-cluster $count --target-dataset $dat --proxy $proxy --competing-features $result --dataset-path /users/local/datasets/  --seed 1 --few-shot-ways 0 --few-shot-shots 0 --few-shot-queries 0  --few-shot-runs 200 --dataset-path /hpcfs/users/a1881717/datasets/
+python ../id_backbone.py --out-file $outfile --cheated $cheated --valtest $valtest --fs-finetune $fsfinetune \
+--load-episode $loadepisode --num-cluster $count --target-dataset $dat --proxy $proxy \
+ --competing-features $result  --seed 1 --few-shot-ways 0 \
+ --few-shot-shots 0 --few-shot-queries 0  --few-shot-runs 200 --dataset-path /gpfs/users/a1881717/datasets/

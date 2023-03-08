@@ -63,7 +63,7 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
     if not os.path.isdir(filename):
         features = [torch.load(filename, map_location=args.device)]
     else:
-        features = [torch.load(os.path.join(filename,'0metadataset_{0}_{1}_features.pt'.format(args.target_dataset, args.valtest)), map_location=args.device)]
+        features = [torch.load(os.path.join(filename,'2_0metadataset_{0}_{1}_features.pt'.format(args.target_dataset, args.valtest)), map_location=args.device)]
         #first run just to get the genrator right
     for i in range(len(features)):
         accs = []
@@ -93,7 +93,7 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
                 episode = generator.sample_episode(ways=args.few_shot_ways, n_shots=n_shots, n_queries=args.few_shot_queries, unbalanced_queries=args.few_shot_unbalanced_queries, max_queries = args.max_queries)
             else:
                 if os.path.isdir(filename):
-                    feature = torch.load(os.path.join(filename,str(run)+'metadataset_{0}_{1}_features.pt'.format(args.target_dataset, args.valtest)), map_location=args.device)
+                    feature = torch.load(os.path.join(filename,'2_'+str(run)+'metadataset_{0}_{1}_features.pt'.format(args.target_dataset, args.valtest)), map_location=args.device)
                 episode = {'shots_idx' : episodes['shots_idx'][run], 'queries_idx' : episodes['queries_idx'][run], 'choice_classes' : episodes['choice_classes'][run]}
             #if run ==1:
             #    print('1st run shot', episode['shots_idx'][0])
@@ -263,6 +263,7 @@ def print_metric(metric_tensor, name = ''):
 
 def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = '', save = False):
     N = args.num_clusters
+    shift_ch,shift_fs=0,0
     if args.fs_finetune!='':
         shift_fs=1
     if args.cheated!='':
@@ -274,7 +275,7 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
     L[N,0] = np.array(res_baseline['acc']) 
     L[N,1] = np.array(res_baseline[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
     episodes = res_baseline['episodes']
-    for i in tqdm(range(N)):
+    for i in tqdm(range(N-shift_ch-shift_fs)):
         filename = eval(eval(args.competing_features))[i]
         res = testFewShot_proxy(filename, datasets = dataset, n_shots = n_shots, proxy = [proxy])
         L[i,0] = np.array(res['acc'])
@@ -282,8 +283,8 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
     if args.fs_finetune!='':
         filename = args.fs_finetune
         res_fn = testFewShot_proxy(filename, datasets = dataset, n_shots = n_shots, proxy = [proxy])
-        L[N-shift_ch-1]=np.array(res_cheated['acc'])  #custom finetune is before-before last
-        L[N-shift_ch-1,1] = np.array(res_cheated[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
+        L[N-shift_ch-1,0]=np.array(res_fn['acc'])  #custom finetune is before-before last
+        L[N-shift_ch-1,1] = np.array(res_fn[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
     if args.cheated!='':
         res_cheated = testFewShot_proxy(args.cheated, datasets = dataset, n_shots = n_shots, proxy = [proxy])
         L[N-1,0] = np.array(res_cheated['acc'])  #custom cheated is before last
