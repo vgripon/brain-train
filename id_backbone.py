@@ -16,6 +16,7 @@ import json
 from collections import defaultdict
 import hashlib
 import torch.nn as nn
+import hm_selection
 
 load_episode = args.load_episodes!=''
 load_fs_fine = args.fs_finetune!=''
@@ -74,6 +75,7 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
         loo = []
         soft,hard = [],[] 
         rankme, rankme_t = [],[]
+        hnm=[]
         episodes = {'shots_idx' : [], 'queries_idx' : [], 'choice_classes' : []}
         if datasets=='omniglot':
             Generator = OmniglotGenerator
@@ -85,6 +87,8 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
             generator = Generator(datasetName=None, num_elements_per_class= [len(feat['features']) for feat in feature], dataset_path=args.dataset_path)
         if args.load_episodes!='':
             episodes = torch.load(args.load_episodes)['episodes']
+        if 'hnm' in proxy:
+            hnm = hm_selection.choose_backbone(episodes, datasets, generator)
         for run in tqdm(range(args.few_shot_runs)) if tqdm_verbose else range(args.few_shot_runs):
             if args.load_episodes=='':
                 shots = []
@@ -123,6 +127,7 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
                 rankme.append(Rankme(shots))
             if 'rankme_t' in proxy:
                 rankme_t.append(Rankme(shots, queries))
+            
             for epi in episode.items():
                 episodes[epi[0]].append(epi[1])
         accs = 100 * torch.tensor(accs)
@@ -131,7 +136,7 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
         snr = torch.tensor(snr)
         loo = 100*torch.tensor(loo)
         rankme , rankme_t = torch.tensor(rankme), torch.tensor(rankme_t)
-        return {'episodes': episodes , 'acc' : accs,'snr': snr, 'fake_acc'+QR*'QR'+args.isotropic*'isotropic'  : fake_acc, 'chance' : chance, 'loo' : loo, 'soft' : soft, 'hard': hard, 'rankme' : rankme, 'rankme_t' : rankme_t}
+        return {'episodes': episodes , 'acc' : accs,'snr': snr, 'fake_acc'+QR*'QR'+args.isotropic*'isotropic'  : fake_acc, 'chance' : chance, 'loo' : loo, 'soft' : soft, 'hard': hard, 'rankme' : rankme, 'rankme_t' : rankme_t, 'hnm': hnm}
 
 
 def Rankme(shots , queries = None, centroids = args.centroids):

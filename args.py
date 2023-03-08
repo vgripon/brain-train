@@ -89,6 +89,8 @@ parser.add_argument("--index-subset", type=str, default='', help="binary npy fil
 parser.add_argument("--out-file", type=str, default='', help="output result file of id_backbone.py")
 parser.add_argument("--subset-split", type=str, default='train', help="split on which the subset file is applied.")
 parser.add_argument("--save-stats", type=str, default='train', help="split on which the subset file is applied.")
+parser.add_argument("--chance", action="store_true", help="reduce dim to n_ways-1")
+
 
 
 parser.add_argument("--dropout", type=float, default=0., help="dropout rate")
