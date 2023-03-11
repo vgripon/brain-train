@@ -85,7 +85,7 @@ parser.add_argument("--epochs", type=int, default=350, help="total number of tra
 parser.add_argument("--warmup-epochs", type=int, default=0, help="number of warmup epochs, starts with a learning rate of 0 and ends with initial learning rate")
 parser.add_argument("--milestones", type=str, default="100", help="milestones for scheduler")
 parser.add_argument("--gamma", type=float, default=0.1, help="learning rate multiplier after each milestone")
-parser.add_argument("--cosine", action="store_true", help="use cosine annealing instead of multisteplr")
+#parser.add_argument("--cosine", action="store_true", help="use cosine annealing instead of multisteplr")
 parser.add_argument("--scheduler", type=str, default="cosine", help="scheduler to use, can be any of multistep or cosine or linear")
 
 
@@ -135,8 +135,8 @@ try:
     args.steps = str([step[:-1] for step in eval(args.steps)])
 except: 
     args.step_coefficient = [1]*len(eval(args.steps))
-if args.cosine:
-    args.scheduler = "cosine"
+#if args.cosine:
+#    args.scheduler = "cosine"
 args.training_transforms = eval(args.training_transforms)
 args.test_transforms = eval(args.test_transforms)
 print("milestones are " + str(args.milestones))
