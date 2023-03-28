@@ -16,7 +16,7 @@ import json
 from collections import defaultdict
 import hashlib
 import torch.nn as nn
-import hm_selection
+#import hm_selection
 
 load_episode = args.load_episodes!=''
 load_fs_fine = args.fs_finetune!=''
@@ -63,7 +63,7 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
     if not os.path.isdir(filename):
         features = [torch.load(filename, map_location=args.device)]
     else:
-        features = [torch.load(os.path.join(filename,'2_0metadataset_{0}_{1}_features.pt'.format(args.target_dataset, args.valtest)), map_location=args.device)]
+        features = [torch.load(os.path.join(filename,'0metadataset_{0}_{1}_features.pt'.format(args.target_dataset, args.valtest)), map_location=args.device)]
         #first run just to get the genrator right
     for i in range(len(features)):
         accs = []
@@ -94,7 +94,7 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
                 episode = generator.sample_episode(ways=args.few_shot_ways, n_shots=n_shots, n_queries=args.few_shot_queries, unbalanced_queries=args.few_shot_unbalanced_queries, max_queries = args.max_queries)
             else:
                 if os.path.isdir(filename):
-                    feature = torch.load(os.path.join(filename,'2_'+str(run)+'metadataset_{0}_{1}_features.pt'.format(args.target_dataset, args.valtest)), map_location=args.device)
+                    feature = torch.load(os.path.join(filename,str(run)+'metadataset_{0}_{1}_features.pt'.format(args.target_dataset, args.valtest)), map_location=args.device)
                 episode = {'shots_idx' : episodes['shots_idx'][run], 'queries_idx' : episodes['queries_idx'][run], 'choice_classes' : episodes['choice_classes'][run]}
             #if run ==1:
             #    print('1st run shot', episode['shots_idx'][0])
@@ -317,17 +317,29 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
         save_results(L, dataset, proxy+'QR'*args.QR+'isotropic'*args.isotropic, res['chance'], episodes = episodes, backbones = eval(eval(args.competing_features))+[args.fs_finetune]+[filename_baseline])
     return res_baseline, L 
 
+def save_file(lock,file, path):
+    ''' We use lock files because if several process read an write the same file there are issues of corrupt files. It is solved using this.'''
+    with lock:
+        torch.save(file, path)
+
+def load_file(lock,path):
+    with lock:
+        model = torch.load(path)
+    return model
+
+
 def save_results(L,dataset, proxy, chance, episodes,backbones):
     N = args.num_clusters
-    if args.fs_finetune=='':
+    if args.fs_finetune!='':
         file = args.out_file+'FS'
     else:
         file = args.out_file
+    lock = filelock.FileLock(file+".lock")
     if not os.path.isfile(file):
         d={'episodes': {}, 'hash_episode' : {}}
-        torch.save(d,file)
+        save_file(lock,d,file)
     else:
-        d = torch.load(file)
+        d = load_file(lock,file)
     h = len(str(episodes))
     h = hashlib.md5(str(episodes).encode('utf-8')).hexdigest()
     print(h)
@@ -336,17 +348,32 @@ def save_results(L,dataset, proxy, chance, episodes,backbones):
         d['hash_episode'][dataset] = h
     if proxy in d.keys() and dataset in d[proxy].keys():
         print('overwriting',dataset, proxy)
-        if args.fs_finetune=='':
+        if args.fs_finetune!='':
             file2 = args.out_file+'FS2'
         else:
             file2 = args.out_file+'2'
-        torch.save(d,file2)
+        lock2 = filelock.FileLock(file2+".lock")
+        save_file(lock2,d,file2)
     d['backbones']= backbones
     if proxy in d.keys():
         d[proxy][dataset] = {'data' : torch.from_numpy(L), 'info' : str(args), 'nb_runs' : args.few_shot_runs, 'chance' : chance, 'hash_episode' : h}
     else:
         d[proxy] = {dataset:{'data' : torch.from_numpy(L), 'info' : str(args), 'nb_runs' : args.few_shot_runs,'chance' : chance, 'hash_episode' : h}}
-    torch.save(d, file)
+    save_file(lock,d, file)
+
+def leave_one_out(shots):
+    n_ways = len(shots)
+    nb_shots =  np.array([shots[j].shape[0] for j in range(n_ways)])
+    print('nb_shots' , nb_shots )
+    max_shots = np.max(nb_shots)
+    acc = 0
+    for i in range(max_shots):
+        pop_index = [i%nb_shots[j] for j in range(n_ways)]
+        q = [shots[j][pop_index[j]].unsqueeze(0) for j in range(n_ways)]
+        shots_loo = [ torch.cat((shots[j][:pop_index[j]],shots[j][pop_index[j]+1:]))  for j in range(n_ways) ] 
+        print('shots_loo' , [len(x) for x in shots_loo] )
+        acc += classifiers.evalFewShotRun(shots_loo, q)/max_shots
+    return acc
 
 def leave_one_out(shots):
     n_ways = len(shots)

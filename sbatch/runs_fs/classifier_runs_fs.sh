@@ -16,7 +16,7 @@
 #SBATCH -t 2:00:00
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
-#SBATCH --array=200-399
+#SBATCH --array=0-199
 #SBATCH --output=../../slurm/classifier/task-%A_%all_fs.out
 
 set -eux
@@ -37,12 +37,11 @@ index=$task_id
 python ../../main.py \
   --dataset-path /gpfs/users/a1881717/datasets/ \
   --load-backbone /gpfs/users/a1881717/resnet12_metadataset_imagenet_64.pt \
-  --subset-file /gpfs/users/a1881717/work_dir/runs_fs/episodes/binary_${dat}.npy \
+  --subset-file /gpfs/users/a1881717/work_dir/magnitudes_test/binaryFS_test_1s5w_50_${dat}.npy \
   --index-subset ${index} \
-  --out-dir /gpfs/users/a1881717/work_dir/ \
   --training-dataset metadataset_imagenet_train \
   --epoch 20 --dataset-size 10000 --wd 0.0001 --lr 0.001 \
-  --save-classifier /gpfs/users/a1881717/work_dir/runs_fs/classifiers/${dat}/classifier_${index} \
+  --save-classifier /gpfs/users/a1881717/1_shot_5ways_work_dir/test/classifiers/${dat}/classifier_${index} \
   --backbone resnet12 --batch-size 128 --few-shot-shots 0 --few-shot-ways 0 --few-shot-queries 0 --few-shot --optimizer adam \
   $@
 

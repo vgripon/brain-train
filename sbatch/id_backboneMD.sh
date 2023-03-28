@@ -9,44 +9,42 @@
 # ( EXP_NAME=resnet50 sbatch .../slurm/run_imagenet.sh --arch=resnet50 )
 # ( EXP_NAME=resnet50-b128-lr0.05 sbatch .../slurm/run_imagenet.sh --arch=resnet50 --batch-size=128 --learning-rate=0.05 )
 
-#SBATCH -M volta
 #SBATCH -J FS_raph2
-#SBATCH -p batch
+#SBATCH -p gpunodes
 #SBATCH -N 1
 #SBATCH -c 4
 #SBATCH -t 24:00:00
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
-#SBATCH --array=4-7
+#SBATCH --array=0-47
 #SBATCH --output=../slurm/id_backboneMD/task-%A_%a_id_backbone_MD.out
 
+
+source /gpfs/users/a1881717/env.sh
+
+
 set -eux
-
-module load arch/skylake
-module load Python/3.8.6
-module load CUDA/11.2.0
-module load cuDNN/CUDA-11.2
-
-source /hpcfs/users/a1881717/lab/bin/activate
-
-
-
 list1=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_flower")
-list2=("hard" "loo" "soft" "fake_acc")
+list2=("hard" "loo" "soft" "fake_acc" "snr" "rankme")
 valtest="test"
 length2=${#list2[@]}
 task_id=$SLURM_ARRAY_TASK_ID
 dat=${list1[$((task_id / length2))]}
 proxy=${list2[$((task_id % length2))]}
-fsfinetune="/hpcfs/users/a1881717/work_dir/runs_fs/features/${dat}"
-dirvis="/hpcfs/users/a1881717/work_dir/vis/features/${dat}/"
-dirsem="/hpcfs/users/a1881717/work_dir/sem/features/${dat}/"
-dirrandom="/hpcfs/users/a1881717/work_dir/random/features/${dat}/"
+fsfinetune="/gpfs/users/a1881717/work_dir/runs_fs/features/${dat}"
+dirvis="/gpfs/users/a1881717/work_dir/vis/features/${dat}/"
+dirsem="/gpfs/users/a1881717/work_dir/sem2/features/${dat}/"
+dirrandom="/gpfs/users/a1881717/work_dir/random/features/${dat}/"
+dirvisem="/gpfs/users/a1881717/work_dir/visem/features/${dat}/"
 
-directories=($dirvis $dirsem $dirrandom)
+directories=($dirvis $dirsem $dirrandom $dirvisem)
 result="["
 count=0
-
+#if [ "$dat" == "traffic_signs" ]; then
+valtest="test"
+#else
+#valtest="validation"
+#fi
 for dir in "${directories[@]}"; do
   echo $dir
   files=$(find "$dir" -type f -name "*$valtest*") 
@@ -71,5 +69,5 @@ echo "$proxy"
 
 python ../id_backbone.py --valtest $valtest --num-cluster $count --target-dataset $dat \
  --proxy $proxy --competing-features $result --dataset-path /users/local/datasets/ \
- --seed 1 --few-shot-ways 0 --few-shot-shots 0 --few-shot-queries 0  --few-shot-runs 1000 \
- --dataset-path /hpcfs/users/a1881717/datasets/ 
+ --seed 1 --few-shot-ways 0 --few-shot-shots 0 --few-shot-queries 0  --few-shot-runs 10000 \
+ --dataset-path /gpfs/users/a1881717/datasets/ --out-file /gpfs/users/a1881717/work_dir/result_VSR_sem2_visem_MD.pt
