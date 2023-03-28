@@ -6,6 +6,15 @@ import networkx as nx
 import json
 import pandas as pd
 from args import args
+from few_shot_evaluation import EpisodicGenerator, ImageNetGenerator, OmniglotGenerator
+import os
+
+
+if 'omniglot' in args.target_dataset:
+    data_info_omniglot_file = os.path.join(args.dataset_path, 'omniglot.json')
+    with open(data_info_omniglot_file) as f:
+        data_info_omniglot = json.load(f)
+    data_info_omniglot=data_info_omniglot['metadataset_omniglot_{}'.format(args.valtest)]
 
 vis,sem,random = np.load('working_dirs/binary_agnostic_vis.npy'),np.load('working_dirs/binary_agnostic_sem.npy'),np.load('working_dirs/binary_agnostic_random.npy')
 selection = np.concatenate((vis,sem,random), axis= 0) 
@@ -43,7 +52,7 @@ def magnitude(ten):
 
 
 
-def choose_backbone(episodes, datasets, generator):
+def yield_proxy(episodes, datasets):
     hnm=[]
     valtest='val'
     if datasets=='traffic_signs':
@@ -51,14 +60,22 @@ def choose_backbone(episodes, datasets, generator):
     log = torch.load('/home/raphael/Documents/models/old_logits/logits_{}_{}.pt'.format(datasets,valtest))
     for x in log:
         x['features'] = x.pop('logits')
+    if datasets=='omniglot':
+        Generator = OmniglotGenerator
+        generator = Generator(datasetName='omniglot', num_elements_per_class= [len(feat['features']) for feat in log], dataset_path=args.dataset_path)
+        generator.dataset = data_info_omniglot
+    else:
+        args.dataset_path = None
+        Generator = EpisodicGenerator
+        generator = Generator(datasetName=None, num_elements_per_class= [len(feat['features']) for feat in log], dataset_path=args.dataset_path)
+    episodes_used=[]
     if episodes==None:
-        episodes_used=[]
         for i in range(args.few_shot_runs):
             episodes_used.append(generator.sample_episode(ways=args.few_shot_ways, n_shots=args.n_shots, n_queries=args.few_shot_queries, unbalanced_queries=args.few_shot_unbalanced_queries, max_queries = args.max_queries))
     else:
-        for run in (args.few_shot_runs):
-            episodes_used = {'shots_idx' : episodes['shots_idx'][run], 'queries_idx' : episodes['queries_idx'][run], 'choice_classes' : episodes['choice_classes'][run]}
-    for epi in episodes:
+        for run in range(args.few_shot_runs):
+            episodes_used.append({'shots_idx' : episodes['shots_idx'][run], 'queries_idx' : episodes['queries_idx'][run], 'choice_classes' : episodes['choice_classes'][run]})
+    for epi in episodes_used:
         shots, queries = generator.get_features_from_indices(log, epi)
 
         ten = torch.softmax(torch.cat(shots),dim=1)
@@ -71,6 +88,6 @@ def choose_backbone(episodes, datasets, generator):
             y = model.predict(np.array([[h,m]]))
             L_y.append(y)
         hnm.append(L_y)
-    return hnm
+    return np.array(hnm).T
 
 

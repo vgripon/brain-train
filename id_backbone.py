@@ -24,7 +24,6 @@ if load_episode ^ load_fs_fine:
     print('\n \n load_episode and fs_finetune work together you forgot one \n\n' )
     sys.exit(0)
 
-real_dp = args.dataset_path
 if 'omniglot' in args.target_dataset:
     data_info_omniglot_file = os.path.join(args.dataset_path, 'omniglot.json')
     with open(data_info_omniglot_file) as f:
@@ -87,8 +86,6 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
             generator = Generator(datasetName=None, num_elements_per_class= [len(feat['features']) for feat in feature], dataset_path=args.dataset_path)
         if args.load_episodes!='':
             episodes = torch.load(args.load_episodes)['episodes']
-        if 'hnm' in proxy:
-            hnm = hm_selection.choose_backbone(episodes, datasets, generator)
         for run in tqdm(range(args.few_shot_runs)) if tqdm_verbose else range(args.few_shot_runs):
             if args.load_episodes=='':
                 shots = []
@@ -274,17 +271,21 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
     if args.cheated!='':
         shift_ch=1
     N+=(shift_fs+shift_ch)
-    filename_baseline = os.path.join('/gpfs/users/a1881717/work_dir/baseline/features/'+dataset+'/featmetadataset_'+ dataset+'_'+args.valtest+'_features.pt' )
+    filename_baseline = os.path.join('working_dirs/work_dir/baseline/features/'+dataset+'/featmetadataset_'+ dataset+'_'+args.valtest+'_features.pt' )
     res_baseline = testFewShot_proxy(filename_baseline, datasets = dataset,n_shots = n_shots, proxy=proxy, tqdm_verbose = True)
     L = np.zeros((N+1,2,len(res_baseline['acc'])))  #N+A and the two bottom lines are here to add the baseline amongst candidates
     L[N,0] = np.array(res_baseline['acc']) 
-    L[N,1] = np.array(res_baseline[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
+    if proxy!='hnm':
+        L[N,1] = np.array(res_baseline[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
     episodes = res_baseline['episodes']
+    if proxy=='hnm':
+        print(N-shift_ch-shift_fs)
+        L[:N-shift_ch-shift_fs,1] = hm_selection.yield_proxy(episodes, dataset)
     for i in tqdm(range(N-shift_ch-shift_fs)):
         filename = eval(eval(args.competing_features))[i]
         res = testFewShot_proxy(filename, datasets = dataset, n_shots = n_shots, proxy = [proxy])
         L[i,0] = np.array(res['acc'])
-        L[i,1] = np.array(res[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
+        L[i,1] = np.array(res[proxy+args.QR*'QR'+args.isotropic*'isotropic']) if proxy!='hnm' else L[i,1]
     if args.fs_finetune!='':
         filename = args.fs_finetune
         res_fn = testFewShot_proxy(filename, datasets = dataset, n_shots = n_shots, proxy = [proxy])
@@ -304,8 +305,10 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
     print_metric(opti.ravel(), 'opti: ')
     baseline = res_baseline['acc']
     print_metric(baseline,'baseline: ')
-    print_metric(res_fn['acc'],'finetuned: ')
-    print_metric(res_cheated['acc'],'cheated: ')
+    if args.fs_finetune!='':
+        print_metric(res_fn['acc'],'finetuned: ')
+    if args.cheated!='':
+        print_metric(res_cheated['acc'],'cheated: ')
     print_metric(L[N,0,:],'sanity check baseline: ')
     max_possible = np.take_along_axis(L[:,0],L[:,0].argmax(0)[None,:], axis =0)
     print_metric(max_possible.ravel(),'max_possible: ')

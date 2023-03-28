@@ -16,7 +16,7 @@ import random
 from tqdm import tqdm
 import numpy as np
 import json 
-k=50
+k=10
 
 with open(os.path.join(args.dataset_path,'datasets_subdomain.json')) as f:
     dataset_json = json.load(f)
@@ -123,12 +123,12 @@ if __name__=='__main__':
             #torch.save(ordered_mag,'finetuning/selections/runs/magnitude_selected_{}{}.pt'.format(dataset,i))
         magnitudes['mag'] = torch.stack(magnitudes['mag'])
         magnitudes['ord'] = torch.stack(magnitudes['ord'])
-        torch.save(magnitudes,'finetuning/selections/runs/magnitudes_test/magnitude_test_{}.pt'.format(dataset))
-        bin = np.ones(magnitudes['ord'].shape,dtype=np.bool)
+        torch.save(magnitudes,os.getcwd()+'/finetuning/selections/runs/magnitudes_test/magnitude_MD_test_{}.pt'.format(dataset))
+        bin = np.ones(magnitudes['ord'].shape,dtype=np.bool_)
         for i in range(magnitudes['ord'].shape[0]):
-            bin[i,magnitude['ord'][i,:k].cpu()]=0
+            bin[i,magnitudes['ord'][i,:k].cpu().numpy()]=0
         #print(b[i])
 
-        np.save('finetuning/selections/runs/magnitudes_test/binaryFS_test_{}_{}.npy'.format(k,dataset), bin)
+        np.save(os.getcwd()+'/finetuning/selections/runs/magnitudes_test/binaryFS_test_MD_{}_{}.npy'.format(k,dataset), bin)
 
 
