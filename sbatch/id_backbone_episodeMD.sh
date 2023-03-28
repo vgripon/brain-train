@@ -17,7 +17,7 @@
 #SBATCH -t 24:00:00
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
-#SBATCH --array=9-9
+#SBATCH --array=0-39
 #SBATCH --output=../slurm/id_backbone_episode/task-%A_%a_id_backbone_episode.out
 set -eux
 
@@ -29,17 +29,17 @@ source /gpfs/users/a1881717/env.sh
 list1=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_flower")
 list2=("snr" "loo" "fake_acc" "hard" "soft")
 length=${#list2[@]}
-valtest="validation"
+valtest="test"
 mag_or_ncm="magnitude"
 task_id=$SLURM_ARRAY_TASK_ID
 dat=${list1[$((task_id / length))]}
 proxy=${list2[$((task_id % length))]}
-fsfinetune="/gpfs/users/a1881717/MD_work_dir/runs_fs/features/${dat}"
+fsfinetune="/gpfs/users/a1881717/MD_work_dir/test/features/${dat}"
 dirvis="/gpfs/users/a1881717/work_dir/vis/features/${dat}/"
-dirsem="/gpfs/users/a1881717/work_dir/sem/features/${dat}/"
+dirsem="/gpfs/users/a1881717/work_dir/sem2/features/${dat}/"
 dirrandom="/gpfs/users/a1881717/work_dir/random/features/${dat}/"
-loadepisode="/gpfs/users/a1881717/MD_work_dir/runs_fs/episodes/${mag_or_ncm}_MD_${dat}.pt"
-outfile="/gpfs/users/a1881717/MD_work_dir/runs_fs/d_MD.pt"
+loadepisode="/gpfs/users/a1881717/work_dir/magnitudes_test/${mag_or_ncm}_MD_test_${dat}.pt"
+outfile="/gpfs/users/a1881717/MD_work_dir/test/result_test_MD.pt"
 cheated="/gpfs/users/a1881717/work_dir/DI/features/${dat}/fmetadataset_${dat}_${valtest}_features.pt"
 directories=($dirvis $dirsem $dirrandom)
 result="["

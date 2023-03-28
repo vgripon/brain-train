@@ -37,11 +37,11 @@ index=$task_id
 python ../../main.py \
   --dataset-path /gpfs/users/a1881717/datasets/ \
   --load-backbone /gpfs/users/a1881717/resnet12_metadataset_imagenet_64.pt \
-  --subset-file /gpfs/users/a1881717/MD_work_dir/runs_fs/episodes/binary_MD_top50_${dat}.npy \
+  --subset-file /gpfs/users/a1881717/work_dir/magnitudes_test/binaryFS_test_MD_50_${dat}.npy \
   --index-subset ${index} \
   --training-dataset metadataset_imagenet_train \
   --epoch 20 --dataset-size 10000 --wd 0.0001 --lr 0.001 \
-  --save-classifier /gpfs/users/a1881717/MD_work_dir/runs_fs/classifiers/${dat}/classifier2_${index} \
+  --save-classifier /gpfs/users/a1881717/MD_work_dir/test/classifiers/${dat}/classifier_${index} \
   --backbone resnet12 --batch-size 128 --few-shot-shots 0 --few-shot-ways 0 --few-shot-queries 0 --few-shot --optimizer adam \
   $@
 
