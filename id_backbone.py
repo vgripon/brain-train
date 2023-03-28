@@ -16,7 +16,8 @@ import json
 from collections import defaultdict
 import hashlib
 import torch.nn as nn
-#import hm_selection
+import hm_selection
+import filelock
 
 load_episode = args.load_episodes!=''
 load_fs_fine = args.fs_finetune!=''
@@ -279,7 +280,8 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
         L[N,1] = np.array(res_baseline[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
     episodes = res_baseline['episodes']
     if proxy=='hnm':
-        print(N-shift_ch-shift_fs)
+        print(N-shift_ch-shift_fs,N,shift_ch,shift_fs)
+        print(len(eval(eval(args.competing_features))))
         L[:N-shift_ch-shift_fs,1] = hm_selection.yield_proxy(episodes, dataset)
     for i in tqdm(range(N-shift_ch-shift_fs)):
         filename = eval(eval(args.competing_features))[i]

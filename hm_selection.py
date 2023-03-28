@@ -17,12 +17,14 @@ if 'omniglot' in args.target_dataset:
     data_info_omniglot=data_info_omniglot['metadataset_omniglot_{}'.format(args.valtest)]
 
 vis,sem,random = np.load('working_dirs/binary_agnostic_vis.npy'),np.load('working_dirs/binary_agnostic_sem.npy'),np.load('working_dirs/binary_agnostic_random.npy')
-selection = np.concatenate((vis,sem,random), axis= 0) 
+visem = np.load('working_dirs/binary_agnostic_visem.npy')
+selection = np.concatenate((vis,sem,random,visem), axis= 0) 
 real_selection = (selection==0)*1
 real_selection = torch.tensor(real_selection)
 datasets=['cub', 'aircraft', 'dtd', 'mscoco', 'fungi', 'omniglot', 'vgg_flower', 'traffic_signs']
 model = load('finetuning/adjusted.joblib')
 valtest='val'
+
 
 
 def get_subsets_logits(ten):
@@ -54,7 +56,7 @@ def magnitude(ten):
 
 def yield_proxy(episodes, datasets):
     hnm=[]
-    valtest='val'
+    valtest=args.valtest
     if datasets=='traffic_signs':
         valtest='test'
     log = torch.load('/home/raphael/Documents/models/old_logits/logits_{}_{}.pt'.format(datasets,valtest))

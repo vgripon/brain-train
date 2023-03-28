@@ -31,11 +31,11 @@ length2=${#list2[@]}
 task_id=$SLURM_ARRAY_TASK_ID
 dat=${list1[$((task_id / length2))]}
 proxy=${list2[$((task_id % length2))]}
-fsfinetune="/gpfs/users/a1881717/work_dir/runs_fs/features/${dat}"
-dirvis="/gpfs/users/a1881717/work_dir/vis/features/${dat}/"
-dirsem="/gpfs/users/a1881717/work_dir/sem2/features/${dat}/"
-dirrandom="/gpfs/users/a1881717/work_dir/random/features/${dat}/"
-dirvisem="/gpfs/users/a1881717/work_dir/visem/features/${dat}/"
+fsfinetune="/home/raphael/Documents/brain-train/working_dirs//work_dir/runs_fs/features/${dat}"
+dirvis="/home/raphael/Documents/brain-train/working_dirs//work_dir/vis/features/${dat}/"
+dirsem="/home/raphael/Documents/brain-train/working_dirs/work_dir/sem2/features/${dat}/"
+dirrandom="/home/raphael/Documents/brain-train/working_dirs//work_dir/random/features/${dat}/"
+dirvisem="/home/raphael/Documents/brain-train/working_dirs//work_dir/visem/features/${dat}/"
 
 directories=($dirvis $dirsem $dirrandom $dirvisem)
 result="["
