@@ -16,7 +16,8 @@ import json
 from collections import defaultdict
 import hashlib
 import torch.nn as nn
-#import hm_selection
+import hm_selection
+import filelock
 
 load_episode = args.load_episodes!=''
 load_fs_fine = args.fs_finetune!=''
@@ -271,7 +272,7 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
     if args.cheated!='':
         shift_ch=1
     N+=(shift_fs+shift_ch)
-    filename_baseline = os.path.join('working_dirs/work_dir/baseline/features/'+dataset+'/featmetadataset_'+ dataset+'_'+args.valtest+'_features.pt' )
+    filename_baseline = os.path.join('/gpfs/users/a1881717/work_dir/baseline/features/',dataset,'featmetadataset_'+ dataset+'_'+args.valtest+'_features.pt' )
     res_baseline = testFewShot_proxy(filename_baseline, datasets = dataset,n_shots = n_shots, proxy=proxy, tqdm_verbose = True)
     L = np.zeros((N+1,2,len(res_baseline['acc'])))  #N+A and the two bottom lines are here to add the baseline amongst candidates
     L[N,0] = np.array(res_baseline['acc']) 
@@ -280,7 +281,7 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
     episodes = res_baseline['episodes']
     if proxy=='hnm':
         print(N-shift_ch-shift_fs)
-        L[:N-shift_ch-shift_fs,1] = hm_selection.yield_proxy(episodes, dataset)
+        L[:N-shift_ch-shift_fs,1] = hm_selection.yield_proxy(episodes=None, datasets=dataset)
     for i in tqdm(range(N-shift_ch-shift_fs)):
         filename = eval(eval(args.competing_features))[i]
         res = testFewShot_proxy(filename, datasets = dataset, n_shots = n_shots, proxy = [proxy])
@@ -317,15 +318,6 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
         save_results(L, dataset, proxy+'QR'*args.QR+'isotropic'*args.isotropic, res['chance'], episodes = episodes, backbones = eval(eval(args.competing_features))+[args.fs_finetune]+[filename_baseline])
     return res_baseline, L 
 
-def save_file(lock,file, path):
-    ''' We use lock files because if several process read an write the same file there are issues of corrupt files. It is solved using this.'''
-    with lock:
-        torch.save(file, path)
-
-def load_file(lock,path):
-    with lock:
-        model = torch.load(path)
-    return model
 
 
 def save_results(L,dataset, proxy, chance, episodes,backbones):
@@ -335,31 +327,35 @@ def save_results(L,dataset, proxy, chance, episodes,backbones):
     else:
         file = args.out_file
     lock = filelock.FileLock(file+".lock")
-    if not os.path.isfile(file):
-        d={'episodes': {}, 'hash_episode' : {}}
-        save_file(lock,d,file)
-    else:
-        d = load_file(lock,file)
-    h = len(str(episodes))
-    h = hashlib.md5(str(episodes).encode('utf-8')).hexdigest()
-    print(h)
-    if (dataset not in d['episodes'].keys()) or (dataset in  d['episodes'].keys() and len(str(d['episodes'][dataset])) != h) :
-        d['episodes'][dataset] = episodes
-        d['hash_episode'][dataset] = h
-    if proxy in d.keys() and dataset in d[proxy].keys():
-        print('overwriting',dataset, proxy)
-        if args.fs_finetune!='':
-            file2 = args.out_file+'FS2'
+    with lock:
+        print(file)
+        if not os.path.isfile(file):
+            d={'episodes': {}, 'hash_episode' : {}}
+            print('where is that',file)
+            torch.save(d,file)
         else:
-            file2 = args.out_file+'2'
-        lock2 = filelock.FileLock(file2+".lock")
-        save_file(lock2,d,file2)
-    d['backbones']= backbones
-    if proxy in d.keys():
-        d[proxy][dataset] = {'data' : torch.from_numpy(L), 'info' : str(args), 'nb_runs' : args.few_shot_runs, 'chance' : chance, 'hash_episode' : h}
-    else:
-        d[proxy] = {dataset:{'data' : torch.from_numpy(L), 'info' : str(args), 'nb_runs' : args.few_shot_runs,'chance' : chance, 'hash_episode' : h}}
-    save_file(lock,d, file)
+            d = torch.load(file)
+        h = len(str(episodes))
+        h = hashlib.md5(str(episodes).encode('utf-8')).hexdigest()
+        print(h)
+        if (dataset not in d['episodes'].keys()) or (dataset in  d['episodes'].keys() and len(str(d['episodes'][dataset])) != h) :
+            d['episodes'][dataset] = episodes
+            d['hash_episode'][dataset] = h
+        if proxy in d.keys() and dataset in d[proxy].keys():
+            print('overwriting',dataset, proxy)
+            if args.fs_finetune!='':
+                file2 = args.out_file+'FS2'
+            else:
+                file2 = args.out_file+'2'
+            lock2 = filelock.FileLock(file2+".lock")
+            with lock2:
+                torch.save(d,file2)
+        d['backbones']= backbones
+        if proxy in d.keys():
+            d[proxy][dataset] = {'data' : torch.from_numpy(L), 'info' : str(args), 'nb_runs' : args.few_shot_runs, 'chance' : chance, 'hash_episode' : h}
+        else:
+            d[proxy] = {dataset:{'data' : torch.from_numpy(L), 'info' : str(args), 'nb_runs' : args.few_shot_runs,'chance' : chance, 'hash_episode' : h}}
+        torch.save(d, file)
 
 def leave_one_out(shots):
     n_ways = len(shots)

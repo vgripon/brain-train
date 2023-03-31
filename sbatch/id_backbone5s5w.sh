@@ -16,16 +16,16 @@
 #SBATCH -t 24:00:00
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
-#SBATCH --array=0-47
+#SBATCH --array=0-10
 #SBATCH --output=../slurm/id_backboneMD/task-%A_%a_id_backbone_MD.out
 
 
 source /gpfs/users/a1881717/env.sh
 
 
-set -eux
+
 list1=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_flower")
-list2=("hard" "loo" "soft" "fake_acc" "snr" "rankme")
+list2=("hnm")
 valtest="test"
 length2=${#list2[@]}
 task_id=$SLURM_ARRAY_TASK_ID
@@ -33,7 +33,7 @@ dat=${list1[$((task_id / length2))]}
 proxy=${list2[$((task_id % length2))]}
 fsfinetune="/gpfs/users/a1881717/work_dir/runs_fs/features/${dat}"
 dirvis="/gpfs/users/a1881717/work_dir/vis/features/${dat}/"
-dirsem="/gpfs/users/a1881717/work_dir/sem2/features/${dat}/"
+dirsem="/gpfs/users/a1881717/work_dir/sem4/features/${dat}/"
 dirrandom="/gpfs/users/a1881717/work_dir/random/features/${dat}/"
 dirvisem="/gpfs/users/a1881717/work_dir/visem/features/${dat}/"
 
@@ -66,8 +66,8 @@ echo $result
 echo "$count"
 echo "$dat"
 echo "$proxy"
-
+set -eux
 python ../id_backbone.py --valtest $valtest --num-cluster $count --target-dataset $dat \
  --proxy $proxy --competing-features $result --dataset-path /users/local/datasets/ \
  --seed 1 --few-shot-ways 5 --few-shot-shots 5 --few-shot-queries 15  --few-shot-runs 10000 \
- --dataset-path /gpfs/users/a1881717/datasets/ --out-file /gpfs/users/a1881717/work_dir/result_VSR_sem2_visem_5s5w.pt
+ --dataset-path /gpfs/users/a1881717/datasets/ --out-file /gpfs/users/a1881717/work_dir/results/5s5w/hnm_$SLURM_ARRAY_TASK_ID.pt

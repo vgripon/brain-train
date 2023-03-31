@@ -16,12 +16,12 @@ if 'omniglot' in args.target_dataset:
         data_info_omniglot = json.load(f)
     data_info_omniglot=data_info_omniglot['metadataset_omniglot_{}'.format(args.valtest)]
 
-vis,sem,random = np.load('working_dirs/binary_agnostic_vis.npy'),np.load('working_dirs/binary_agnostic_sem.npy'),np.load('working_dirs/binary_agnostic_random.npy')
-selection = np.concatenate((vis,sem,random), axis= 0) 
+vis,sem,random ,visem= np.load('/gpfs/users/a1881717/work_dir/binary_agnostic_vis.npy'),np.load('/gpfs/users/a1881717/work_dir/binary_agnostic_sem4.npy'),np.load('/gpfs/users/a1881717/work_dir/binary_agnostic_random.npy'),np.load('/gpfs/users/a1881717/work_dir/binary_agnostic_visem.npy')
+selection = np.concatenate((vis,sem,random,visem), axis= 0) 
 real_selection = (selection==0)*1
 real_selection = torch.tensor(real_selection)
 datasets=['cub', 'aircraft', 'dtd', 'mscoco', 'fungi', 'omniglot', 'vgg_flower', 'traffic_signs']
-model = load('finetuning/adjusted.joblib')
+model = load('/gpfs/users/a1881717/brain-train/finetuning/adjusted.joblib')
 valtest='val'
 
 
@@ -31,7 +31,6 @@ def get_subsets_logits(ten):
     subtensors = []
     for i in range(M):
         indices = torch.nonzero(real_selection[i]).squeeze()  # get the indices of the non-zero elements in the ith row of b
-        #print(row_indices)
         subtensor = ten[:, indices]  # use advanced indexing to extract the relevant columns of a for the ith row of b
         subtensors.append(subtensor)
 
@@ -53,11 +52,12 @@ def magnitude(ten):
 
 
 def yield_proxy(episodes, datasets):
+    from id_backbone import init_seed
     hnm=[]
-    valtest='val'
+    valtest=args.valtest
     if datasets=='traffic_signs':
         valtest='test'
-    log = torch.load('/home/raphael/Documents/models/old_logits/logits_{}_{}.pt'.format(datasets,valtest))
+    log = torch.load('/gpfs/users/a1881717/work_dir/logits/logits_{}_{}.pt'.format(datasets,valtest))
     for x in log:
         x['features'] = x.pop('logits')
     if datasets=='omniglot':
@@ -69,14 +69,16 @@ def yield_proxy(episodes, datasets):
         Generator = EpisodicGenerator
         generator = Generator(datasetName=None, num_elements_per_class= [len(feat['features']) for feat in log], dataset_path=args.dataset_path)
     episodes_used=[]
-    if episodes==None:
-        for i in range(args.few_shot_runs):
-            episodes_used.append(generator.sample_episode(ways=args.few_shot_ways, n_shots=args.n_shots, n_queries=args.few_shot_queries, unbalanced_queries=args.few_shot_unbalanced_queries, max_queries = args.max_queries))
-    else:
+    if episodes!=None:
         for run in range(args.few_shot_runs):
             episodes_used.append({'shots_idx' : episodes['shots_idx'][run], 'queries_idx' : episodes['queries_idx'][run], 'choice_classes' : episodes['choice_classes'][run]})
-    for epi in episodes_used:
-        shots, queries = generator.get_features_from_indices(log, epi)
+    for run in range(args.few_shot_runs):
+        if episodes==None:
+            init_seed(args.seed+run)
+            episode = generator.sample_episode(ways=args.few_shot_ways, n_shots=args.few_shot_shots, n_queries=args.few_shot_queries, unbalanced_queries=args.few_shot_unbalanced_queries, max_queries = args.max_queries)
+        else:
+            episode = episodes_used[run]
+        shots, queries = generator.get_features_from_indices(log, episode)
 
         ten = torch.softmax(torch.cat(shots),dim=1)
         labels_true = torch.cat([torch.tensor([i]).repeat(x.shape[0]) for i,x in enumerate(shots)])
