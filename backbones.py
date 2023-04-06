@@ -113,7 +113,7 @@ class RepVGG(nn.Module):
             else : 
                 for i in range(nBlocks):
                     blocks.append(block(features_input, int(channels*b), stride = 1 if i > 0 else 2))
-                    features_input = int(channels*a)
+                    features_input = int(channels*b)
         self.blocks = nn.ModuleList(blocks)
 
     def forward(self, x, mixup = None, lbda = None, perm = None):

@@ -83,7 +83,7 @@ parser.add_argument("--classifier", type=str, default="lr", help="define which c
 ### scheduler parameters
 parser.add_argument("--epochs", type=int, default=350, help="total number of training epochs")
 parser.add_argument("--warmup-epochs", type=int, default=0, help="number of warmup epochs, starts with a learning rate of 0 and ends with initial learning rate")
-parser.add_argument("--milestones", type=str, default="150", help="milestones for scheduler")
+parser.add_argument("--milestones", type=str, default="100", help="milestones for scheduler")
 parser.add_argument("--gamma", type=float, default=0.1, help="learning rate multiplier after each milestone")
 parser.add_argument("--cosine", action="store_true", help="use cosine annealing instead of multisteplr")
 parser.add_argument("--scheduler", type=str, default="cosine", help="scheduler to use, can be any of multistep or cosine or linear")
