@@ -249,7 +249,7 @@ def mnist(datasetName):
         image_size = args.training_image_size if args.training_image_size>0 else 28
     else:
         image_size = args.test_image_size if args.test_image_size>0 else 28
-    default_transform = ['totensor', 'mnistnorm']
+    default_transform = ['mnistnorm']
     trans = get_transforms(image_size, datasetName, default_transform, default_transform)
     return {"dataloader": dataLoader(DataHolder(data, targets, trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="mnist_"+datasetName), "name": "mnist_" + datasetName, "num_classes": 10, "name_classes": list(range(10))}
 
