@@ -27,7 +27,7 @@ class ConvBN2d(nn.Module):
                 return torch.nn.functional.leaky_relu(y, negative_slope = 0.1)
         else:
             return y
-"""
+
 class BasicBlock(nn.Module):
     def __init__(self, in_f, out_f, stride=1, in_expansion = None):
         super(BasicBlock, self).__init__()
@@ -49,10 +49,10 @@ class BasicBlock(nn.Module):
         else:
             z = torch.relu(z)
         return z
-"""
-class BasicBlock(nn.Module):
+
+class BasicBlock_RepVGG(nn.Module):
     def __init__(self, in_f, out_f, stride=1):
-        super(BasicBlock, self).__init__()
+        super(BasicBlock_RepVGG, self).__init__()
         self.convbn1 = ConvBN2d(in_f, out_f, stride = stride, kernel_size = 3, padding = 1)
         self.convbn2 = ConvBN2d(in_f, out_f, stride = stride, kernel_size = 1, padding = 0)
         self.shortcut = None if stride == 1 and in_f == out_f else ConvBN2d(in_f, out_f, kernel_size = 1, stride = stride, padding = 0)
@@ -99,9 +99,9 @@ class BottleneckBlock(nn.Module):
         else:
             return torch.relu(out)
 
-class ResNet(nn.Module):
+class RepVGG(nn.Module):
     def __init__(self, block, blockList, a, b, featureMaps):
-        super(ResNet, self).__init__()
+        super(RepVGG, self).__init__()
         features_input = min(64, int(featureMaps*a))
         self.embed = ConvBN2d(3, features_input, stride = 2)
         blocks = []
@@ -140,7 +140,7 @@ class ResNet(nn.Module):
                 y = block(y)
         y = y.mean(dim = list(range(2, len(y.shape))))
         return y
-""""
+
 class ResNet(nn.Module):
     def __init__(self, block, blockList, featureMaps, large = False):
         super(ResNet, self).__init__()
@@ -189,7 +189,7 @@ class ResNet(nn.Module):
         y = y.mean(dim = list(range(2, len(y.shape))))
         return y
 
-"""
+
 class BasicBlockRN12(nn.Module):
     def __init__(self, in_f, out_f):
         super(BasicBlockRN12, self).__init__()
@@ -281,7 +281,7 @@ def prepareBackbone():
         backbone = '_'.join(backbone.split('_')[:-1])
 
     return {
-        "repvgg_a0": lambda: (ResNet(BasicBlock, [(2, 64), (4, 128), (14, 256), (1, 512)], 0.75, 2.5, args.feature_maps), int(512 * 2.5)),
+        "repvgg_a0": lambda: (RepVGG(BasicBlock_RepVGG, [(2, 64), (4, 128), (14, 256), (1, 512)], 0.75, 2.5, args.feature_maps), int(512 * 2.5)),
         "resnet18": lambda: (ResNet(BasicBlock, [(2, 1, 1), (2, 2, 2), (2, 2, 4), (2, 2, 8)], args.feature_maps, large = large), 8 * args.feature_maps),
         "resnet20": lambda: (ResNet(BasicBlock, [(3, 1, 1), (3, 2, 2), (3, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
         "resnet56": lambda: (ResNet(BasicBlock, [(9, 1, 1), (9, 2, 2), (9, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),

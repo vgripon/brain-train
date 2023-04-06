@@ -407,9 +407,9 @@ for nRun in range(args.runs):
         if continueTest and args.save_backbone != "" and epoch >= args.skip_epochs:
             torch.save(backbone.to("cpu").state_dict(), args.save_backbone)
             backbone.to(args.device)
-        if epoch != 0 and (epoch+1) % 20 == 0:
-            torch.save({"state_dict" : backbone.state_dict()}, f"backbone_{epoch}.pth")
-            torch.save({"state_dict" : criterion["supervised"][0].state_dict()}, f"class_meta_{epoch}.pth")
+        if epoch == 0 or (epoch+1) % 20 == 0:
+            torch.save(backbone, f"backbone_repvgg2_{epoch}.pth")
+            torch.save(criterion["supervised"][0], f"class_repvgg2_{epoch}.pth")
         if continueTest and args.save_features_prefix != "" and epoch >= args.skip_epochs:
             for i, dataset in enumerate(trainSet):
                 torch.save(featuresTrain[i], args.save_features_prefix + dataset["name"] + "_features.pt")
