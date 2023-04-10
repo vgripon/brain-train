@@ -206,12 +206,19 @@ def generateFeatures(backbone, datasets, sample_aug=args.sample_aug):
             for augs in range(n_aug):
                 features = [{"name_class": name_class, "features": []} for name_class in dataset["name_classes"]]
                 for batchIdx, (data, target) in enumerate(dataset["dataloader"]):
-                    if isinstance(data, dict):
-                        data = data["supervised"]
-                    data, target = to(data, args.device), target.to(args.device)
-                    feats = backbone(data).to("cpu")
-                    for i in range(feats.shape[0]):
-                        features[target[i]]["features"].append(feats[i])
+                    reda = True
+                    if reda  : 
+                        if isinstance(data, dict):
+                            data = data["supervised"]
+                        data, target = to(data, args.device), target.to(args.device)
+                        #print(data)
+                        #print(data.shape)
+                        #print("feaaaaaaaaaaaaaaaaats")
+                        feats = backbone(data).to("cpu")
+                        #print(feats.shape)
+                        #print(feats)
+                        for i in range(feats.shape[0]):
+                            features[target[i]]["features"].append(feats[i])
                 for c in range(len(allFeatures)):
                     if augs == 0:
                         allFeatures[c]["features"] = torch.stack(features[c]["features"])/n_aug
@@ -255,7 +262,7 @@ for nRun in range(args.runs):
         import backbones
         backbone, outputDim = backbones.prepareBackbone()
     if args.load_backbone != "":
-        backbone.load_state_dict(torch.load(args.load_backbone))
+        backbone.load_state_dict(torch.load(args.load_backbone, map_location=args.device)["state_dict"])
     backbone = backbone.to(args.device)
     if not args.silent:
         numParamsBackbone = torch.tensor([m.numel() for m in backbone.parameters()]).sum().item()
@@ -269,7 +276,18 @@ for nRun in range(args.runs):
             nSteps = math.ceil(args.dataset_size / args.batch_size)
     except:
         nSteps = 0
-    
+
+    print(backbone)
+    #print(backbone.state_dict())
+    #embed = nn.Sequential(backbone.embed)
+    #block_net = nn.Sequential(*list(backbone.blocks))
+    #backbone = nn.Sequential(embed, block_net)
+
+    featuresValidation = generateFeatures(backbone, validationSet)
+    biyam = testFewShot(featuresValidation, validationSet)
+    print(biyam)
+    print(STOP)
+
     criterion = {}
     teacher = {}
     all_steps = [item for sublist in eval(args.steps) for item in sublist]
@@ -329,6 +347,7 @@ for nRun in range(args.runs):
                 print()
             print(" ep.       lr ".format(), end='')
             for dataset in trainSet:
+
                 print(Back.CYAN + " {:>19s} ".format(dataset["name"]) + Style.RESET_ALL, end='')
             if epoch >= args.skip_epochs:
                 for dataset in validationSet:
@@ -358,7 +377,6 @@ for nRun in range(args.runs):
                 else:
                     raise ValueError(f"Unknown scheduler {args.scheduler}")
                 lr = lr * args.gamma
-
         continueTest = False
         meanVector = None
         trainStats = None
@@ -402,9 +420,11 @@ for nRun in range(args.runs):
             if continueTest:
                 testStats = tempTestStats
             ender = Style.RESET_ALL
-        if continueTest and args.save_backbone != "" and epoch >= args.skip_epochs:
-            torch.save(backbone.to("cpu").state_dict(), args.save_backbone)
-            backbone.to(args.device)
+        if epoch != 0 and epoch % 10 == 0:
+            torch.save({"state_dict" : backbone.state_dict()}, f"backbone_{epoch}.pth")
+            torch.save({"state_dict" : criterion["supervised"][0].state_dict()}, f"class_meta_{epoch}.pth")
+            #torch.save(backbone.to("cpu").state_dict(), args.save_backbone)
+            #backbone.to(args.device)
         if continueTest and args.save_features_prefix != "" and epoch >= args.skip_epochs:
             for i, dataset in enumerate(trainSet):
                 torch.save(featuresTrain[i], args.save_features_prefix + dataset["name"] + "_features.pt")
@@ -427,16 +447,19 @@ for nRun in range(args.runs):
             allRunTrainStats = torch.cat([allRunTrainStats, trainStats.unsqueeze(0)])
         else:
             allRunTrainStats = trainStats.unsqueeze(0)
+
     if validationSet != []:
         if allRunValidationStats is not None:
             allRunValidationStats = torch.cat([allRunValidationStats, validationStats.unsqueeze(0)])
         else:
+            print(validationStats,"STATS")
             allRunValidationStats = validationStats.unsqueeze(0)
     if testSet != []:
         if allRunTestStats is not None:
             allRunTestStats = torch.cat([allRunTestStats, testStats.unsqueeze(0)])
         else:
             allRunTestStats = testStats.unsqueeze(0)
+    
 
     print()
     print("Run " + str(nRun+1) + "/" + str(args.runs) + " finished")
@@ -453,3 +476,7 @@ for nRun in range(args.runs):
     print()
     if args.wandb!='':
         run_wandb.finish()
+
+
+
+

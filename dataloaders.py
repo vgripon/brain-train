@@ -30,9 +30,10 @@ class DataHolder():
         self.transforms = transforms
         self.target_transforms = target_transforms
         self.opener = opener
+
     def __getitem__(self, idx):
         if isinstance(self.data[idx], str):
-            elt = self.opener(args.dataset_path + self.data[idx])
+            elt = self.opener("/users2/local/datasets/" + self.data[idx])
         else:
             elt = self.data[idx]
         return self.transforms(elt), self.target_transforms(self.targets[idx])
@@ -206,10 +207,10 @@ def metadataset(datasetName, name):
     """
     Generic function to load a dataset from the Meta-Dataset v1.0
     """
-    f = open(args.dataset_path + "datasets.json")    
+    f = open("/users2/local/datasets/" + "datasets.json")    
     all_datasets = json.loads(f.read())
     f.close()
-    dataset = all_datasets[name+"_" + datasetName]
+    dataset = all_datasets[name + "_" + datasetName]
     if datasetName == "train":
         image_size = args.training_image_size if args.training_image_size>0 else 126
     else:
@@ -220,7 +221,7 @@ def metadataset(datasetName, name):
     else:
         default_test_transforms = ['metadatasettotensor', 'randomresizedcrop', 'biresize', 'metadatasetnorm']
     trans = get_transforms(image_size, datasetName, default_train_transforms, default_test_transforms)
-    return {"dataloader": dataLoader(DataHolder(dataset["data"], dataset["targets"], trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName=name+"_"+datasetName), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(dataset["data"], dataset["targets"], trans), shuffle = True, episodic=args.episodic and datasetName == "train", datasetName=name+"_"+datasetName), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def metadataset_imagenet_v2():
     f = open(args.dataset_path + "datasets.json")    

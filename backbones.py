@@ -5,7 +5,7 @@ import random # for manifold mixup
 from functools import partial
 
 class ConvBN2d(nn.Module):
-    def __init__(self, in_f, out_f, kernel_size = 3, stride = 1, padding = 1, groups = 1, outRelu = False, leaky = args.leaky):
+    def __init__(self, in_f, out_f, kernel_size = 1, stride = 1, padding = 0, groups = 1, outRelu = False, leaky = args.leaky):
         super(ConvBN2d, self).__init__()
         self.conv = nn.Conv2d(in_f, out_f, kernel_size = kernel_size, stride = stride, padding = padding, groups = groups, bias = False)
         self.bn = nn.BatchNorm2d(out_f)
@@ -20,6 +20,7 @@ class ConvBN2d(nn.Module):
         y = self.bn(self.conv(x))
         if lbda is not None:
             y = lbda * y + (1 - lbda) * y[perm]
+
         if self.outRelu:
             if not self.leaky:
                 return torch.relu(y)
@@ -31,13 +32,15 @@ class ConvBN2d(nn.Module):
 class BasicBlock(nn.Module):
     def __init__(self, in_f, out_f, stride=1, in_expansion = None):
         super(BasicBlock, self).__init__()
-        self.convbn1 = ConvBN2d(in_f, out_f, stride = stride, outRelu = True)
-        self.convbn2 = ConvBN2d(out_f, out_f)
+        self.convbn1 = ConvBN2d(in_f, 6*stride*in_f)
+        self.convbn2 = ConvBN2d(6*stride*in_f, 6*stride*in_f, stride = stride, outRelu = True, kernel_size = 7, padding = 3)
+        self.convbn3 = ConvBN2d(6*stride*in_f, out_f)
         self.shortcut = None if stride == 1 and in_f == out_f else ConvBN2d(in_f, out_f, kernel_size = 1, stride = stride, padding = 0)
 
     def forward(self, x, lbda = None, perm = None):
-        y = self.convbn1(x)
-        z = self.convbn2(y)
+        y1 = self.convbn1(x)
+        y2 = self.convbn2(y1)
+        z = self.convbn3(y2)
         if self.shortcut is not None:
             z += self.shortcut(x)
         else:
@@ -79,16 +82,16 @@ class ResNet(nn.Module):
         super(ResNet, self).__init__()
         self.large = large
         if not large:
-            self.embed = ConvBN2d(3, featureMaps, outRelu = True)
+            self.embed = ConvBN2d(3, featureMaps, kernel_size=7, outRelu = True)
         else:
             self.embed = ConvBN2d(3, featureMaps, kernel_size=7, stride=2, padding=3, outRelu = True)
-            self.mp = nn.MaxPool2d(kernel_size = 3, stride = 2, padding = 1)
+            self.mp = nn.MaxPool2d(kernel_size = 7, stride = 2, padding = 1)
         blocks = []
         lastMult = 1
         first = True
         for (nBlocks, stride, multiplier) in blockList:
             for i in range(nBlocks):
-                blocks.append(block(int(featureMaps * lastMult), int(featureMaps * multiplier), in_expansion = 1 if first else 4, stride = 1 if i > 0 else stride))
+                blocks.append(block(int(featureMaps * lastMult), int(featureMaps * multiplier), in_expansion = 1 if first else 4, stride = 1 if i != 0 else stride))
                 first = False
                 lastMult = multiplier
         self.blocks = nn.ModuleList(blocks)
@@ -104,7 +107,6 @@ class ResNet(nn.Module):
             x = lbda * x + (1 - lbda) * x[perm]
         if x.shape[1] == 1:
             x = x.repeat(1,3,1,1)
-
         if mixup_layer == 1:
             y = self.embed(x, lbda, perm)
         else:
@@ -112,13 +114,11 @@ class ResNet(nn.Module):
 
         if self.large:
             y = self.mp(y)
-
         for i, block in enumerate(self.blocks):
             if mixup_layer == i + 2:
                 y = block(y, lbda, perm)
             else:
                 y = block(y)
-
         y = y.mean(dim = list(range(2, len(y.shape))))
         return y
 
@@ -213,6 +213,7 @@ def prepareBackbone():
         backbone = '_'.join(backbone.split('_')[:-1])
 
     return {
+        "resnet_ofa": lambda: (ResNet(BasicBlock, [(4, 1, 1), (4, 2, 2),(4,2,8),(4,2,16)], args.feature_maps, large = False), 16 * args.feature_maps),
         "resnet18": lambda: (ResNet(BasicBlock, [(2, 1, 1), (2, 2, 2), (2, 2, 4), (2, 2, 8)], args.feature_maps, large = large), 8 * args.feature_maps),
         "resnet20": lambda: (ResNet(BasicBlock, [(3, 1, 1), (3, 2, 2), (3, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
         "resnet56": lambda: (ResNet(BasicBlock, [(9, 1, 1), (9, 2, 2), (9, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
