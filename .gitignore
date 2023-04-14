@@ -132,3 +132,4 @@ dmypy.json
 wandb/
 .torch/*
 *DS_STORE*
+*.joblib
