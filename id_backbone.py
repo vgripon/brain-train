@@ -22,8 +22,8 @@ import filelock
 load_episode = args.load_episodes!=''
 load_fs_fine = args.fs_finetune!=''
 if load_episode ^ load_fs_fine:
-    print('\n \n load_episode and fs_finetune work together you forgot one \n\n' )
-    sys.exit(0)
+    print('\n \n load_episode and fs_finetune work together you probably forgot one \n\n' )
+    #sys.exit(0)
 
 if 'omniglot' in args.target_dataset:
     data_info_omniglot_file = os.path.join(args.dataset_path, 'omniglot.json')

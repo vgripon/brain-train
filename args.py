@@ -85,11 +85,12 @@ parser.add_argument("--feature-processing", type=str, default="", help="feature 
 parser.add_argument("--leaky", action="store_true", help="use leaky relu instead of relu for intermediate activations")
 parser.add_argument("--subdomain", type=str, default='', help="npy file with index clusters of classes in imagenet")
 parser.add_argument("--subset-file", type=str, default='', help="binary npy file with index clusters of classes in imagenet")
-parser.add_argument("--index-subset", type=str, default='', help="binary npy file with index clusters of classes in imagenet")
+parser.add_argument("--index-subset", type=str, default='', help="index in binary npy file with index clusters of classes in imagenet")
 parser.add_argument("--out-file", type=str, default='', help="output result file of id_backbone.py")
 parser.add_argument("--subset-split", type=str, default='train', help="split on which the subset file is applied.")
 parser.add_argument("--save-stats", type=str, default='train', help="split on which the subset file is applied.")
 parser.add_argument("--chance", action="store_true", help="reduce dim to n_ways-1")
+parser.add_argument("--save-test", type=str, default='', help="file to save in test_few_shot")
 
 
 

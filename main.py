@@ -185,14 +185,21 @@ def testFewShot(features, datasets = None, write_file=False):
         if datasets is not None:
             display(" " * (1 + max(0, len(datasets[i]["name"]) - 16)) + opener + "{:6.2f}% (±{:6.2f})".format(results[i, 0], results[i, 1]) + ender, end = '', force = True)
     if write_file:
-        result_file = torch.load('results_dic.pt')
+        write_file(results)
+    return results
+
+
+def write_file(results):
+        try:
+            result_file = torch.load(args.save_test)
+        except:
+            result_file = {}
         try:
             result_file[args.test_dataset][args.load_backbone ] =  results
         except:    
             result_file[args.test_dataset] = {args.load_backbone : results}
 
-        torch.save(result_file , 'results_dic.pt')
-    return results
+        torch.save(result_file , args.save_test)
 
 def process(featuresSet, mean):
     for features in featuresSet:
@@ -497,6 +504,9 @@ for nRun in range(args.runs):
                         print("\t{:.3f} ±{:.3f} (conf. [{:.3f}, {:.3f}])".format(stats[:,dataset,stat].mean().item(), stats[:,dataset,stat].std().item(), low, up), end = '')
                         if args.save_stats!='':
                             save_stats(args.save_stats,{'i':args.index_subset , 'stats' : stats[:,dataset,stat].mean().item()})
+                    if args.save_test!='' and phase=='Test':
+                        print('Warning writefile only takes into account test set')
+                        write_file([stats[:,dataset,:].mean(0)] )
                     print()
     print()
     if args.wandb!='':

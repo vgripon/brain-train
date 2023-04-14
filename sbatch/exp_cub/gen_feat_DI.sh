@@ -25,7 +25,6 @@ dat_ind=${1:-0} ; shift
 source /gpfs/users/a1881717/env.sh
 
 export WANDB_MODE=offline
-nvidia-smi -q -d MEMORY,COMPUTE,UTILIZATION 
 
 list1=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_flower")
 
