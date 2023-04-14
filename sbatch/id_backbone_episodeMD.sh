@@ -17,7 +17,7 @@
 #SBATCH -t 24:00:00
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
-#SBATCH --array=0-39
+#SBATCH --array=35-41
 #SBATCH --output=../slurm/id_backbone_episode/task-%A_%a_id_backbone_episode.out
 set -eux
 
@@ -27,7 +27,7 @@ source /gpfs/users/a1881717/env.sh
 
 
 list1=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_flower")
-list2=("snr" "loo" "fake_acc" "hard" "soft")
+list2=("snr" "loo" "fake_acc" "hard" "soft" "hnm")
 length=${#list2[@]}
 valtest="test"
 mag_or_ncm="magnitude"
@@ -36,12 +36,13 @@ dat=${list1[$((task_id / length))]}
 proxy=${list2[$((task_id % length))]}
 fsfinetune="/gpfs/users/a1881717/MD_work_dir/test/features/${dat}"
 dirvis="/gpfs/users/a1881717/work_dir/vis/features/${dat}/"
-dirsem="/gpfs/users/a1881717/work_dir/sem2/features/${dat}/"
+dirsem="/gpfs/users/a1881717/work_dir/sem4/features/${dat}/"
 dirrandom="/gpfs/users/a1881717/work_dir/random/features/${dat}/"
+dirvisem="/gpfs/users/a1881717/work_dir/visem/features/${dat}/"
 loadepisode="/gpfs/users/a1881717/work_dir/magnitudes_test/${mag_or_ncm}_MD_test_${dat}.pt"
 outfile="/gpfs/users/a1881717/MD_work_dir/test/result_test_MD.pt"
 cheated="/gpfs/users/a1881717/work_dir/DI/features/${dat}/fmetadataset_${dat}_${valtest}_features.pt"
-directories=($dirvis $dirsem $dirrandom)
+directories=($dirvis $dirsem $dirrandom $dirvisem)
 result="["
 count=0
 
@@ -64,7 +65,7 @@ echo $result
 echo "$dat"
 echo "$proxy"
 
-python ../id_backbone.py --out-file $outfile --cheated $cheated --valtest $valtest --fs-finetune $fsfinetune \
+python ../id_backbone.py --out-file $outfile --cheated $cheated --valtest $valtest  --fs-finetune $fsfinetune \
 --load-episode $loadepisode --num-cluster $count --target-dataset $dat --proxy $proxy \
  --competing-features $result  --seed 1 --few-shot-ways 0 \
  --few-shot-shots 0 --few-shot-queries 0  --few-shot-runs 200 --dataset-path /gpfs/users/a1881717/datasets/

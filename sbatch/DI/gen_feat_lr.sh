@@ -16,35 +16,39 @@
 #SBATCH -t 2:00:00
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
-#SBATCH --array=0-199
+#SBATCH --array=46-46
 #SBATCH --output=../../slurm/gen_feat/task-%A_%all_fs.out
-
-set -eux
-
-dat_ind=${1:-0} ; shift
 
 source /gpfs/users/a1881717/env.sh
 
 export WANDB_MODE=offline
 
 list1=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_flower")
+list2=(0.0 0.00001 0.0001 0.001 0.01 0.1)
 
-task_id=$SLURM_ARRAY_TASK_ID
-# Get the current string from the list based on the task ID
-dat=${list1[$dat_ind]}
-index=$task_id
+# Calculate the indexes for both lists
+index1=$(( SLURM_ARRAY_TASK_ID / ${#list2[@]} ))
+index2=$(( SLURM_ARRAY_TASK_ID % ${#list2[@]} ))
+
+# Get the values from both lists
+dat=${list1[$index1]}
+lr=${list2[$index2]}
+
 if [ "$dat" == "traffic_signs" ]; then
 python ../../main.py --dataset-path /gpfs/users/a1881717/datasets/ \
   --test-dataset metadataset_${dat}_test --freeze-backbone \
-  --load-backbone /gpfs/users/a1881717/MD_work_dir/test/backbones/${dat}/backbones_$index \
-  --epoch 1 --save-features-prefix /gpfs/users/a1881717/MD_work_dir/test/features/${dat}/$index --backbone resnet12 \
-  --few-shot --few-shot-ways 0 --few-shot-shots 0  $@
+  --load-backbone /gpfs/users/a1881717/work_dir/DI_lr/backbones/${dat}/backbones_${lr} \
+  --epoch 1 --save-features-prefix /gpfs/users/a1881717/work_dir/DI_lr/features/${dat}/f_${lr} --backbone resnet12 \
+  --save-test /gpfs/users/a1881717/work_dir/DI_lr/full_results/results_${dat}_${lr}.pt 
+  $@
 else
 python ../../main.py --dataset-path /gpfs/users/a1881717/datasets/ \
-  --validation-dataset metadataset_${dat}_validation \
+ --validation-dataset metadataset_${dat}_validation \
   --test-dataset metadataset_${dat}_test --freeze-backbone \
-  --load-backbone /gpfs/users/a1881717/MD_work_dir/test/backbones/${dat}/backbones_$index \
-  --epoch 1 --save-features-prefix /gpfs/users/a1881717/MD_work_dir/test/features/${dat}/$index --backbone resnet12 \
-  --few-shot --few-shot-ways 0 --few-shot-shots 0  $@
+  --load-backbone /gpfs/users/a1881717/work_dir/DI_lr/backbones/${dat}/backbones_${lr} \
+  --epoch 1 --save-features-prefix /gpfs/users/a1881717/work_dir/DI_lr/features/${dat}/f_${lr} --backbone resnet12\
+  --save-test /gpfs/users/a1881717/work_dir/DI_lr/full_results/results_${dat}_${lr}.pt 
+  $@
 fi
+
 wandb sync
