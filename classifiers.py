@@ -226,6 +226,7 @@ def prepareCriterion(outputDim, numClasses):
         "lr": lambda: LR(outputDim, numClasses),
         "l2": lambda: L2(outputDim, numClasses), 
         'multilabelbce': lambda : MultiLabelBCE(outputDim, numClasses), 
+        'prototypical' : lambda : ProtoNet()
         }[args.classifier.lower()]()
 
 print(" classifiers,", end="")

@@ -244,6 +244,31 @@ def subsample_dataset(dataset, file, index):
     return out
 
 
+def subsample_episode(episode):
+    sample_indices=[]
+    for i,x in enumerate(episode['choice_classes']):
+        class_indices = np.where(np.array(all_datasets['metadataset_cub_test']['targets'])==x.item())[0]
+        for j in episode['shots_idx'][i]:
+            sample_indices.append(class_indices[j])
+    return sample_indices
+
+
+def support_dataset(dataset, file, index):
+    '''reads an npy file looks at the "index" row, and selects the classes at 0'''
+    episodes = torch.load(file)
+    episode={}
+    for key, value_list in episodes['episodes'].items():
+        episode[key]=value_list[int(index)]
+    sample_indices = subsample_episode(episode)
+    out={}
+    out['targets'] =  reassign_numbers([dataset['targets'][i] for i in sample_indices])
+    out['data'] = [dataset['data'][i] for i in sample_indices]
+    out['name_classes'] = [dataset['name_classes'][i] for i in episode['choice_classes']]
+    out['num_elements_per_class'] = [len(x) for x in episode['shots_idx']]
+    out['num_classes']=len(episode['choice_classes'])
+    out['name'] = str(index)+'_'+file
+    return out
+
 def reassign_numbers(lst):
     remap = dict(zip(set(lst), itertools.count()))
     return [remap[i] for i in lst]
@@ -259,6 +284,8 @@ def metadataset(datasetName, name):
     dataset = all_datasets[name+"_" + datasetName]
     if args.subset_file != '' and datasetName == args.subset_split:
         dataset = subsample_dataset(dataset,args.subset_file,int(args.index_subset))
+    if args.support_file!='':
+        dataset = support_dataset(dataset, file=args.support_file, index=args.index_subset)
     if datasetName not in ["test", "validation"]:
         datasetName = 'train' # the dataset was loaded now the only thing that matters is if it is a train one.
     if datasetName == "train":

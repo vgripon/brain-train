@@ -66,17 +66,22 @@ def train(epoch, backbone, teacher, criterion, optimizer, scheduler):
                 batch_idx_list.append(batchIdx)
                 data = to(data, args.device)
                 target = target.to(args.device)
-
                 for step_idx, step in enumerate(eval(args.steps)):
                     loss, score = 0., torch.zeros(1)
-                    if 'prototypical' in step:
-                        dataStep = data['supervised'].clone()
+                    if 'prototypical' in step: 
+                        if isinstance(data, dict):
+                            dataStep = data['supervised'].clone()
+                        else:
+                            dataStep=data
                         loss_proto, score_proto = criterion['prototypical'][trainingSetIdx](backbone, dataStep)
                         loss += args.step_coefficient[step_idx] * loss_proto
                         score += args.step_coefficient[step_idx] * score_proto
                         
                     if 'lr' in step or 'mixup' in step or 'manifold mixup' in step or 'rotations' in step:
-                        dataStep = data['supervised'].clone()
+                        if isinstance(data, dict):
+                            dataStep = data['supervised'].clone()
+                        else:
+                            dataStep=data
                         if args.save_logits == '':
                             loss_lr, score = criterion['supervised'][trainingSetIdx](backbone, dataStep, target, lr="lr" in step, rotation="rotations" in step, mixup="mixup" in step, manifold_mixup="manifold mixup" in step)
                         else:
