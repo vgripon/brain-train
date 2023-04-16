@@ -36,15 +36,15 @@ set -eux
 if [ "$dat" == "traffic_signs" ]; then
 python ../../main.py --dataset-path /gpfs/users/a1881717/datasets/ \
   --test-dataset metadataset_${dat}_test --freeze-backbone \
-  --load-backbone /gpfs/users/a1881717/MD_work_dir/support/backbones/${dat}/backbones_$index \
-  --epoch 1 --save-features-prefix /gpfs/users/a1881717/MD_work_dir/support/features/${dat}/$index --backbone resnet12 \
+  --load-backbone /gpfs/users/a1881717/MD_work_dir/test/backbones/${dat}/backbones_$index \
+  --epoch 1 --save-features-prefix /gpfs/users/a1881717/MD_work_dir/test/features/${dat}/$index --backbone resnet12 \
   --few-shot --few-shot-ways 0 --few-shot-shots 0  $@
 else
 python ../../main.py --dataset-path /gpfs/users/a1881717/datasets/ \
   --validation-dataset metadataset_${dat}_validation \
   --test-dataset metadataset_${dat}_test --freeze-backbone \
-  --load-backbone /gpfs/users/a1881717/MD_work_dir/support/backbones/${dat}/backbones_$index \
-  --epoch 1 --save-features-prefix /gpfs/users/a1881717/MD_work_dir/support/features/${dat}/$index --backbone resnet12 \
+  --load-backbone /gpfs/users/a1881717/MD_work_dir/test/backbones/${dat}/backbones_$index \
+  --epoch 1 --save-features-prefix /gpfs/users/a1881717/MD_work_dir/test/features/${dat}/$index --backbone resnet12 \
   --few-shot --few-shot-ways 0 --few-shot-shots 0  $@
 fi
 wandb sync
