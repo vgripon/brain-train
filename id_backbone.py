@@ -43,6 +43,17 @@ def SNR(list_distrib):
             return margin,margin,0
     return margin/noise , margin , noise
 
+
+def logit(shots, queries, classifier, batch_size = 128):
+    device = shots[0].device
+    target = torch.cat([torch.Tensor([c]*len(queries[c])) for c in range(len(shots))]).long().to(device)
+    flat_queries = torch.cat(queries)
+    predictions = torch.zeros(len(target)).to(device)
+    for b in range(len(flat_queries)//batch_size +1):
+        predictions[b*batch_size:(b+1)*batch_size] = classifier(flat_queries[b*batch_size:(b+1)*batch_size]).argmax(dim=1)
+    acc = (target == predictions).float().mean()
+    return acc
+
 def SNR_mean_couple(list_distrib):
     n_ways = len(list_distrib)
     for i in range(n_ways):
@@ -60,12 +71,15 @@ def SNR_mean_couple(list_distrib):
     noise = np.array(l_noise).mean()
     return margin/noise , margin , noise
 
-def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_verbose = False, QR = args.QR ):
+def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_verbose = False, QR = args.QR, use_classifier=False ):
     if not os.path.isdir(filename):
         features = [torch.load(filename, map_location=args.device)]
+        allow_classifier=False
     else:
         features = [torch.load(os.path.join(filename,'0metadataset_{0}_{1}_features.pt'.format(args.target_dataset, args.valtest)), map_location=args.device)]
         #first run just to get the genrator right
+
+        allow_classifier=True #we allow the use of support set tuned classifiers for each run. Such classifier do not exist if the file is unique for many runs (as in the if condition)
     for i in range(len(features)):
         accs = []
         fake_acc = []
@@ -103,7 +117,13 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
             shots, queries = generator.get_features_from_indices(feature, episode)
             #print('1st shot', shots[0][0], '1st query' , queries[0][0])
             chance.append(1/len(shots)) # = 1/n_ways
-            perf = classifiers.evalFewShotRun(shots, queries)
+            if args.few_shot_classifier!='ncm' and allow_classifier:
+                file_classifier = os.path.join(filename, '..', 'classifiers',args.target_dataset, 'classifier_'+str(run) )
+                classifier = classifiers.LR(shots[0].shape[0], len(shots))
+                classifier.load_state_dic(torch.load(file_classifier))
+                perf = logit(shots, queries, classifier)
+            else:
+                perf = classifiers.evalFewShotRun(shots, queries)
             accs.append(perf)
             if 'snr' in proxy:
                 snr.append(SNR(shots)[0])
@@ -289,7 +309,7 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
         L[i,1] = np.array(res[proxy+args.QR*'QR'+args.isotropic*'isotropic']) if proxy!='hnm' else L[i,1]
     if args.fs_finetune!='':
         filename = args.fs_finetune
-        res_fn = testFewShot_proxy(filename, datasets = dataset, n_shots = n_shots, proxy = [proxy])
+        res_fn = testFewShot_proxy(filename, datasets = dataset, n_shots = n_shots, proxy = [proxy], use_classifier=(args.few_shot_classifier=='lr'))
         L[N-shift_ch-1,0]=np.array(res_fn['acc'])  #custom finetune is before-before last
         L[N-shift_ch-1,1] = np.array(res_fn[proxy+args.QR*'QR'+args.isotropic*'isotropic'])
     if args.cheated!='':
