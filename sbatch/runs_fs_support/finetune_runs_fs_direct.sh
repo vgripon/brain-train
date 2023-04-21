@@ -10,7 +10,7 @@
 # ( EXP_NAME=resnet50-b128-lr0.05 sbatch .../slurm/run_imagenet.sh --arch=resnet50 --batch-size=128 --learning-rate=0.05 )
 
 #SBATCH -J FS_fin
-#SBATCH -p a100
+#SBATCH -p v100
 #SBATCH -N 1
 #SBATCH -c 4
 #SBATCH -t 2:00:00
@@ -35,14 +35,13 @@ set -eux
 python ../../main.py \
   --dataset-path /gpfs/users/a1881717/datasets/   \
   --load-backbone /gpfs/users/a1881717/resnet12_metadataset_imagenet_64.pt  \
-  --support-file /gpfs/users/a1881717/brain-train/finetuning/magnitudes_test/magnitude_5s5w_test_${dat}.pt \
+  --support-file /gpfs/users/a1881717/brain-train/finetuning/magnitudes_test/magnitude_test_${dat}.pt \
   --index-subset ${index} \
   --training-dataset metadataset_${dat}_test \
-  --epoch 20 --dataset-size 10000 --wd 0.0001 --lr 0.001  \
-  --load-classifier /gpfs/users/a1881717/5shots_work_dir/support/classifiers/${dat}/classifier_${index} \
-  --scheduler cosine --backbone resnet12 --batch-size 128 --few-shot-shots 0 --few-shot-ways 0 --few-shot-queries 0 --few-shot  \
-  --save-backbone /gpfs/users/a1881717/5shots_work_dir/support/backbones/${dat}/backbones_${index} \
-  --save-classifier /gpfs/users/a1881717/5shots_work_dir/support/classifiers/${dat}/classifier_finetune_${index} \
+  --epoch 200  --wd 0.0002 --lr 0.01 --optimizer adam \
+  --scheduler cosine --backbone resnet12 --batch-size 128 --few-shot-shots 1 --few-shot-ways 5 --few-shot-queries 15 --few-shot  \
+  --save-backbone /gpfs/users/a1881717/1_shot_5ways_work_dir/direct_adam/backbones/${dat}/backbones_${index} \
+  --save-classifier /gpfs/users/a1881717/1_shot_5ways_work_dir/direct_adam/classifiers/${dat}/backbones_${index} \
   $@
 
 wandb sync

@@ -10,7 +10,7 @@
 # ( EXP_NAME=resnet50-b128-lr0.05 sbatch .../slurm/run_imagenet.sh --arch=resnet50 --batch-size=128 --learning-rate=0.05 )
 
 #SBATCH -J FS_gen
-#SBATCH -p a100
+#SBATCH -p v100
 #SBATCH -N 1
 #SBATCH -c 4
 #SBATCH -t 2:00:00
@@ -36,15 +36,16 @@ set -eux
 if [ "$dat" == "traffic_signs" ]; then
 python ../../main.py --dataset-path /gpfs/users/a1881717/datasets/ \
   --test-dataset metadataset_${dat}_test --freeze-backbone \
-  --load-backbone /gpfs/users/a1881717/5shots_work_dir/support/backbones/${dat}/backbones_${index} \
-  --epoch 1 --save-features-prefix /gpfs/users/a1881717/5shots_work_dir/support/features/${dat}/$index --backbone resnet12
+  --load-backbone /gpfs/users/a1881717/1_shot_5ways_work_dir/support_direct_1s5w/backbones/${dat}/backbones_${index}\
+  --epoch 1 --save-features-prefix /gpfs/users/a1881717/1_shot_5ways_work_dir/support_direct_1s5w/features/${dat}/$index --backbone resnet12
   $@
 else
 python ../../main.py --dataset-path /gpfs/users/a1881717/datasets/ \
  --validation-dataset metadataset_${dat}_validation \
   --test-dataset metadataset_${dat}_test --freeze-backbone \
-  --load-backbone /gpfs/users/a1881717/5shots_work_dir/support/backbones/${dat}/backbones_${index} \
-  --epoch 1 --save-features-prefix /gpfs/users/a1881717/5shots_work_dir/support/features/${dat}/$index --backbone resnet12
+  --load-backbone /gpfs/users/a1881717/1_shot_5ways_work_dir/support_direct_1s5w/backbones/${dat}/backbones_${index} \
+  --epoch 1 --save-features-prefix /gpfs/users/a1881717/1_shot_5ways_work_dir/support_direct_1s5w/features/${dat}/$index --backbone resnet12
   $@
 fi
+
 wandb sync
