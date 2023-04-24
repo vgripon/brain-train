@@ -61,6 +61,18 @@ class LR(nn.Module):
             return loss, score , output
         else:
             return loss, score
+        
+class simple_LR(nn.Module):
+    def __init__(self, inputDim, numClasses, backbone=None):
+        super(simple_LR, self).__init__()
+        self.fc = nn.Linear(inputDim, numClasses)
+        self.fcRotations = nn.Linear(inputDim, 4)
+        self.criterion = nn.CrossEntropyLoss() if args.label_smoothing == 0 else LabelSmoothingLoss(numClasses, args.label_smoothing)
+        self.backbone = backbone
+    def forward(self,x):
+        output = self.fc(x)
+        return output
+
 
 ### MultiLabel BCE
 class MultiLabelBCE(nn.Module):

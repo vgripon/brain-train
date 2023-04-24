@@ -10,13 +10,13 @@
 # ( EXP_NAME=resnet50-b128-lr0.05 sbatch .../slurm/run_imagenet.sh --arch=resnet50 --batch-size=128 --learning-rate=0.05 )
 
 #SBATCH -J FS_gen
-#SBATCH -p gpunodes
+#SBATCH -p a100
 #SBATCH -N 1
 #SBATCH -c 4
 #SBATCH -t 2:00:00
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
-#SBATCH --array=46-46
+#SBATCH --array=0-47
 #SBATCH --output=../../slurm/gen_feat/task-%A_%all_fs.out
 
 source /gpfs/users/a1881717/env.sh
@@ -39,7 +39,8 @@ python ../../main.py --dataset-path /gpfs/users/a1881717/datasets/ \
   --test-dataset metadataset_${dat}_test --freeze-backbone \
   --load-backbone /gpfs/users/a1881717/work_dir/DI_lr/backbones/${dat}/backbones_${lr} \
   --epoch 1 --save-features-prefix /gpfs/users/a1881717/work_dir/DI_lr/features/${dat}/f_${lr} --backbone resnet12 \
-  --save-test /gpfs/users/a1881717/work_dir/DI_lr/full_results/results_${dat}_${lr}.pt 
+  --few-shot-shots 5 --few-shot-ways 5 --few-shot-queries 15  \
+  --save-test /gpfs/users/a1881717/work_dir/DI_lr/full_results/results_${dat}_${lr}_5s5w.pt 
   $@
 else
 python ../../main.py --dataset-path /gpfs/users/a1881717/datasets/ \
@@ -47,7 +48,8 @@ python ../../main.py --dataset-path /gpfs/users/a1881717/datasets/ \
   --test-dataset metadataset_${dat}_test --freeze-backbone \
   --load-backbone /gpfs/users/a1881717/work_dir/DI_lr/backbones/${dat}/backbones_${lr} \
   --epoch 1 --save-features-prefix /gpfs/users/a1881717/work_dir/DI_lr/features/${dat}/f_${lr} --backbone resnet12\
-  --save-test /gpfs/users/a1881717/work_dir/DI_lr/full_results/results_${dat}_${lr}.pt 
+  --few-shot-shots 5 --few-shot-ways 5 --few-shot-queries 15  \
+  --save-test /gpfs/users/a1881717/work_dir/DI_lr/full_results/results_${dat}_${lr}_5s5w.pt 
   $@
 fi
 
