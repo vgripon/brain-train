@@ -51,29 +51,36 @@ class BasicBlock(nn.Module):
         return z
 
 class BasicBlock_RepVGG(nn.Module):
-    def __init__(self, in_f, out_f, stride=1):
+    def __init__(self, in_f, out_f, model_use, stride=1):
         super(BasicBlock_RepVGG, self).__init__()
-        self.convbn1 = ConvBN2d(in_f, out_f, stride = stride, kernel_size = 3, padding = 1)
-        self.convbn2 = ConvBN2d(in_f, out_f, stride = stride, kernel_size = 1, padding = 0)
-        self.shortcut = None if stride == 1 and in_f == out_f else ConvBN2d(in_f, out_f, kernel_size = 1, stride = stride, padding = 0)
-        self.bn_identity = nn.BatchNorm2d(out_f)
+        self.model_use = model_use
+        self.in_channels = in_f
+        if self.model_use == "train" : 
+          self.convbn3 = ConvBN2d(in_f, out_f, stride = stride, kernel_size = 3, padding = 1)
+          self.convbn1 = ConvBN2d(in_f, out_f, stride = stride, kernel_size = 1, padding = 0)
+          self.bn_identity = nn.BatchNorm2d(out_f) if out_f == in_f and stride == 1 else None
+        else : 
+          self.conv_inference = nn.Conv2d(in_f, out_f, kernel_size = 3, stride = stride, padding = 1, bias = True)
+
+        self.nonlinearity = nn.ReLU()
 
     def forward(self, x, lbda = None, perm = None):
-        y1 = self.convbn1(x)
-        y2 = self.convbn2(x)
-        z = y1 + y2 
-        if self.shortcut is not None:
-            z += self.shortcut(x)
-        else:
-            z += self.bn_identity(x)
-
+        if hasattr(self, 'conv_inference'):
+            return self.nonlinearity(self.conv_inference(x))
+        else : 
+            y1 = self.convbn3(x)
+            y2 = self.convbn1(x)
+            if self.bn_identity is not None : 
+                out = self.bn_identity(x)
+            else : 
+                out = 0
+        z = y1 + y2 + out
         if lbda is not None:
             z = lbda * z + (1 - lbda) * z[perm]
         if args.leaky:
             z = torch.nn.functional.leaky_relu(z, negative_slope = 0.1)
         else:
-            z = torch.relu(z)
-
+            z = self.nonlinearity(z)
         return z
 
 class BottleneckBlock(nn.Module):
@@ -100,21 +107,22 @@ class BottleneckBlock(nn.Module):
             return torch.relu(out)
 
 class RepVGG(nn.Module):
-    def __init__(self, block, blockList, a, b, featureMaps):
+    def __init__(self, block, blockList, a, b, featureMaps, model_use = "train"):
         super(RepVGG, self).__init__()
         features_input = min(64, int(featureMaps*a))
-        self.embed = ConvBN2d(3, features_input, stride = 2)
+        self.embed = BasicBlock_RepVGG(3, features_input, model_use, stride = 1)
         blocks = []
         for block_index, (nBlocks, channels) in enumerate(blockList):
             if block_index != len(blockList)-1 : 
-                for i in range(nBlocks):
-                    blocks.append(block(features_input, int(channels*a), stride = 1 if i > 0 else 2))
+                for i in range(nBlocks): 
+                    blocks.append(block(features_input, int(channels*a), model_use, stride = 1 if i > 0 else 2))
                     features_input = int(channels*a)
             else : 
                 for i in range(nBlocks):
-                    blocks.append(block(features_input, int(channels*b), stride = 1 if i > 0 else 2))
+                    blocks.append(block(features_input, int(channels*b), model_use, stride = 1 if i > 0 else 2))
                     features_input = int(channels*b)
         self.blocks = nn.ModuleList(blocks)
+        self.gap = nn.AdaptiveAvgPool2d(output_size=1)
 
     def forward(self, x, mixup = None, lbda = None, perm = None):
         mixup_layer = -1
@@ -138,8 +146,9 @@ class RepVGG(nn.Module):
                 y = block(y, lbda, perm)
             else:
                 y = block(y)
-        y = y.mean(dim = list(range(2, len(y.shape))))
-        return y
+        y = self.gap(y)
+        out = y.view(y.size(0), -1)        
+        return out
 
 class ResNet(nn.Module):
     def __init__(self, block, blockList, featureMaps, large = False):

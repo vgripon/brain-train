@@ -148,6 +148,16 @@ def test(backbone, datasets, criterion):
         display(" " * (1 + max(0, len(datasets[testSetIdx]["name"]) - 16)) + opener + "{:.2e}  {:6.2f}%".format(losses / total_elt, 100 * accuracies / total_elt) + ender, end = '', force = True)
     return torch.tensor(results)
 
+def repvgg_model_convert(model, save_path=None, do_copy=True):
+    if do_copy:
+        model = copy.deepcopy(model)
+    for module in model.modules():
+        if hasattr(module, 'inference_transform'):
+            module.inference_transform()
+    if save_path is not None:
+        torch.save(model.state_dict(), save_path)
+    return model
+
 def testFewShot(features, datasets = None):
     results = torch.zeros(len(features), 2)
     for i in range(len(features)):
