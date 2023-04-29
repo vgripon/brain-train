@@ -50,6 +50,39 @@ class BasicBlock(nn.Module):
             z = torch.relu(z)
         return z
 
+class BasicBlock_RepVGG(nn.Module):
+    def __init__(self, in_f, out_f, model_use, stride=1):
+        super(BasicBlock_RepVGG, self).__init__()
+        self.model_use = model_use
+        self.in_channels = in_f
+        if self.model_use == "train" : 
+          self.convbn3 = ConvBN2d(in_f, out_f, stride = stride, kernel_size = 3, padding = 1)
+          self.convbn1 = ConvBN2d(in_f, out_f, stride = stride, kernel_size = 1, padding = 0)
+          self.bn_identity = nn.BatchNorm2d(out_f) if out_f == in_f and stride == 1 else None
+        else : 
+          self.conv_inference = nn.Conv2d(in_f, out_f, kernel_size = 3, stride = stride, padding = 1, bias = True)
+
+        self.nonlinearity = nn.ReLU()
+
+    def forward(self, x, lbda = None, perm = None):
+        if hasattr(self, 'conv_inference'):
+            return self.nonlinearity(self.conv_inference(x))
+        else : 
+            y1 = self.convbn3(x)
+            y2 = self.convbn1(x)
+            if self.bn_identity is not None : 
+                out = self.bn_identity(x)
+            else : 
+                out = 0
+        z = y1 + y2 + out
+        if lbda is not None:
+            z = lbda * z + (1 - lbda) * z[perm]
+        if args.leaky:
+            z = torch.nn.functional.leaky_relu(z, negative_slope = 0.1)
+        else:
+            z = self.nonlinearity(z)
+        return z
+
 class BottleneckBlock(nn.Module):
     def __init__(self, in_f, out_f, in_expansion = 4, stride=1):
         super(BottleneckBlock, self).__init__()
@@ -73,6 +106,49 @@ class BottleneckBlock(nn.Module):
         else:
             return torch.relu(out)
 
+class RepVGG(nn.Module):
+    def __init__(self, block, blockList, a, b, featureMaps, model_use = "train"):
+        super(RepVGG, self).__init__()
+        features_input = min(64, int(featureMaps*a))
+        self.embed = BasicBlock_RepVGG(3, features_input, model_use, stride = 1)
+        blocks = []
+        for block_index, (nBlocks, channels) in enumerate(blockList):
+            if block_index != len(blockList)-1 : 
+                for i in range(nBlocks): 
+                    blocks.append(block(features_input, int(channels*a), model_use, stride = 1 if i > 0 else 2))
+                    features_input = int(channels*a)
+            else : 
+                for i in range(nBlocks):
+                    blocks.append(block(features_input, int(channels*b), model_use, stride = 1 if i > 0 else 2))
+                    features_input = int(channels*b)
+        self.blocks = nn.ModuleList(blocks)
+        self.gap = nn.AdaptiveAvgPool2d(output_size=1)
+
+    def forward(self, x, mixup = None, lbda = None, perm = None):
+        mixup_layer = -1
+        if mixup == "mixup":
+            mixup_layer = 0
+        elif mixup == "manifold mixup":
+            mixup_layer = random.randint(0, len(self.blocks) + 1)
+        
+        if mixup_layer == 0:
+            x = lbda * x + (1 - lbda) * x[perm]
+        if x.shape[1] == 1:
+            x = x.repeat(1,3,1,1)
+
+        if mixup_layer == 1:
+            y = self.embed(x, lbda, perm)
+        else:
+            y = self.embed(x)
+
+        for i, block in enumerate(self.blocks):
+            if mixup_layer == i + 2:
+                y = block(y, lbda, perm)
+            else:
+                y = block(y)
+        y = self.gap(y)
+        out = y.view(y.size(0), -1)        
+        return out
 
 class ResNet(nn.Module):
     def __init__(self, block, blockList, featureMaps, large = False):
@@ -121,6 +197,7 @@ class ResNet(nn.Module):
 
         y = y.mean(dim = list(range(2, len(y.shape))))
         return y
+
 
 class BasicBlockRN12(nn.Module):
     def __init__(self, in_f, out_f):
@@ -213,6 +290,7 @@ def prepareBackbone():
         backbone = '_'.join(backbone.split('_')[:-1])
 
     return {
+        "repvgg_a0": lambda: (RepVGG(BasicBlock_RepVGG, [(2, 64), (4, 128), (14, 256), (1, 512)], 0.75, 2.5, args.feature_maps), int(512 * 2.5)),
         "resnet18": lambda: (ResNet(BasicBlock, [(2, 1, 1), (2, 2, 2), (2, 2, 4), (2, 2, 8)], args.feature_maps, large = large), 8 * args.feature_maps),
         "resnet20": lambda: (ResNet(BasicBlock, [(3, 1, 1), (3, 2, 2), (3, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
         "resnet56": lambda: (ResNet(BasicBlock, [(9, 1, 1), (9, 2, 2), (9, 2, 4)], args.feature_maps, large = large), 4 * args.feature_maps),
