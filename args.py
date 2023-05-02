@@ -106,6 +106,7 @@ parser.add_argument("--competing-features", type=str, default='list of features'
 parser.add_argument("--load-episodes", type=str, default='', help="dict of episode")
 parser.add_argument("--fs-finetune", type=str, default='', help="path of dir to fs tuned features")
 parser.add_argument("--cheated", type=str, default='', help="path of file of cheated features")
+parser.add_argument("--baseline", type=str, default='', help="path of file of baseline features")
 
 
 
