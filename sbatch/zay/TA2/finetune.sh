@@ -30,11 +30,11 @@ few_shot_queries="0"
 few_shot="--few-shot"
 lr=0.001
 
-save_backbone_base="${WORK}/results/TA2/backbones/${clustering}/"
+save_backbone_base="${WORK}/results/TA3/backbones/${clustering}/"
 save_backbone="${save_backbone_base}/backbones_${index_subset}"
 
 
-save_classifier_base="${WORK}/results/TA2/classifiers/${clustering}/"
+save_classifier_base="${WORK}/results/TA3/classifiers/${clustering}/"
 save_classifier="${save_classifier_base}/classifier_finetune_${index_subset}"
 load_classifier="${save_classifier_base}/classifier_${index_subset}"
 
