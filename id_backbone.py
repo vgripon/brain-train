@@ -118,6 +118,8 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
         chance = 100 * torch.tensor(chance)
         snr = torch.tensor(snr)
         loo = 100*torch.tensor(loo)
+        hard = 100 * torch.tensor(hard)
+        soft = 100 * torch.tensor(soft)
         rankme , rankme_t = torch.tensor(rankme), torch.tensor(rankme_t)
         return {'acc' : accs,'snr': snr, 'fake_acc'+QR*'QR'+args.isotropic*'isotropic'  : fake_acc, 'chance' : chance, 'loo' : loo, 'soft' : soft, 'hard': hard, 'rankme' : rankme, 'rankme_t' : rankme_t}
 
@@ -165,13 +167,13 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
         selection_pool = torch.cat((TA_scores,baseline.unsqueeze(0)),dim=0)
         nb_backbones=selection_pool.shape[0]
         random_indices = torch.randint(0,nb_backbones,(number_of_episode,))
-        random_backbone = selection_pool[random_indices, 0]
+        random_backbone = torch.diagonal(selection_pool[random_indices, 0])
         print_metric(random_backbone.ravel(), 'random_backbone')
         opti_indices = torch.argmax(selection_pool[:, 1], dim=0)         # Take values along the specified axis (axis 0)
-        opti = selection_pool[opti_indices, 0]
+        opti = torch.diagonal(selection_pool[opti_indices, 0])
         print_metric(opti.ravel(), 'opti: ')
         max_indices = torch.argmax(selection_pool[:, 0], dim=0)         # Take values along the specified axis (axis 0)
-        max_possible = selection_pool[max_indices, 0]
+        max_possible = torch.diagonal(selection_pool[max_indices, 0])
         print_metric(max_possible.ravel(),'max_possible: ')
 
 

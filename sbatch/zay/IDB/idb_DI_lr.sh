@@ -10,7 +10,7 @@
 #SBATCH --hint=nomultithread
 #SBATCH --account=csb@v100
 mode=$1
-
+SLURM_ARRAY_TASK_ID=0
 list1=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_flower")
 array_value=""
 if [ "$mode" == "1s5w" ]; then
@@ -58,21 +58,20 @@ test_dataset="metadataset_${dat}_test"
 
 
 # Define directories and paths
-clustering_list=("V" "S" "R" "X")
-directories=()
 
-for clustering in "${clustering_list[@]}"; do
-    dir="${WORK}/results/TA3/features/${clustering}/${dat}/"
-    directories+=("$dir")
-done
+directories=()
+dir="${WORK}/results/DI/features/${dat}/"
+directories+=("$dir")
+echo $directories
+
+
 baseline="${WORK}/results/B/f_baselinemetadataset_${dat}_test_features.pt"
 loadepisode="${WORK}/episode_600/${mag_or_ncm}600_${mode}_test_${dat}.pt"
-outfile="${WORK}/results/IDB/idb_ta_${mode}_${dat}.pt"
+outfile="${WORK}/results/IDB/idb_DI_${mode}_${dat}.pt"
 
 result="["
 count=0
 for dir in "${directories[@]}"; do
-    echo $dir
     files=$(find "$dir" -type f -name "*$valtest*" | sort) 
     for file in $files; do
         result="$result'$file',"
