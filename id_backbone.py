@@ -16,15 +16,11 @@ import json
 from collections import defaultdict
 import hashlib
 import torch.nn as nn
-import hm_selection
+#import hm_selection
 import filelock
 import itertools
 
-load_episode = args.load_episodes!=''
-load_fs_fine = args.fs_finetune!=''
-if load_episode ^ load_fs_fine:
-    print('\n \n load_episode and fs_finetune work together you probably forgot one \n\n' )
-    #sys.exit(0)
+
 
 if 'omniglot' in args.target_dataset:
     data_info_omniglot_file = os.path.join(args.dataset_path, 'omniglot.json')
@@ -299,7 +295,7 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
     if args.cheated!='':
         shift_ch=1
     N+=(shift_fs+shift_ch)
-    filename_baseline = os.path.join('/gpfs/users/a1881717/work_dir/baseline/features/',dataset,'featmetadataset_'+ dataset+'_'+args.valtest+'_features.pt' )
+    filename_baseline = args.baseline
     res_baseline = testFewShot_proxy(filename_baseline, datasets = dataset,n_shots = n_shots, proxy=proxy, tqdm_verbose = True)
     L = np.zeros((N+1,2,len(res_baseline['acc'])))  #N+A and the two bottom lines are here to add the baseline amongst candidates
     L[N,0] = np.array(res_baseline['acc']) 
