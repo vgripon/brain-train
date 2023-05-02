@@ -18,6 +18,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --array=0-7
 #SBATCH --output=../slurm/gen_feat/task-%A_%a.out
+##SBATCH --constraint=v100-16g # demander des GPU a 16 Go de RAM
 
 dat_ind=${1:-0} ; shift
 

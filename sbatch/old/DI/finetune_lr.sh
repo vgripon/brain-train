@@ -57,6 +57,7 @@ python ../../main.py \
   --scheduler cosine --backbone resnet12 --batch-size 128 --few-shot-shots 0 --few-shot-ways 0 --few-shot-queries 0 --few-shot  \
   --save-backbone /gpfs/users/a1881717/work_dir/DI_lr/backbones/${dat}/backbones_${lr} \
   --save-classifier /gpfs/users/a1881717/work_dir/DI_lr/classifiers/${dat}/classifier_finetune_finetuned_${lr} \
+  --save-features-prefix /gpfs/users/a1881717/work_dir/DI_lr/features/${dat}/f_${lr} \
   $@
 
 wandb sync
