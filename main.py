@@ -150,16 +150,16 @@ def test(backbone, datasets, criterion):
                 data = to(data, args.device)
                 target = target.to(args.device)
                 if args.save_logits == '':
-                    print(criterion)
                     loss, score = criterion[testSetIdx](backbone, data, target, lr=True)
                 else:
                     n_classes_classifier = criterion[testSetIdx].fc.out_features # this is useful if the number of classes of the dataset is larger than the output of the classifier (use case:  get its logit)
                     loss, score, logit = criterion[testSetIdx](backbone, data,target%n_classes_classifier, lr=True)
+                    for i in range(logit.shape[0]):
+                        alloutputs[target[i]]["logits"].append(logit[i])
                 losses += data.shape[0] * loss.item()
                 accuracies += data.shape[0] * score.item()
                 total_elt += data.shape[0]
-                for i in range(logit.shape[0]):
-                    alloutputs[target[i]]["logits"].append(logit[i])
+                
             if args.save_logits != '':
                 for c in range(len(alloutputs)):
                     alloutputs[c]["logits"] = torch.stack(alloutputs[c]["logits"])
@@ -324,6 +324,8 @@ for nRun in range(args.runs):
     all_steps = [item for sublist in eval(args.steps) for item in sublist]
     if 'lr' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or 'rotations' in all_steps:
         criterion['supervised'] = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in trainSet]
+        if args.task_queries:
+            criterion['supervised'] = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in testSet]
     if args.episodic and 'prototypical' in all_steps:
         criterion['prototypical'] = [classifiers.ProtoNet() for dataset in trainSet]
     if 'dino' in all_steps:
@@ -451,6 +453,7 @@ for nRun in range(args.runs):
             #opener = Fore.RED
             if args.few_shot or args.save_features_prefix != "":
                 #print('Generating Test Features')
+                print('TEST _FEW _SHOT')
                 featuresTest = generateFeatures(backbone, testSet)
                 featuresTest = process(featuresTest, meanVector)
                 tempTestStats = testFewShot(featuresTest, testSet)
@@ -498,20 +501,21 @@ for nRun in range(args.runs):
 
     print()
     print("Run " + str(nRun+1) + "/" + str(args.runs) + " finished")
+    if args.save_stats!='':
+        create_table()
     for phase, nameSet, stats in [("Train", trainSet, allRunTrainStats), ("Validation", validationSet, allRunValidationStats),  ("Test", testSet, allRunTestStats)]:
         print(phase)
         if nameSet != []:
             if stats is not None:
+                print(stats.shape)
                 for dataset in range(stats.shape[1]):
                     print("\tDataset " + nameSet[dataset]["name"])
                     for stat in range(stats.shape[2]):
                         low, up = confInterval(stats[:,dataset,stat])
                         print("\t{:.3f} ±{:.3f} (conf. [{:.3f}, {:.3f}])".format(stats[:,dataset,stat].mean().item(), stats[:,dataset,stat].std().item(), low, up), end = '')
-                        if args.save_stats!='':
-                            save_stats(args.save_stats,{'i':args.index_subset , 'stats' : stats[:,dataset,stat].mean().item()})
-                    if args.save_test!='' and phase=='Test':
-                        print('Warning writefile only takes into account test set')
-                        write_file([stats[:,dataset,:].mean(0)] )
+                    if args.save_stats!='' and phase=='Test':
+                        key = args.index_subset
+                        insert_data(key, stats[:,dataset,stat].mean().item())
                     print()
     print()
     if args.wandb!='':

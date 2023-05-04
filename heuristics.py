@@ -83,7 +83,7 @@ def loo_shuffle(shots,num_iterations=10):
                 val_query.append(shuffled_shot[0].unsqueeze(0))
             if n==1:
                 new_shots.append(shot)
-                val_query.append([])
+                val_query.append(shot)  # will give 100% accuracy but can't do any better in 1shot
         results.append(classifiers.evalFewShotRun(new_shots, val_query).item())
     return np.array(results).mean()
 
@@ -194,6 +194,18 @@ def SNR(list_distrib):
             return margin,margin,0
     return margin/noise , margin , noise
 
+
+def SNR2(list_distrib):
+    #print('n_ways distrib', len(list_distrib))
+    n_ways = len(list_distrib)
+    means = torch.stack([list_distrib[i].mean(0) for i in range(n_ways)])
+    stds = [torch.norm(list_distrib[i].std(0)).item()  for i in range(n_ways)]
+    noise = np.mean(stds)
+    margin = torch.cdist(means, means)
+    margin_noz=margin[margin!=0.0]
+    d_min =  torch.mean(margin_noz)
+    return d_min, d_min, d_min 
+
 def torch_gaussian_kde(xy, bandwidth=0.1):
     xy = xy.T.unsqueeze(1)
     diff = xy - xy.T
@@ -201,11 +213,20 @@ def torch_gaussian_kde(xy, bandwidth=0.1):
     kde = torch.mean(torch.exp(-0.5 * (norm / bandwidth) ** 2), dim=1) / (bandwidth * np.sqrt(2 * np.pi))
     return kde
 
+def print_metric(metric_tensor, name = ''):
+    low,up = confInterval(metric_tensor)
+    print(name, "\t{:.3f} ±{:.3f} (conf. [{:.3f}, {:.3f}])".format(metric_tensor.mean().item(), metric_tensor.std().item(), low, up))
+
+
 def plot_norm_correlation(L, plot=True, proxy= ''):
     stds = torch.std(L,axis = 0)
     means = torch.mean(L,axis = 0)
     norm_L = (L-means)/stds
     norm_L = torch.nan_to_num(norm_L, nan=0)
+    norm_L[ abs(norm_L) > 1e10] = 0 
+    index_best = norm_L[:,1].argmax(0)
+    sigma = torch.diagonal(norm_L[index_best,0])
+    print_metric(sigma, 'Sigma Selected Backbone :')
     y = norm_L[:,0].ravel()
     x = norm_L[:,1].ravel()
     rho = torch.corrcoef(torch.stack((x,y),dim=0))
