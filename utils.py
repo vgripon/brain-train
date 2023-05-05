@@ -6,6 +6,8 @@ import numpy
 import scipy.stats as st
 from args import args
 import os
+import sqlite3
+
 
 lastDisplay = time.time()
 def display(string, end = '\n', force = False):
@@ -54,17 +56,29 @@ def updateCSV(stats, epoch = -1):
         f.write(text)
         f.close()
 
-def save_stats(filename, datapoint):
-    if os.path.isfile(filename):
-        # Load data from file
-        data = torch.load(filename)
-        # Add new float to list
-        data.append(datapoint)
-    else:
-        # Create new list with one float
-        data = [datapoint]
 
-    # Save data to file
-    torch.save(data, filename)
+
+def create_table(filename=args.save_stats):
+    conn = sqlite3.connect(filename)
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS data (key TEXT PRIMARY KEY, value TEXT)''')
+    conn.commit()
+    conn.close()
+
+def insert_data(key, value):
+    conn = sqlite3.connect(args.save_stats)
+    cursor = conn.cursor()
+    cursor.execute('''INSERT OR REPLACE INTO data (key, value) VALUES (?, ?)''', (key, value))
+    conn.commit()
+    conn.close()
+
+def get_data(key):
+    conn = sqlite3.connect(args.save_stats)
+    cursor = conn.cursor()
+    cursor.execute('''SELECT value FROM data WHERE key = ?''', (key,))
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] if result else None
+
 
 print(" utils,", end="")
