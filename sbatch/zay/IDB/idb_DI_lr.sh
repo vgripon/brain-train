@@ -10,7 +10,6 @@
 #SBATCH --hint=nomultithread
 #SBATCH --account=csb@v100
 mode=$1
-SLURM_ARRAY_TASK_ID=0
 list1=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_flower")
 array_value=""
 if [ "$mode" == "1s5w" ]; then

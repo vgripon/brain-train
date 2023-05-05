@@ -29,14 +29,6 @@ if 'omniglot' in args.target_dataset:
     data_info_omniglot=data_info_omniglot['metadataset_omniglot_{}'.format(args.valtest)]
 
 
-
-def print_metric(metric_tensor, name = ''):
-    low,up = confInterval(metric_tensor)
-    print(name, "\t{:.3f} ±{:.3f} (conf. [{:.3f}, {:.3f}])".format(metric_tensor.mean().item(), metric_tensor.std().item(), low, up))
-
-
-
-
 def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_verbose = False, QR = args.QR, use_classifier=False,episodes=None ):
     if episodes!=None:
         nb_episodes = len(episodes['shots_idx'])
@@ -208,7 +200,7 @@ def save_results(out,dataset, proxy, chance, episodes,backbones):
         print(h)
         d['episodes'][dataset] = episodes
         d['hash_episode'][dataset] = h
-        d['backbones'][dataset]= backbones
+        d['backbones'][dataset]= str(backbones)
         if proxy in d.keys():
             d[proxy][dataset] = {'data' : out, 'info' : str(args), 'chance' : chance, 'hash_episode' : h}
         else:
