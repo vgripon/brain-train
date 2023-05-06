@@ -324,7 +324,7 @@ for nRun in range(args.runs):
     all_steps = [item for sublist in eval(args.steps) for item in sublist]
     if 'lr' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or 'rotations' in all_steps:
         criterion['supervised'] = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in trainSet]
-        if args.task_queries:
+        if args.task_queries and not args.few_shot: #useful to measure the support set accuracy
             criterion['supervised'] = [classifiers.prepareCriterion(outputDim, dataset["num_classes"]) for dataset in testSet]
     if args.episodic and 'prototypical' in all_steps:
         criterion['prototypical'] = [classifiers.ProtoNet() for dataset in trainSet]
@@ -453,7 +453,6 @@ for nRun in range(args.runs):
             #opener = Fore.RED
             if args.few_shot or args.save_features_prefix != "":
                 #print('Generating Test Features')
-                print('TEST _FEW _SHOT')
                 featuresTest = generateFeatures(backbone, testSet)
                 featuresTest = process(featuresTest, meanVector)
                 tempTestStats = testFewShot(featuresTest, testSet)
