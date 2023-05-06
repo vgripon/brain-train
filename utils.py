@@ -6,7 +6,7 @@ import numpy
 import scipy.stats as st
 from args import args
 import os
-import sqlite3
+import json
 
 
 lastDisplay = time.time()
@@ -58,27 +58,15 @@ def updateCSV(stats, epoch = -1):
 
 
 
-def create_table(filename=args.save_stats):
-    conn = sqlite3.connect(filename)
-    cursor = conn.cursor()
-    cursor.execute('''CREATE TABLE IF NOT EXISTS data (key TEXT PRIMARY KEY, value TEXT)''')
-    conn.commit()
-    conn.close()
 
-def insert_data(key, value):
-    conn = sqlite3.connect(args.save_stats)
-    cursor = conn.cursor()
-    cursor.execute('''INSERT OR REPLACE INTO data (key, value) VALUES (?, ?)''', (key, value))
-    conn.commit()
-    conn.close()
 
-def get_data(key):
-    conn = sqlite3.connect(args.save_stats)
-    cursor = conn.cursor()
-    cursor.execute('''SELECT value FROM data WHERE key = ?''', (key,))
-    result = cursor.fetchone()
-    conn.close()
-    return result[0] if result else None
+def save_to_json(data, filename):
+    with open(filename, 'w') as jsonfile:
+        json.dump(data, jsonfile)
+
+
+
+
 
 
 print(" utils,", end="")

@@ -501,8 +501,6 @@ for nRun in range(args.runs):
 
     print()
     print("Run " + str(nRun+1) + "/" + str(args.runs) + " finished")
-    if args.save_stats!='':
-        create_table()
     for phase, nameSet, stats in [("Train", trainSet, allRunTrainStats), ("Validation", validationSet, allRunValidationStats),  ("Test", testSet, allRunTestStats)]:
         print(phase)
         if nameSet != []:
@@ -514,8 +512,7 @@ for nRun in range(args.runs):
                         low, up = confInterval(stats[:,dataset,stat])
                         print("\t{:.3f} ±{:.3f} (conf. [{:.3f}, {:.3f}])".format(stats[:,dataset,stat].mean().item(), stats[:,dataset,stat].std().item(), low, up), end = '')
                     if args.save_stats!='' and phase=='Test':
-                        key = args.index_subset
-                        insert_data(key, stats[:,dataset,stat].mean().item())
+                        save_to_json({args.index_subset:  stats[:,dataset,stat].mean().item()}, args.save_stats)
                     print()
     print()
     if args.wandb!='':
