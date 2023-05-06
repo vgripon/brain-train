@@ -170,7 +170,7 @@ def test(backbone, datasets, criterion):
         display(" " * (1 + max(0, len(datasets[testSetIdx]["name"]) - 16)) + opener + "{:.2e}  {:6.2f}%".format(losses / total_elt, 100 * accuracies / total_elt) + ender, end = '', force = True)
     return torch.tensor(results)
 
-def testFewShot(features, datasets = None, write_file=False):
+def testFewShot(features, datasets = None):
     results = torch.zeros(len(features), 2)
     for i in range(len(features)):
         accs = []
@@ -180,7 +180,11 @@ def testFewShot(features, datasets = None, write_file=False):
         for run in range(args.few_shot_runs):
             shots = []
             queries = []
-            episode = generator.sample_episode(ways=args.few_shot_ways, n_shots=args.few_shot_shots, n_queries=args.few_shot_queries, unbalanced_queries=args.few_shot_unbalanced_queries)
+            if args.load_episodes=='':
+                episode = generator.sample_episode(ways=args.few_shot_ways, n_shots=args.few_shot_shots, n_queries=args.few_shot_queries, unbalanced_queries=args.few_shot_unbalanced_queries)
+            else:
+                episodes=torch.load(args.load_episodes)['episodes']
+                episode = {'shots_idx' : episodes['shots_idx'][int(args.index_episode)], 'queries_idx' : episodes['queries_idx'][int(args.index_episode)], 'choice_classes' : episodes['choice_classes'][int(args.index_episode)]}
             shots, queries = generator.get_features_from_indices(feature, episode)
             accs.append(classifiers.evalFewShotRun(shots, queries))
         accs = 100 * torch.tensor(accs)
@@ -189,8 +193,6 @@ def testFewShot(features, datasets = None, write_file=False):
         results[i, 1] = (up - low) / 2
         if datasets is not None:
             display(" " * (1 + max(0, len(datasets[i]["name"]) - 16)) + opener + "{:6.2f}% (±{:6.2f})".format(results[i, 0], results[i, 1]) + ender, end = '', force = True)
-    if write_file:
-        write_file(results)
     return results
 
 
