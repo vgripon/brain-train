@@ -452,7 +452,7 @@ for nRun in range(args.runs):
         if testSet != [] and epoch >= args.skip_epochs:
             #opener = Fore.RED
             if args.few_shot or args.save_features_prefix != "":
-                #print('Generating Test Features')
+                print('Generating Test Features')
                 featuresTest = generateFeatures(backbone, testSet)
                 featuresTest = process(featuresTest, meanVector)
                 tempTestStats = testFewShot(featuresTest, testSet)
