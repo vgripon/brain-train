@@ -514,7 +514,8 @@ for nRun in range(args.runs):
                         print("\t{:.3f} ±{:.3f} (conf. [{:.3f}, {:.3f}])".format(stats[:,dataset,stat].mean().item(), stats[:,dataset,stat].std().item(), low, up), end = '')
                     stat=0
                     if args.save_stats!='' and phase=='Test':
-                        save_to_json({args.index_subset:  stats[:,dataset,stat].mean().item()}, args.save_stats)
+                        index = args.index_episode if args.index_episode else args.index_subset
+                        save_to_json({args.index_episode :  stats[:,dataset,stat].mean().item()}, args.save_stats)
                     print()
     print()
     if args.wandb!='':

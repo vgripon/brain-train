@@ -9,17 +9,11 @@
 #SBATCH --qos=qos_gpu-t3
 #SBATCH --hint=nomultithread
 #SBATCH --account=csb@v100
+#SBATCH --array=0-7
 mode=$1
 
 list1=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_flower")
-array_value=""
-if [ "$mode" == "1s5w" ]; then
-    list2=("snr")
-    array_value="0-7" # launch sbatch --array=0-7 idb.sh  1s5w
-else
-    list2=("snr" "loo" "fake_acc" "hard" "soft" "rankme")
-    array_value="0-44"  # launch sbatch --array=0-47 idb.sh  5s5w or MD
-fi
+
 
 
 
@@ -50,39 +44,18 @@ fi
 valtest="test"
 mag_or_ncm="magnitude"
 
-length=${#list2[@]}
 task_id=$SLURM_ARRAY_TASK_ID
-dat=${list1[$((task_id / length))]}
-proxy=${list2[$((task_id % length))]}
+dat=${list1[$dat_ind]}
 test_dataset="metadataset_${dat}_test"
+count=0
+proxy="snr"
 
-
-# Define directories and paths
-clustering_list=("V" "S" "R" "X")
-directories=()
-
-for clustering in "${clustering_list[@]}"; do
-    dir="${WORK}/results/TA3/features/${clustering}/${dat}/"
-    directories+=("$dir")
-done
+cheated="${WORK}/results/DI/features/${dat}/f_20_0.001metadataset_${dat}_test_features.pt"
 baseline="${WORK}/results/B/f_baselinemetadataset_${dat}_test_features.pt"
 loadepisode="${WORK}/episode_600/${mag_or_ncm}600_${mode}_test_${dat}.pt"
-outfile="${WORK}/results/IDB/idb_ta_${mode}_${dat}.pt"
+outfile="${WORK}/results/IDB/idb_DI_${mode}_${dat}.pt"
 
-result="["
-count=0
-for dir in "${directories[@]}"; do
-    echo $dir
-    files=$(find "$dir" -type f -name "*$valtest*" | sort) 
-    for file in $files; do
-        result="$result'$file',"
-        count=$((count+1))
-    done
-done
 
-# Remove the trailing comma and add the closing bracket
-result="${result%,}]"
-result="\"$result\""
 
 echo $result
 echo "$dat"
@@ -98,8 +71,8 @@ python ../../../id_backbone.py \
     --load-episode $loadepisode \
     --num-cluster $count \
     --target-dataset $dat \
+    --cheated ${cheated} \
     --proxy $proxy \
-    --competing-features $result  \
     --seed 1 \
     --few-shot-shots "${few_shot_shots}" \
     --few-shot-ways "${few_shot_ways}" \

@@ -149,8 +149,8 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
     if args.cheated!='':
         res_cheated = testFewShot_proxy(args.cheated, datasets = dataset, n_shots = n_shots, proxy = [proxy],episodes=episodes)
         cheated=torch.zeros((2,number_of_episode))
-        cheated[0] = res_fn['acc'] #custom finetune is before-before last
-        cheated[1] = res_fn[proxy+args.QR*'QR'+args.isotropic*'isotropic']
+        cheated[0] = res_cheated['acc'] #custom finetune is before-before last
+        cheated[1] = res_cheated[proxy+args.QR*'QR'+args.isotropic*'isotropic']
         out['cheated']=cheated
     
     
@@ -169,7 +169,7 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
         print_metric(max_possible.ravel(),'max_possible: ')
 
 
-    print_metric(res['chance'] , 'chance')
+    print_metric(res_baseline['chance'] , 'chance')
     baseline = res_baseline['acc']
     print_metric(baseline,'baseline: ')
 
@@ -179,10 +179,13 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
     if args.cheated!='':
         print_metric(res_cheated['acc'],'cheated: ')
     print_metric(out['baseline'][0],'sanity check baseline: ')
-    
-    _,_ = plot_norm_correlation(selection_pool, plot=False, proxy= proxy)
+    if N>0:
+        _,_ = plot_norm_correlation(selection_pool, plot=False, proxy= proxy)
+        backbones = eval(eval(args.competing_features))
+    else:
+        backbones = ""
     if save:
-        save_results(out, dataset, proxy+'QR'*args.QR+'isotropic'*args.isotropic, res['chance'], episodes = episodes, backbones = eval(eval(args.competing_features))+[args.fs_finetune]+[filename_baseline])
+        save_results(out, dataset, proxy+'QR'*args.QR+'isotropic'*args.isotropic, res_baseline['chance'], episodes = episodes,backbones=backbones )
     return  out 
 
 
