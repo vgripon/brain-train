@@ -513,7 +513,7 @@ for nRun in range(args.runs):
                     for stat in range(stats.shape[2]):
                         low, up = confInterval(stats[:,dataset,stat])
                         print("\t{:.3f} ±{:.3f} (conf. [{:.3f}, {:.3f}])".format(stats[:,dataset,stat].mean().item(), stats[:,dataset,stat].std().item(), low, up), end = '')
-                    stat=0
+                    stat=0 if args.few_shot else 1
                     if args.save_stats!='' and phase=='Test':
                         index = args.index_episode if args.index_episode else args.index_subset
                         save_to_json({args.index_episode :  stats[:,dataset,stat].mean().item()}, args.save_stats)
