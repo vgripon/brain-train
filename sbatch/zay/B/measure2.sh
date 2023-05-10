@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=TravailGPU # nom du job
-#SBATCH --output=../../../slurm/TI/task%jmeasure.out # fichier de sortie (%j = job ID)
+#SBATCH --output=../../../slurm/DI/task%jmeasure.out # fichier de sortie (%j = job ID)
 #SBATCH --nodes=1 # reserver 1 nœud
 #SBATCH --ntasks=4 # reserver 4 taches (ou processus)
 #SBATCH --gres=gpu:1 # reserver 4 GPU
@@ -16,19 +16,20 @@ list1=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_f
 # Get the current string from the list based on the task ID
 dat=${list1[$dat_ind]}
 mag_or_ncm="magnitude"
-load_backbone_base="${WORK}/results/TI2/${mode}/backbones/${dat}"
-load_backbone="${load_backbone_base}/backbones_${SLURM_ARRAY_TASK_ID}"
+load_backbone="${WORK}/resnet12_metadataset_imagenet_64.pt"
 loadepisodes="${WORK}/episode_600/${mag_or_ncm}600_${mode}_test_${dat}.pt"
 indexepisode=$SLURM_ARRAY_TASK_ID
 dataset_path="${SCRATCH}/"
 test_dataset="metadataset_${dat}_test"
 epoch="1"
 few_shot_runs="1"
-index_subset=$SLURM_ARRAY_TASK_ID
 backbone="resnet12"
 batch_size="128"
 few_shot="--few-shot"
 lr=0.001
+# Get the current string from the list based on the task ID
+
+
 
 if [ "$mode" == "MD" ]; then
     few_shot_shots="0"
@@ -46,7 +47,7 @@ else
     echo "Invalid mode. Please choose between MD, 1s5w, and 5s5w."
     exit 1
 fi
-save_stats="${WORK}/results/TI2/measure/${mode}/${dat}/${SLURM_ARRAY_TASK_ID}.json"
+save_stats="${WORK}/results/B/measure/${mode}/${dat}/${SLURM_ARRAY_TASK_ID}.json"
 
 module purge # nettoyer les modules herites par defaut
 #conda deactivate # desactiver les environnements herites par defaut

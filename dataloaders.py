@@ -288,7 +288,7 @@ def metadataset(datasetName, name):
     if args.subset_file != '' and datasetName == args.subset_split:
         dataset = subsample_dataset(dataset,args.subset_file,int(args.index_subset))
     if args.task_file!='':
-        dataset = task_dataset(dataset, file=args.task_file, index=args.index_subset,full_name=name+"_" + datasetName)
+        dataset = task_dataset(dataset, file=args.task_file, index=args.index_episode,full_name=name+"_" + datasetName)
     if datasetName not in ["test", "validation"]:
         datasetName = 'train' # the dataset was loaded now the only thing that matters is if it is a train one.
     if datasetName == "train":

@@ -16,7 +16,7 @@ if [ "$mode" == "1s5w" ]; then
     list2=("snr")
     array_value="0-7" # launch sbatch --array=0-7 idb.sh  1s5w
 else
-    list2=("snr" "loo" "fake_acc" "hard" "soft")
+    list2=("snr" "loo" "fake_acc" "hard" "soft" "rankme")
     array_value="0-44"  # launch sbatch --array=0-47 idb.sh  5s5w or MD
 fi
 
@@ -59,14 +59,14 @@ test_dataset="metadataset_${dat}_test"
 # Define directories and paths
 
 directories=()
-dir="${WORK}/results/DI/features/${dat}/"
+dir="${WORK}/results/DILR/features/${dat}/"
 directories+=("$dir")
 echo $directories
 
 
 baseline="${WORK}/results/B/f_baselinemetadataset_${dat}_test_features.pt"
 loadepisode="${WORK}/episode_600/${mag_or_ncm}600_${mode}_test_${dat}.pt"
-outfile="${WORK}/results/IDB/idb_DI_${mode}_${dat}.pt"
+outfile="${WORK}/results/IDB/idb_DILR_${mode}_${dat}.pt"
 
 result="["
 count=0

@@ -16,7 +16,7 @@ from few_shot_evaluation import EpisodicGenerator, ImageNetGenerator, OmniglotGe
 from tqdm import tqdm
 if args.wandb!='':
     import wandb
-
+import sys
 if not args.silent:
     print(" done.")
     
@@ -185,6 +185,7 @@ def testFewShot(features, datasets = None):
             else:
                 episodes=torch.load(args.load_episodes)['episodes']
                 episode = {'shots_idx' : episodes['shots_idx'][int(args.index_episode)], 'queries_idx' : episodes['queries_idx'][int(args.index_episode)], 'choice_classes' : episodes['choice_classes'][int(args.index_episode)]}
+                
             shots, queries = generator.get_features_from_indices(feature, episode)
             accs.append(classifiers.evalFewShotRun(shots, queries))
         accs = 100 * torch.tensor(accs)

@@ -18,6 +18,7 @@ if [ "$mode" == "1s5w" ]; then
     array_value="0-7" # launch sbatch --array=0-7 idb.sh  1s5w
 else
     list2=("snr" "loo" "fake_acc" "hard" "soft" "rankme")
+    list2=("rankme")
     array_value="0-44"  # launch sbatch --array=0-47 idb.sh  5s5w or MD
 fi
 
@@ -67,7 +68,7 @@ for clustering in "${clustering_list[@]}"; do
 done
 baseline="${WORK}/results/B/f_baselinemetadataset_${dat}_test_features.pt"
 loadepisode="${WORK}/episode_600/${mag_or_ncm}600_${mode}_test_${dat}.pt"
-outfile="${WORK}/results/IDB/idb_ta_${mode}_${dat}.pt"
+outfile="${WORK}/results/IDB/final_TA3_${mode}_${dat}.pt"
 
 result="["
 count=0

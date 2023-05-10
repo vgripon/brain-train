@@ -16,7 +16,6 @@ list1=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_f
 
 
 
-
 few_shot_runs="600"
 dataset_path="${SCRATCH}/"
 epoch="1"
@@ -44,7 +43,7 @@ fi
 valtest="test"
 mag_or_ncm="magnitude"
 
-task_id=$SLURM_ARRAY_TASK_ID
+dat_ind=$SLURM_ARRAY_TASK_ID
 dat=${list1[$dat_ind]}
 test_dataset="metadataset_${dat}_test"
 count=0
@@ -64,7 +63,7 @@ echo "$proxy"
 
 module purge
 module load pytorch-gpu/py3/1.12.1
-
+set -eux
 python ../../../id_backbone.py \
     --out-file $outfile \
     --valtest $valtest \

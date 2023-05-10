@@ -15,10 +15,10 @@ dat_ind=$2
 list1=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_flower")
 # Get the current string from the list based on the task ID
 dat=${list1[$dat_ind]}
-
+mag_or_ncm="magnitude"
 load_backbone_base="${WORK}/results/DI/backbones/${dat}"
 load_backbone="${load_backbone_base}/backbones_20_0.001"
-loadepisode="${WORK}/episode_600/${mag_or_ncm}600_${mode}_test_${dat}.pt"
+loadepisodes="${WORK}/episode_600/${mag_or_ncm}600_${mode}_test_${dat}.pt"
 indexepisode=$SLURM_ARRAY_TASK_ID
 dataset_path="${SCRATCH}/"
 test_dataset="metadataset_${dat}_test"

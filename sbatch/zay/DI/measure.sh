@@ -18,8 +18,6 @@ dat=${list1[$SLURM_ARRAY_TASK_ID]}
 
 load_backbone_base="${WORK}/results/DI/backbones/${dat}"
 load_backbone="${load_backbone_base}/backbones_20_0.01"
-load_backbone="${WORK}/resnet12_metadataset_imagenet_64.pt"
-save_feat="${WORK}/results/DI/features/${dat}/f_baseline"
 few_shot_runs="600"
 dataset_path="${SCRATCH}/"
 test_dataset="metadataset_${dat}_test"

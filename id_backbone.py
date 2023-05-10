@@ -83,6 +83,7 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
                 perf = logit(shots, queries, classifier,episode)
             else:
                 perf = classifiers.evalFewShotRun(shots, queries)
+
             accs.append(perf)
             if 'snr' in proxy:
                 snr.append(SNR(shots)[0])
