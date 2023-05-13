@@ -34,7 +34,6 @@ def testFewShot_proxy(filename, datasets = None, n_shots = 0, proxy = [], tqdm_v
         nb_episodes = len(episodes['shots_idx'])
     else:
         nb_episodes=args.few_shot_runs
-        episodes = {'shots_idx' : [], 'queries_idx' : [], 'choice_classes' : []}
     if not os.path.isdir(filename):
         features = [torch.load(filename, map_location=args.device)]
         allow_classifier=False
@@ -125,6 +124,7 @@ def compare(dataset, seed = args.seed, n_shots = args.few_shot_shots, proxy = ''
         number_of_episode = len(episodes['shots_idx'])
     else:
         number_of_episode=args.few_shot_runs
+        episodes=None
     N = args.num_clusters
     out={}
     filename_baseline = args.baseline

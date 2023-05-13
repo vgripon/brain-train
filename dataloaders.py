@@ -277,7 +277,7 @@ def reassign_numbers(lst):
     return [remap[i] for i in lst]
 
 
-def metadataset(datasetName, name):
+def metadataset(datasetName, name,cfg={'task_file' : '','subset_file': '', 'force-test-transforms' : False}):
     """
     Generic function to load a dataset from the Meta-Dataset v1.0
     """
@@ -285,10 +285,19 @@ def metadataset(datasetName, name):
     all_datasets = json.loads(f.read())
     f.close()
     dataset = all_datasets[name+"_" + datasetName]
-    if args.subset_file != '' and datasetName == args.subset_split:
-        dataset = subsample_dataset(dataset,args.subset_file,int(args.index_subset))
-    if args.task_file!='':
-        dataset = task_dataset(dataset, file=args.task_file, index=args.index_episode,full_name=name+"_" + datasetName)
+
+    if (args.subset_file != '' or cfg['subset_file']!='') and datasetName == args.subset_split :
+        index = int(args.index_subset) if cfg['subset_file']=='' else cfg['index_subset']
+        file=args.subset_file if cfg['subset_file']=='' else cfg['subset_file']
+        dataset = subsample_dataset(dataset,file,index)
+
+
+    if args.task_file!='' or cfg['task_file']!='':
+        index=args.index_episode if cfg['task_file']=='' else cfg['index_episode'] 
+        task_file = args.task_file if cfg['task_file']=='' else cfg['task_file']
+        dataset = task_dataset(dataset, file=task_file, index=index,full_name=name+"_" + datasetName)
+
+
     if datasetName not in ["test", "validation"]:
         datasetName = 'train' # the dataset was loaded now the only thing that matters is if it is a train one.
     if datasetName == "train":
@@ -300,7 +309,11 @@ def metadataset(datasetName, name):
         default_test_transforms = ['metadatasettotensor', 'biresize', 'metadatasetnorm']
     else:
         default_test_transforms = ['metadatasettotensor', 'randomresizedcrop', 'biresize', 'metadatasetnorm']
-    trans = get_transforms(image_size, datasetName, default_train_transforms, default_test_transforms)
+    if cfg['force-test-transforms']:
+        phase='test'
+    else:
+        phase=datasetName
+    trans = get_transforms(image_size, phase, default_train_transforms, default_test_transforms)
     return {"dataloader": dataLoader(DataHolder(dataset["data"], dataset["targets"], trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName=name+"_"+datasetName), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def metadataset_imagenet_v2():
@@ -425,18 +438,9 @@ def subdomain(k):
 f = open(args.dataset_path + "datasets_subdomain.json")    
 all_datasets = json.loads(f.read())
 f.close()
-key = "metadataset_imagenet_"
-for x in all_datasets.keys():
-    try:
-        if key in x:
-            nb_cluster = int(x[len(key):])+1
-    except:
-        pass
-if 'nb_cluster' not in globals():
-    nb_cluster  = 0
-print('-------->There are ' +str(nb_cluster)+ ' clusters<---------')
 
-def prepareDataLoader(name, is_train=False):
+
+def prepareDataLoader(name, is_train=False,cfg=None):
     if isinstance(name, str):
         name = [name]
     result = []
@@ -508,13 +512,12 @@ def prepareDataLoader(name, is_train=False):
             "metaalbum_micro":lambda: metaalbum("Micro", is_train=is_train),
             "metaalbum_mini":lambda: metaalbum("Mini", is_train=is_train),
             "metaalbum_extended":lambda: metaalbum("Extended", is_train=is_train),
+            "custom_metadataset":lambda: metadataset(cfg['phase'], cfg['name'], cfg),
         }
     # Adding Meta albums
     for setting in ['Micro', 'Macro', 'Extended']:
         for album in ['BCT', 'BRD', 'CRS', 'FLW', 'MD_MIX', 'PLK', 'PLT_VIL', 'RESISC', 'SPT', 'TEX']:
             dataset_options[f'metaalbum_{album.lower()}_{setting.lower()}'] = lambda: metaalbum(f'{album}_{setting}', is_train=is_train)    
-    for h in range(nb_cluster):
-        dataset_options["metadataset_imagenet_"+str(h)] = subdomain(h)
     for elt in name:
         assert elt.lower() in dataset_options.keys(), f'The chosen dataset "{elt}" is not existing, please provide a valid option: \n {list(dataset_options.keys())}'
         result.append(dataset_options[elt.lower()]())

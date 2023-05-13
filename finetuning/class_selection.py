@@ -25,7 +25,7 @@ print(dataset_json['metadataset_omniglot_test'].keys())
 def print_classes(ordered_acc, std, accuracy, nb_sample):
     conf_inter = 1.96* std / np.sqrt(nb_sample)
     print('\n Best classes are \n' )
-    for x in ordered_acc[:10]:
+    for x in ordered_acc[:50]:
         print("\t{:.3f} ±{:.3f}".format(accuracy[x].item(), conf_inter[x].item()  ), dataset_json['metadataset_imagenet_train']['name_classes'][x])
     print('\n Worst classes are \n' )
     for x in ordered_acc[-10:]:
