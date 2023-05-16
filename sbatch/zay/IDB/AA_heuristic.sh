@@ -13,7 +13,7 @@
 
 
 list_dat=("aircraft" "cub" "dtd" "fungi" "omniglot" "mscoco" "traffic_signs" "vgg_flower")
-list_sampling=("1s5w", "5s5w" "MD")
+list_sampling=("1s5w" "5s5w" "MD")
 # Get the current string from the list based on the task ID
 
 cd ../../../
