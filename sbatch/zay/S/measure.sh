@@ -9,13 +9,12 @@
 #SBATCH --qos=qos_gpu-t3 # QoS
 #SBATCH --hint=nomultithread # desactiver l’hyperthreading
 #SBATCH --account=csb@v100 # comptabilite V100
-#SBATCH --array=0-6
+#SBATCH --array=0-3
 mode=$1
 dat_ind=$2
-
 # Calculate the start and end of the task ID range
 # Set the batch size
-BATCH_SIZE=100
+BATCH_SIZE=200
 
 start=$((SLURM_ARRAY_TASK_ID * BATCH_SIZE))
 end=$(((SLURM_ARRAY_TASK_ID + 1) * BATCH_SIZE))
@@ -38,23 +37,21 @@ for task_id in $(seq $start $((end - 1))); do
     index_episode=$task_id
     test_dataset="metadataset_${dat}_test"
     epoch="1"
-    wd="0.0001"
     scheduler="cosine"
     backbone="resnet12"
     batch_size="128"
-    lr=0.001
     optimizer="adam"
     freeze_backbone="--freeze-backbone"
     task_queries="--task-queries"
     mkdir "${WORK}/results/S/measure/${mode}"
     mkdir "${WORK}/results/S/measure/${mode}/${dat}"
-    save_stats="${WORK}/results/S/measure/${mode}/${dat}/1e4_${task_id}.json"
+    save_stats="${WORK}/results/S/measure/${mode}/${dat}/${task_id}.json"
 
     load_backbone_base="${WORK}/results/S/${mode}/backbones/${dat}/"
-    load_backbone="${load_backbone_base}/backbones1e4_${task_id}"
+    load_backbone="${load_backbone_base}/backbones_${task_id}"
 
     load_classifier_base="${WORK}/results/S/${mode}/classifiers/${dat}/"
-    load_classifier="${load_classifier_base}/classifier_finetune1e4_${task_id}"
+    load_classifier="${load_classifier_base}/classifier_finetune_${task_id}"
 
 
     python ../../../main.py \
@@ -66,8 +63,6 @@ for task_id in $(seq $start $((end - 1))); do
         --test-dataset "${test_dataset}" \
         ${task_queries} \
         --epoch "${epoch}" \
-        --wd "${wd}" \
-        --lr "${lr}" \
         --backbone "${backbone}" \
         --batch-size "${batch_size}" \
         --save-stats ${save_stats} \

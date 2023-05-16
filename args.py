@@ -15,6 +15,7 @@ parser.add_argument("--save-features-prefix", type=str, default="", help="save f
 parser.add_argument("--save-backbone", type=str, default="", help="save backbone to hard drive at the specified location")
 parser.add_argument("--save-classifier", type=str, default="", help="save classifier to hard drive at the specified location")
 parser.add_argument("--save-logits", type=str, default="", help="save logits to hard drive at the specified location")
+parser.add_argument("--load-logits", type=str, default="", help="load logits to hard drive at the specified location")
 parser.add_argument("--load-backbone", type=str, default="", help="load backbone from hard drive at the specified location")
 parser.add_argument("--load-classifier", type=str, default="", help="load classifier from hard drive at the specified location")
 parser.add_argument("--freeze-backbone", action="store_true", help="freeze the backbone during training, can be useful in conjonction with load-backbone")

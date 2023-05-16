@@ -16,7 +16,7 @@ for VSRX in ['V', 'S', 'R', 'X']:
     for i in range(11):
         cfg_subset = {'phase': 'train',
                     'name' : 'metadataset_imagenet',
-                    'subset_file':'../models/episode_600/binary_agnostic_{}.npy'.format(VSRX),
+                    'subset_file': args.info.format(VSRX),
                     'task_file' : '',
                     'index_subset':i,
                     'force-test-transforms':True}
@@ -26,9 +26,9 @@ for VSRX in ['V', 'S', 'R', 'X']:
         probe_network = get_model('resnet18', pretrained=True, num_classes=subset['num_classes'])
         embedding_subset =  task2vec.Task2Vec(probe_network,max_samples=max_sample, skip_layers=6).embed(subset['dataloader'].dataset)
         all_embeddings['competing_agnostics_with_baseline'].append(embedding_subset)
-
+        print('cluster number {}'.format(i))
     torch.save(all_embeddings['competing_agnostics_with_baseline'],'fim/embeddings_{}.pt'.format(VSRX))
-
+    print(VSRX, 'done')
 
 cfg_baseline={'phase': 'train',
             'name' : 'metadataset_imagenet',
@@ -39,4 +39,4 @@ cfg_baseline={'phase': 'train',
 baseline = prepareDataLoader("custom_metadataset", cfg=cfg_baseline)[0]
 probe_network = get_model('resnet18', pretrained=True, num_classes=baseline['num_classes'])
 embedding_baseline =  task2vec.Task2Vec(probe_network,max_samples=max_sample, skip_layers=6).embed(baseline['dataloader'].dataset)
-torch.save(embedding_baseline, 'fim/embedding_baseline.pt')
+torch.save([embedding_baseline], 'fim/embeddings_baseline.pt')

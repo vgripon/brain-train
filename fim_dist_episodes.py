@@ -13,10 +13,10 @@ import numpy as np
 max_sample=200
 
 all_embeddings={'competing_agnostics_with_baseline' : [], 'tasks': []}
-for VSRX in ['V']: #,'S','R','X']:
+for VSRX in ['V' ,'S','R','X', 'baseline']:
     all_embeddings['competing_agnostics_with_baseline']+= torch.load('fim/embeddings_{}.pt'.format(VSRX))
 
-for i in range(1):
+for i in range(600):
     cfg_task={'phase': 'train',
                 'name' : args.target_dataset,
                 'subset_file':'',
@@ -32,10 +32,10 @@ for i in range(1):
     print('episode : {}'.format(i))
 
 
-torch.save(all_embeddings['competing_agnostics_with_baseline'],'embeddingsR.pt')
+torch.save(all_embeddings['tasks'],'{}_embbedings'.format(args.out_file))
 
 ALL_embeddings = all_embeddings['tasks']+all_embeddings['competing_agnostics_with_baseline']
 
 D = task_similarity.pdist(ALL_embeddings,distance='cosine')
 print(D.shape)
-np.save(args.out_file, D[:len(all_embeddings['tasks']),len(all_embeddings['tasks']):])
+np.save(args.out_file, D)
