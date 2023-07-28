@@ -69,6 +69,7 @@ parser.add_argument("--audio", action="store_true", help="use audio inputs, so s
 parser.add_argument("--wandb", type=str, default='', help="Report to wandb, input is the entity name")
 parser.add_argument("--wandbProjectName", type=str, default='few-shot', help="wandb project name")
 parser.add_argument("--wandb-dir", type=str, default='wandb', help="directory where wandb files are stored")
+parser.add_argument("--max-elts-per-class", type=int, default=-1, help="max number of elements per class in few shot tasks")
 
 ### backbones parameters
 parser.add_argument("--feature-maps", type=int, default=64, help="initial number of feature maps in first embedding, used as a base downstream convolutions")
@@ -99,6 +100,10 @@ parser.add_argument("--few-shot-unbalanced-queries", action="store_true", help="
 parser.add_argument("--few-shot-classifier", type=str, default="ncm", help="classifier for few-shot runs, can be ncm or knn where k is an integer")
 parser.add_argument("--sample-aug", type=int, default=1, help="number of versions of support/query samples (using random crop) 1 means no augmentation")
 parser.add_argument("--test-features", type=str, default="", help="test few-shot runs on saved features")
+parser.add_argument("--force-shuffle", action="store_true", help="force the shuffling of images")
+parser.add_argument("--no-replacement", action="store_true", help="forbids replacement in few shot tasks ()")
+parser.add_argument("--allow-reset", action="store_true", help="allow reset of sampling in few shot tasks as soon as not enough samples are available")
+parser.add_argument("--FSsampling-n-retries", type=int, default=10, help="number of retries before failure for few shot sampling [only applicable if allow_reset is False]")
 
 args = parser.parse_args()
 

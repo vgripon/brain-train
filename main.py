@@ -158,20 +158,51 @@ def repvgg_model_convert(model, save_path=None, do_copy=True):
         torch.save(model.state_dict(), save_path)
     return model
 
+def make_episodes(list_of_episodes, keys):
+    # Initialize dictionary with keys pointing to empty lists
+    episodes = {key: [] for key in keys}
+
+    # Loop over each episode
+    for episode in list_of_episodes:
+        # Loop over each key
+        for key in keys:
+            # Append the corresponding data from the episode to the dictionary
+            episodes[key].append(episode[key])
+
+    return episodes
+
+
 def testFewShot(features, datasets = None):
     results = torch.zeros(len(features), 2)
     for i in range(len(features)):
         accs = []
         feature = features[i]
         Generator = {'metadataset_omniglot':OmniglotGenerator, 'metadataset_imagenet':ImageNetGenerator}.get(datasets[i]['name'].replace('_train', '').replace('_test', '').replace('_validation', '') if datasets != None else datasets, EpisodicGenerator)
-        generator = Generator(datasetName=None if datasets is None else datasets[i]["name"], num_elements_per_class= [len(feat['features']) for feat in feature], dataset_path=args.dataset_path)
+        num_elements_per_class= [len(feat['features']) for feat in feature]
+        if args.max_elts_per_class != -1:
+            print("#### \n UPDATED NUM ELEMENTS PER CLASS \n ####")
+            num_elements_per_class = [min(args.max_elts_per_class, n) for n in num_elements_per_class]
+            print("#### \n" ,num_elements_per_class,"\n ####")   
+        generator = Generator(datasetName=None if datasets is None else datasets[i]["name"], num_elements_per_class= num_elements_per_class, dataset_path=args.dataset_path)
+        episodes = []
         for run in range(args.few_shot_runs):
             shots = []
             queries = []
-            episode = generator.sample_episode(ways=args.few_shot_ways, n_shots=args.few_shot_shots, n_queries=args.few_shot_queries, unbalanced_queries=args.few_shot_unbalanced_queries)
-            shots, queries = generator.get_features_from_indices(feature, episode)
-            accs.append(classifiers.evalFewShotRun(shots, queries))
+            episode = generator.sample_episode(ways=args.few_shot_ways, n_shots=args.few_shot_shots, n_queries=args.few_shot_queries, unbalanced_queries=args.few_shot_unbalanced_queries, allow_replacement= not args.no_replacement, allow_reset=args.allow_reset, n_retries=args.FSsampling_n_retries)
+            
+            if episode is None:
+                print('task n°{} out of {} failed after {} retries'.format(run,args.few_shot_runs,args.FSsampling_n_retries))
+                break
+            else:
+                shots, queries = generator.get_features_from_indices(feature, episode)
+                accs.append(classifiers.evalFewShotRun(shots, queries))
+                episodes.append(episode)
+        episodes = make_episodes(episodes, episodes[0].keys()) 
         accs = 100 * torch.tensor(accs)
+        torch.save({'accs': accs, 'episodes' : episodes }, 'accs_episodes_{}_{}_shots_{}_ways.pt'.format(args.test_dataset, args.few_shot_shots, args.few_shot_ways))
+        if args.wandb!='':
+            log={'test_performance': accs.mean().item(), 'std_performance' : accs.std().item()}
+            wandb.log(log)
         low, up = confInterval(accs)
         results[i, 0] = torch.mean(accs).item()
         results[i, 1] = (up - low) / 2
@@ -267,7 +298,6 @@ for nRun in range(args.runs):
     if args.load_backbone != "":
         backbone.load_state_dict(torch.load(args.load_backbone))
     backbone = backbone.to(args.device)
-    print(backbone)
     if not args.silent:
         numParamsBackbone = torch.tensor([m.numel() for m in backbone.parameters()]).sum().item()
     
@@ -435,6 +465,7 @@ for nRun in range(args.runs):
                     log['best_val'] = best_val
                 if testSet!=[]:
                     log['test'] = tempTestStats[:,0].mean().item()
+                    log['test_CI'] = tempTestStats[:,1].mean().item()
             wandb.log(log)
         print(Style.RESET_ALL + " " + timeToStr(time.time() - tick), end = '' if args.silent else '\n')
     if trainSet != [] and trainStats is not None:
@@ -464,6 +495,7 @@ for nRun in range(args.runs):
                     for stat in range(stats.shape[2]):
                         low, up = confInterval(stats[:,dataset,stat])
                         print("\t{:.3f} ±{:.3f} (conf. [{:.3f}, {:.3f}])".format(stats[:,dataset,stat].mean().item(), stats[:,dataset,stat].std().item(), low, up), end = '')
+
                     print()
     print()
     if args.wandb!='':

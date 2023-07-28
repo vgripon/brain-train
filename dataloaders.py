@@ -220,7 +220,7 @@ def metadataset(datasetName, name):
     else:
         default_test_transforms = ['metadatasettotensor', 'randomresizedcrop', 'biresize', 'metadatasetnorm']
     trans = get_transforms(image_size, datasetName, default_train_transforms, default_test_transforms)
-    return {"dataloader": dataLoader(DataHolder(dataset["data"], dataset["targets"], trans), shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName=name+"_"+datasetName), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
+    return {"dataloader": dataLoader(DataHolder(dataset["data"], dataset["targets"], trans), shuffle = (datasetName == "train") or args.force_shuffle, episodic=args.episodic and datasetName == "train", datasetName=name+"_"+datasetName), "name":dataset["name"], "num_classes":dataset["num_classes"], "name_classes": dataset["name_classes"]}
 
 def metadataset_imagenet_v2():
     f = open(args.dataset_path + "datasets.json")    

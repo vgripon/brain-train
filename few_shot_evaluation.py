@@ -33,11 +33,14 @@ class EpisodicGenerator():
             self.num_elements_per_class = num_elements_per_class
         if self.num_elements_per_class != None:
             self.max_classes = min(len(self.num_elements_per_class), 50)
-                
+        self.used_images = {i: [] for i in range(self.max_classes)}
+
+
     def select_classes(self, ways):
         # number of ways for this episode
         n_ways = ways if ways!=0 else random.randint(5, self.max_classes)
-
+        if ways==-1:
+            n_ways = self.max_classes
         # get n_ways classes randomly
         choices = torch.randperm(len(self.num_elements_per_class))[:n_ways]
         return choices 
@@ -86,37 +89,69 @@ class EpisodicGenerator():
             n_queries_per_class = [query_size]*len(choice_classes)
         return n_queries_per_class
 
-    def sample_indices(self, num_elements_per_chosen_classes, n_shots_per_class, n_queries_per_class):
+    def sample_indices(self, choice_classes, num_elements_per_chosen_classes, n_shots_per_class, n_queries_per_class, allow_reset=False, allow_replacement=True):
         shots_idx = []
         queries_idx = []
-        for k, q, elements_per_class in zip(n_shots_per_class, n_queries_per_class, num_elements_per_chosen_classes):
-            choices = torch.randperm(elements_per_class)
-            shots_idx.append(choices[:k].tolist())
-            queries_idx.append(choices[k:k+q].tolist())
+        for i, (k, q, elements_per_class) in enumerate(zip(n_shots_per_class, n_queries_per_class, num_elements_per_chosen_classes)):
+            class_idx = choice_classes[i]
+
+            # If allow_replacement is True, use all images for the current class
+            if allow_replacement:
+                unused_images = list(range(elements_per_class))
+            else:
+                unused_images = [idx for idx in range(elements_per_class) if idx not in self.used_images[class_idx.item()]]
+            
+            # If there are no unused images left, retry the sampling process if allow_reset is True
+            if len(unused_images)<q+k:
+                if allow_reset:
+                    self.used_images[class_idx] = []
+                    unused_images = [idx for idx in range(elements_per_class)]
+                else:
+                    return None, None
+
+            choices = torch.randperm(len(unused_images))
+
+            # Update shots_idx and queries_idx using the indices of unused images
+            shots_idx.append([unused_images[idx] for idx in choices[:k].tolist()])
+            if n_queries_per_class == [-1] * len(n_queries_per_class):
+                queries_idx.append([unused_images[idx] for idx in choices[k:].tolist()])
+            else:
+                queries_idx.append([unused_images[idx] for idx in choices[k:k+q].tolist()])
+
+            # If allow_replacement is False, update the list of used images for the current class
+            if not allow_replacement:
+                self.used_images[class_idx.item()].extend(shots_idx[-1])
+                self.used_images[class_idx.item()].extend(queries_idx[-1])
         return shots_idx, queries_idx
 
-    def sample_episode(self, ways=0, n_shots=0, n_queries=0, unbalanced_queries=False, verbose=False):
+
+    def sample_episode(self, ways=0, n_shots=0, n_queries=0, unbalanced_queries=False, verbose=False, allow_reset=False, allow_replacement=True, n_retries=5):
         """
         Sample an episode
         """
-        # get n_ways classes randomly
-        choice_classes = self.select_classes(ways=ways)
+        retry_count=0
+        while retry_count < n_retries:
+            retry_count += 1
+            # get n_ways classes randomly
+            choice_classes = self.select_classes(ways=ways)
+            
+            query_size = self.get_query_size(choice_classes, n_queries)
+            support_size = self.get_support_size(choice_classes, query_size, n_shots)
+
+            n_shots_per_class = self.get_number_of_shots(choice_classes, support_size, query_size, n_shots)
+            n_queries_per_class = self.get_number_of_queries(choice_classes, query_size, unbalanced_queries)
+            shots_idx, queries_idx = self.sample_indices(choice_classes,[self.num_elements_per_class[c] for c in choice_classes], n_shots_per_class, n_queries_per_class, allow_reset=allow_reset, allow_replacement=allow_replacement)
+            if shots_idx != None and queries_idx != None:
+                if verbose:
+                    print(f'chosen class: {choice_classes}')
+                    print(f'n_ways={len(choice_classes)}, q={query_size}, S={support_size}, n_shots_per_class={n_shots_per_class}')
+                    print(f'queries per class:{n_queries_per_class}')
+                    print(f'shots_idx: {shots_idx}')
+                    print(f'queries_idx: {queries_idx}')
+                return {'choice_classes':choice_classes, 'shots_idx':shots_idx, 'queries_idx':queries_idx}
         
-        query_size = self.get_query_size(choice_classes, n_queries)
-        support_size = self.get_support_size(choice_classes, query_size, n_shots)
-
-        n_shots_per_class = self.get_number_of_shots(choice_classes, support_size, query_size, n_shots)
-        n_queries_per_class = self.get_number_of_queries(choice_classes, query_size, unbalanced_queries)
-        shots_idx, queries_idx = self.sample_indices([self.num_elements_per_class[c] for c in choice_classes], n_shots_per_class, n_queries_per_class)
-
-        if verbose:
-            print(f'chosen class: {choice_classes}')
-            print(f'n_ways={len(choice_classes)}, q={query_size}, S={support_size}, n_shots_per_class={n_shots_per_class}')
-            print(f'queries per class:{n_queries_per_class}')
-            print(f'shots_idx: {shots_idx}')
-            print(f'queries_idx: {queries_idx}')
-
-        return {'choice_classes':choice_classes, 'shots_idx':shots_idx, 'queries_idx':queries_idx}
+        return None
+            
 
     def get_features_from_indices(self, features, episode, validation=False):
         """
