@@ -15,6 +15,7 @@ from selfsupervised.selfsupervised import get_ssl_transform
 from utils import *
 from few_shot_evaluation import EpisodicGenerator
 from augmentations import parse_transforms
+import itertools
 ### first define dataholder, which will be used as an argument to dataloaders
 all_steps = [item for sublist in eval(args.steps) for item in sublist]
 supervised = 'lr' in all_steps or 'rotations' in all_steps or 'mixup' in all_steps or 'manifold mixup' in all_steps or (args.few_shot and "M" in args.feature_processing) or args.save_features_prefix != "" or args.episodic
@@ -202,7 +203,29 @@ def imagenet(datasetName):
         
     return {"dataloader": dataLoader(pytorchDataset, shuffle = datasetName == "train", episodic=args.episodic and datasetName == "train", datasetName="imagenet_"+datasetName), "name":"imagenet_" + datasetName, "num_classes":1000, "name_classes": pytorchDataset.classes}
 
-def metadataset(datasetName, name):
+def subsample_dataset(dataset, file, index):
+    '''reads an npy file looks at the "index" row, and selects the classes at 0'''
+    keys = dataset.keys()
+    subset = np.load(file)
+    subset = subset[index]
+    subset_num_class = int(subset.shape[0]-subset.sum())   # the 0's are the selected classes
+    subset_name_classes = [dataset['name_classes'][i] for i, v in enumerate(subset) if v == 0]
+    print("This cooresponds to the dataloader of file subset_{}_index_{}".format(file, index))
+    print(subset_name_classes)
+    out = {"data":[], "targets":[], "name":"subset_{}_index_{}".format(file, index)[-31:], "num_classes":subset_num_class, "name_classes":subset_name_classes}
+    for i,x in enumerate(dataset['targets']):
+        if subset[x]==0:
+            out['data'].append(dataset['data'][i])
+            out['targets'].append(x)
+    out['targets'] = reassign_numbers(out['targets'])
+    return out
+
+def reassign_numbers(lst):
+    remap = dict(zip(set(lst), itertools.count()))
+    return [remap[i] for i in lst]
+
+
+def metadataset(datasetName, name,cfg={'task_file' : '','subset_file': '', 'force-test-transforms' : False}):
     """
     Generic function to load a dataset from the Meta-Dataset v1.0
     """
@@ -210,6 +233,12 @@ def metadataset(datasetName, name):
     all_datasets = json.loads(f.read())
     f.close()
     dataset = all_datasets[name+"_" + datasetName]
+
+    if (args.subset_file != '' or cfg['subset_file']!='') and datasetName == args.subset_split :
+        index = int(args.index_subset) if cfg['subset_file']=='' else cfg['index_subset']
+        file=args.subset_file if cfg['subset_file']=='' else cfg['subset_file']
+        dataset = subsample_dataset(dataset,file,index)
+
     if datasetName == "train":
         image_size = args.training_image_size if args.training_image_size>0 else 126
     else:

@@ -27,6 +27,9 @@ parser.add_argument("--end-lr-factor", type=float, default=1e-3, help="end learn
 parser.add_argument("--wd", type=float, default=-1., help="weight decay, default to 5e-4 for SGD and 0 for Adam")
 parser.add_argument("--steps", type=str, default="[['lr']]", help="describe what steps during training are made of, is a list of lists containing 'rotations', 'mixup' or 'manifold mixup', for example \"[['manifold mixup'],['rotations']]\" does two steps: first with manifold mixup then with rotations as additional self-supervision. Last list is used to compute losses and scores")
 parser.add_argument("--label-smoothing", type=float, default=0, help="use label smoothing with given smoothing factor. 0 means no smoothing")
+parser.add_argument("--subset-file", type=str, default='', help="binary npy file with index clusters of classes in imagenet")
+parser.add_argument("--subset-split", type=str, default='train', help="split on which the subset file is applied.")
+parser.add_argument("--index-subset", type=str, default='', help="index in binary npy file with index of cluster or episode of classes in imagenet")
 
 ### dataloaders args
 # list of datasets, which automatically define a train, a validation and a test set
