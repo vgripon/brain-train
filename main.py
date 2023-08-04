@@ -170,6 +170,16 @@ def test(backbone, datasets, criterion):
         display(" " * (1 + max(0, len(datasets[testSetIdx]["name"]) - 16)) + opener + "{:.2e}  {:6.2f}%".format(losses / total_elt, 100 * accuracies / total_elt) + ender, end = '', force = True)
     return torch.tensor(results)
 
+def repvgg_model_convert(model, save_path=None, do_copy=True):
+    if do_copy:
+        model = copy.deepcopy(model)
+    for module in model.modules():
+        if hasattr(module, 'inference_transform'):
+            module.inference_transform()
+    if save_path is not None:
+        torch.save(model.state_dict(), save_path)
+    return model
+
 def testFewShot(features, datasets = None):
     results = torch.zeros(len(features), 2)
     for i in range(len(features)):
@@ -309,8 +319,10 @@ for nRun in range(args.runs):
     if args.load_backbone != "":
         backbone.load_state_dict(torch.load(args.load_backbone))
     backbone = backbone.to(args.device)
+    print(backbone)
     if not args.silent:
         numParamsBackbone = torch.tensor([m.numel() for m in backbone.parameters()]).sum().item()
+    
         print(" containing {:,} parameters and feature space of dim {:d}.".format(numParamsBackbone, outputDim))
 
         print("Preparing criterion(s) and classifier(s)... ", end='')
@@ -468,6 +480,9 @@ for nRun in range(args.runs):
         if continueTest and args.save_backbone != "" and epoch >= args.skip_epochs:
             torch.save(backbone.to("cpu").state_dict(), args.save_backbone)
             backbone.to(args.device)
+        if epoch == 0 or (epoch+1) % 20 == 0:
+            torch.save(backbone, f"backbone_repvgg2_{epoch}.pth")
+            torch.save(criterion["supervised"][0], f"class_repvgg2_{epoch}.pth")
         if continueTest and args.save_features_prefix != "" and epoch >= args.skip_epochs:
             for i, dataset in enumerate(trainSet):
                 torch.save(featuresTrain[i], args.save_features_prefix + dataset["name"] + "_features.pt")
