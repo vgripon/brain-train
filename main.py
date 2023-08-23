@@ -22,6 +22,15 @@ if not args.silent:
     
     print()
 
+
+from datetime import datetime
+
+now = datetime.now()
+
+current_time = now.strftime("%H:%M:%S")
+print("Current Time =", current_time)
+
+
 print(args)
 print()
 
@@ -271,6 +280,11 @@ def get_optimizer(parameters, name, lr, weight_decay):
     else:
         raise ValueError(f'Optimizer {name} not supported')
 if args.test_features != "":
+    if args.wandb!='':
+        wandb.init(reinit = True, project=args.wandbProjectName, 
+            entity=args.wandb, 
+            config=vars(args),
+            dir=args.wandb_dir)
     features = [torch.load(args.test_features, map_location=args.device)]
     print(testFewShot(features))
     exit()
