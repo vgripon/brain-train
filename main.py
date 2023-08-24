@@ -192,6 +192,12 @@ def testFewShot(features, datasets = None):
             print("#### \n UPDATED NUM ELEMENTS PER CLASS \n ####")
             num_elements_per_class = [min(args.max_elts_per_class, n) for n in num_elements_per_class]
             print("#### \n" ,num_elements_per_class,"\n ####")   
+            if args.shuffle_features:
+                print("#### \n SHUFFLING FEATURES \n ####")
+                for feat in feature:
+                    indices = np.arange(feat['features'].shape[0])
+                    np.random.shuffle(indices)
+                    feat['features'] = feat['features'][indices]
         generator = Generator(datasetName=None if datasets is None else datasets[i]["name"], num_elements_per_class= num_elements_per_class, dataset_path=args.dataset_path)
         episodes = []
         for run in range(args.few_shot_runs):

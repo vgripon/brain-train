@@ -104,6 +104,7 @@ parser.add_argument("--few-shot-classifier", type=str, default="ncm", help="clas
 parser.add_argument("--sample-aug", type=int, default=1, help="number of versions of support/query samples (using random crop) 1 means no augmentation")
 parser.add_argument("--test-features", type=str, default="", help="test few-shot runs on saved features")
 parser.add_argument("--force-shuffle", action="store_true", help="force the shuffling of images")
+parser.add_argument("--shuffle-features", action="store_true", help="force the shuffling of images")
 parser.add_argument("--no-replacement", action="store_true", help="forbids replacement in few shot tasks ()")
 parser.add_argument("--allow-reset", action="store_true", help="allow reset of sampling in few shot tasks as soon as not enough samples are available")
 parser.add_argument("--FSsampling-n-retries", type=int, default=10, help="number of retries before failure for few shot sampling [only applicable if allow_reset is False]")
