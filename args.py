@@ -108,7 +108,7 @@ parser.add_argument("--shuffle-features", action="store_true", help="force the s
 parser.add_argument("--no-replacement", action="store_true", help="forbids replacement in few shot tasks ()")
 parser.add_argument("--allow-reset", action="store_true", help="allow reset of sampling in few shot tasks as soon as not enough samples are available")
 parser.add_argument("--FSsampling-n-retries", type=int, default=10, help="number of retries before failure for few shot sampling [only applicable if allow_reset is False]")
-
+parser.add_argument("--folds", type=int, default=-1, help="number of folds for few shot evaluation, -1 means no fold")
 args = parser.parse_args()
 
 if args.dataset != "":

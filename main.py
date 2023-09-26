@@ -292,8 +292,34 @@ if args.test_features != "":
             config=vars(args),
             dir=args.wandb_dir)
     features = [torch.load(args.test_features, map_location=args.device)]
-    print(testFewShot(features))
-    exit()
+    if args.folds == -1:
+        print(testFewShot(features))
+        exit()
+    else:
+        n_iter = 100
+        L_final = []
+        for j in range(n_iter):
+            L_results = []
+            n=len(features[0])
+            indices = np.arange(n)
+            np.random.shuffle(indices)
+            for k in range(args.folds):
+                print('fold',k,'iteration', j)
+                idx = indices[k*int(n/args.folds):(k+1)*int(n/args.folds)]
+                res = testFewShot([[features[0][i] for i in idx]])
+                print(idx,res)
+                L_results.append(res)
+            print('### \n \n \n  ######')
+            L_final.append(torch.stack(L_results))
+        print('final')
+        print(torch.stack(L_final))
+        avg = torch.stack(L_final).mean(0).mean(0)[0]
+        print('avg',avg)
+        avg_updated_w_indep_folds=torch.zeros(2)
+        avg_updated_w_indep_folds[0] = avg[0]
+        avg_updated_w_indep_folds[1] = avg[1]/args.folds
+        print('final' , avg_updated_w_indep_folds)
+        exit()
 
 allRunTrainStats = None
 allRunValidationStats = None
