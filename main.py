@@ -187,14 +187,19 @@ def testFewShot(features, datasets = None):
         feature = features[i]
         Generator = {'metadataset_omniglot':OmniglotGenerator, 'metadataset_imagenet':ImageNetGenerator}.get(datasets[i]['name'].replace('_train', '').replace('_test', '').replace('_validation', '') if datasets != None else datasets, EpisodicGenerator)
         generator = Generator(datasetName=None if datasets is None else datasets[i]["name"], num_elements_per_class= [len(feat['features']) for feat in feature], dataset_path=args.dataset_path)
+        if args.load_episodes != '':
+            episodes = torch.load(args.load_episodes, map_location=args.device)['episodes']
         for run in range(args.few_shot_runs):
             shots = []
             queries = []
             if args.load_episodes=='':
                 episode = generator.sample_episode(ways=args.few_shot_ways, n_shots=args.few_shot_shots, n_queries=args.few_shot_queries, unbalanced_queries=args.few_shot_unbalanced_queries)
             else:
-                episodes=torch.load(args.load_episodes)['episodes']
-                episode = {'shots_idx' : episodes['shots_idx'][int(args.index_episode)], 'queries_idx' : episodes['queries_idx'][int(args.index_episode)], 'choice_classes' : episodes['choice_classes'][int(args.index_episode)]}
+                if args.index_episode == '':
+                    episode = {'shots_idx' : episodes['shots_idx'][run], 'queries_idx' : episodes['queries_idx'][run], 'choice_classes' : episodes['choice_classes'][run]}
+
+                else:
+                    episode = {'shots_idx' : episodes['shots_idx'][int(args.index_episode)], 'queries_idx' : episodes['queries_idx'][int(args.index_episode)], 'choice_classes' : episodes['choice_classes'][int(args.index_episode)]}
                 
             shots, queries = generator.get_features_from_indices(feature, episode)
             accs.append(classifiers.evalFewShotRun(shots, queries))

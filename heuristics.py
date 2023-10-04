@@ -186,6 +186,8 @@ def SNR(list_distrib):
     #print('n_ways distrib', len(list_distrib))
     n_ways = len(list_distrib)
     means = torch.stack([list_distrib[i].mean(0) for i in range(n_ways)])
+    if means.dtype == torch.float16:
+        means = means.to(dtype=torch.float32)
     stds = [torch.norm(list_distrib[i].std(0)).item()  for i in range(n_ways)]
     noise = np.mean(stds)
     margin = torch.cdist(means, means).sum().item()/(n_ways*(n_ways-1))
