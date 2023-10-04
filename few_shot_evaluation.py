@@ -4,6 +4,7 @@ import torch
 import math
 import numpy as np
 import os 
+import sys
 
 def get_repository_path():
     import os
@@ -35,14 +36,25 @@ class EpisodicGenerator():
             self.max_classes = min(len(self.num_elements_per_class), 50)
         self.used_images = {i: [] for i in range(self.max_classes)}
 
-
-    def select_classes(self, ways):
+    
+    def select_classes(self, ways, n_shots, n_queries ,allow_replacement):
         # number of ways for this episode
         n_ways = ways if ways!=0 else random.randint(5, self.max_classes)
         if ways==-1:
             n_ways = self.max_classes
         # get n_ways classes randomly
         choices = torch.randperm(len(self.num_elements_per_class))[:n_ways]
+        if not allow_replacement:
+            num_of_used_images = np.array([len(l) for l in self.used_images.values()])
+            if n_queries!=0 and n_shots!=0:
+                avail_class = np.array(self.num_elements_per_class)-num_of_used_images>(n_shots+n_queries)
+            else:
+                print("can't use no replacement without specifying n_queries and n_shots")
+                sys.exit(0)
+            try:
+                choices = np.random.choice(np.where(avail_class)[0], n_ways, replace=False)
+            except:
+                return np.zeros(n_ways)
         return choices 
     
     def get_query_size(self, choice_classes, n_queries):
@@ -92,9 +104,10 @@ class EpisodicGenerator():
     def sample_indices(self, choice_classes, num_elements_per_chosen_classes, n_shots_per_class, n_queries_per_class, allow_reset=False, allow_replacement=True):
         shots_idx = []
         queries_idx = []
+        if choice_classes.all() == 0:
+            return None, None
         for i, (k, q, elements_per_class) in enumerate(zip(n_shots_per_class, n_queries_per_class, num_elements_per_chosen_classes)):
             class_idx = choice_classes[i]
-
             # If allow_replacement is True, use all images for the current class
             if allow_replacement:
                 unused_images = list(range(elements_per_class))
@@ -133,7 +146,7 @@ class EpisodicGenerator():
         while retry_count < n_retries:
             retry_count += 1
             # get n_ways classes randomly
-            choice_classes = self.select_classes(ways=ways)
+            choice_classes = self.select_classes(ways=ways, n_shots=n_shots, n_queries=n_queries,allow_replacement=allow_replacement)
             
             query_size = self.get_query_size(choice_classes, n_queries)
             support_size = self.get_support_size(choice_classes, query_size, n_shots)
