@@ -321,10 +321,14 @@ for nRun in range(args.runs):
     else:
         import backbones
         backbone, outputDim = backbones.prepareBackbone()
+    
     if args.load_backbone != "":
-        backbone.load_state_dict(torch.load(args.load_backbone))
+        model_dict = torch.load(args.load_backbone, map_location=args.device)
+        if 'model' in model_dict.keys():
+            model_dict = model_dict['model']
+        backbone.load_state_dict(model_dict)
     backbone = backbone.to(args.device)
-    print(backbone)
+
     if not args.silent:
         numParamsBackbone = torch.tensor([m.numel() for m in backbone.parameters()]).sum().item()
     
